@@ -191,7 +191,7 @@ export function Home() {
                 </svg>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">Rechner-Baukasten</h1>
+                <h1 className="text-xl font-bold text-white">Kalku</h1>
                 <p className="text-xs text-[#6b7a90]">Interaktive Rechner erstellen</p>
               </div>
             </div>

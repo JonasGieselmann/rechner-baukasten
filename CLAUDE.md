@@ -1,4 +1,4 @@
-# Rechner-Baukasten - Projekt-Kontext
+# Kalku - Projekt-Kontext
 
 > No-Code-Tool zum Erstellen interaktiver Rechner mit Drag-and-Drop (Notion + Grid.is Style)
 

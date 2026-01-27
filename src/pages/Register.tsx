@@ -58,7 +58,7 @@ export function Register() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-white">Konto erstellen</h1>
-          <p className="text-[#6b7a90] mt-2">Starte kostenlos mit dem Rechner-Baukasten</p>
+          <p className="text-[#6b7a90] mt-2">Starte kostenlos mit Kalku</p>
         </div>
 
         {/* Register Form */}
