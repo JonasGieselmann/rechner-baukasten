@@ -1,57 +1,145 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { toNodeHandler, fromNodeHeaders } from 'better-auth/node';
 import { auth } from './auth';
 import { checkDb, initAuthSchema } from './db';
 import customCalculatorsRouter from './custom-calculators';
+import adminRouter from './admin';
 import path from 'path';
+
+// ============================================
+// App Configuration
+// ============================================
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const isProduction = process.env.NODE_ENV === 'production';
 
-// Build CORS origins list
-const corsOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  'http://localhost:5176',
-  'http://localhost:5177',
-];
+// ============================================
+// Security Middleware
+// ============================================
+
+// Helmet - Sets various HTTP security headers
+// See: https://helmetjs.github.io/
+app.use(
+  helmet({
+    contentSecurityPolicy: isProduction
+      ? {
+          directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+            fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+            imgSrc: ["'self'", 'data:', 'blob:'],
+            scriptSrc: ["'self'"],
+            connectSrc: ["'self'"],
+            frameSrc: ["'self'"],
+            frameAncestors: ["'self'", '*'], // Allow embedding in iframes
+          },
+        }
+      : false, // Disable CSP in development for easier debugging
+    crossOriginEmbedderPolicy: false, // Allow embedding
+    crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow cross-origin resources
+  })
+);
+
+// Remove X-Powered-By header to hide Express
+app.disable('x-powered-by');
+
+// Rate limiting - General API rate limit
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per window per IP
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Stricter rate limit for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 auth requests per window per IP
+  message: { error: 'Too many authentication attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply general rate limiting to all API routes
+app.use('/api/', generalLimiter);
+
+// ============================================
+// CORS Configuration
+// ============================================
+
+const corsOrigins: string[] = [];
+
+// In development, allow localhost ports
+if (!isProduction) {
+  corsOrigins.push(
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    'http://localhost:5176',
+    'http://localhost:5177'
+  );
+}
 
 // Add production URL if configured
 if (process.env.APP_URL) {
   corsOrigins.push(process.env.APP_URL);
 }
 
-// CORS configuration - MUST be before other middleware
 app.use(
   cors({
-    origin: corsOrigins,
+    origin: corsOrigins.length > 0 ? corsOrigins : false,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization'],
+    maxAge: 86400, // Cache preflight for 24 hours
   })
 );
 
+// ============================================
+// Body Parsing with Size Limits
+// ============================================
+
 // Better Auth handler - MUST be before express.json()
-// Express 5 requires named wildcards
+// Apply stricter rate limiting to auth endpoints
+app.use('/api/auth', authLimiter);
 app.all('/api/auth/*splat', toNodeHandler(auth));
 
-// JSON body parser for other routes
-app.use(express.json());
+// JSON body parser with size limit to prevent DoS
+app.use(express.json({ limit: '1mb' }));
 
-// Health check endpoint
+// URL-encoded body parser with size limit
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// ============================================
+// API Routes
+// ============================================
+
+// Health check endpoint - simplified for production
 app.get('/api/health', async (req, res) => {
-  const dbOk = await checkDb();
-  res.json({
-    status: dbOk ? 'ok' : 'error',
-    timestamp: new Date().toISOString(),
-    database: dbOk ? 'connected' : 'disconnected',
-  });
+  try {
+    const dbOk = await checkDb();
+    // In production, don't reveal detailed status
+    if (isProduction) {
+      res.json({ status: dbOk ? 'ok' : 'error' });
+    } else {
+      res.json({
+        status: dbOk ? 'ok' : 'error',
+        timestamp: new Date().toISOString(),
+        database: dbOk ? 'connected' : 'disconnected',
+      });
+    }
+  } catch {
+    res.status(500).json({ status: 'error' });
+  }
 });
 
-// Get current user session
+// Get current user session with extended user data
 app.get('/api/me', async (req, res) => {
   try {
     const session = await auth.api.getSession({
@@ -60,34 +148,92 @@ app.get('/api/me', async (req, res) => {
     if (!session) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
-    res.json(session);
+
+    // Get extended user data with role and approved status
+    const { getUserById } = await import('./db');
+    const extendedUser = await getUserById(session.user.id);
+
+    // Return only necessary user data (don't expose internal fields)
+    res.json({
+      session: {
+        id: session.session.id,
+        expiresAt: session.session.expiresAt,
+      },
+      user: {
+        id: session.user.id,
+        name: session.user.name,
+        email: session.user.email,
+        image: session.user.image,
+        role: extendedUser?.role || 'user',
+        approved: extendedUser?.approved ?? false,
+      },
+    });
   } catch (error) {
     console.error('Session error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Request failed' });
   }
 });
 
 // Custom Calculators API
 app.use('/api/custom-calculators', customCalculatorsRouter);
 
-// In production, serve static files
-if (process.env.NODE_ENV === 'production') {
+// Admin API
+app.use('/api/admin', adminRouter);
+
+// ============================================
+// Static File Serving (Production Only)
+// ============================================
+
+if (isProduction) {
+  // Security options for static files
+  const staticOptions = {
+    dotfiles: 'deny' as const, // Don't serve hidden files
+    index: false, // Don't serve directory indexes
+    maxAge: '1d', // Cache for 1 day
+  };
+
   // Serve public folder (custom calculators)
-  app.use(express.static(path.join(process.cwd(), 'public')));
+  app.use(express.static(path.join(process.cwd(), 'public'), staticOptions));
 
   // Serve built frontend
-  app.use(express.static(path.join(process.cwd(), 'dist')));
+  app.use(express.static(path.join(process.cwd(), 'dist'), staticOptions));
 
   // SPA fallback - serve index.html for all non-API routes
   app.get('*', (req, res) => {
-    // Don't serve index.html for custom calculator routes
-    if (req.path.startsWith('/custom-calculators/')) {
-      res.status(404).send('Not found');
+    // Don't serve index.html for custom calculator routes or API routes
+    if (req.path.startsWith('/custom-calculators/') || req.path.startsWith('/api/')) {
+      res.status(404).json({ error: 'Not found' });
       return;
     }
     res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
   });
 }
+
+// ============================================
+// Error Handling
+// ============================================
+
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'Endpoint not found' });
+});
+
+// Global error handler - must be last
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('Unhandled error:', err);
+
+  // Don't leak error details in production
+  if (isProduction) {
+    res.status(500).json({ error: 'Internal server error' });
+  } else {
+    res.status(500).json({
+      error: 'Internal server error',
+      message: err.message,
+      stack: err.stack,
+    });
+  }
+});
 
 // Start server
 async function start() {

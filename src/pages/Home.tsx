@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCalculatorStore } from '../store/calculatorStore';
+import { useAuth } from '../components/AuthProvider';
 
 interface CustomCalculator {
   id: string;
@@ -20,6 +21,7 @@ const API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : '';
 
 export function Home() {
   const navigate = useNavigate();
+  const { isSuperAdmin, user, logout } = useAuth();
   const { savedCalculators, loadSavedCalculators, createNewCalculator, deleteCalculator } =
     useCalculatorStore();
   const [showNewModal, setShowNewModal] = useState(false);
@@ -195,30 +197,68 @@ export function Home() {
                 <p className="text-xs text-[#6b7a90]">Interaktive Rechner erstellen</p>
               </div>
             </div>
-            {activeTab === 'builder' && (
-              <button
-                onClick={() => setShowNewModal(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-[#7EC8F3] text-[#0a0a0f] rounded-lg
-                           font-medium hover:bg-[#a6daff] transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Neuer Rechner
-              </button>
-            )}
-            {activeTab === 'custom' && (
-              <button
-                onClick={() => setShowUploadModal(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-[#7EC8F3] text-[#0a0a0f] rounded-lg
-                           font-medium hover:bg-[#a6daff] transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                Hochladen
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {/* Admin link for super admin */}
+              {isSuperAdmin && (
+                <button
+                  onClick={() => navigate('/admin/users')}
+                  className="flex items-center gap-2 px-3 py-2 text-[#6b7a90] hover:text-white
+                             hover:bg-[#1a1f2e] rounded-lg transition-colors"
+                  title="Benutzerverwaltung"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  <span className="hidden sm:inline">Benutzer</span>
+                </button>
+              )}
+
+              {/* Action buttons based on tab */}
+              {activeTab === 'builder' && (
+                <button
+                  onClick={() => setShowNewModal(true)}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-[#7EC8F3] text-[#0a0a0f] rounded-lg
+                             font-medium hover:bg-[#a6daff] transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Neuer Rechner
+                </button>
+              )}
+              {activeTab === 'custom' && (
+                <button
+                  onClick={() => setShowUploadModal(true)}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-[#7EC8F3] text-[#0a0a0f] rounded-lg
+                             font-medium hover:bg-[#a6daff] transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Hochladen
+                </button>
+              )}
+
+              {/* User menu */}
+              <div className="flex items-center gap-2 pl-3 border-l border-[#1a1f2e]">
+                <div className="w-8 h-8 rounded-full bg-[#1a1f2e] flex items-center justify-center">
+                  <span className="text-sm font-medium text-[#7EC8F3]">
+                    {user?.name?.charAt(0).toUpperCase() || '?'}
+                  </span>
+                </div>
+                <button
+                  onClick={logout}
+                  className="p-2 text-[#6b7a90] hover:text-white hover:bg-[#1a1f2e] rounded-lg transition-colors"
+                  title="Abmelden"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

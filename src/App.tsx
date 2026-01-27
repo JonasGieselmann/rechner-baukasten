@@ -5,6 +5,7 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { BuilderEmbed } from './pages/BuilderEmbed';
 import { CustomEmbed } from './pages/CustomEmbed';
+import { AdminUsers } from './pages/AdminUsers';
 import { AuthProvider } from './components/AuthProvider';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -35,6 +36,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Editor />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute>
+                <AdminUsers />
               </ProtectedRoute>
             }
           />

@@ -12,16 +12,25 @@ dist
 dist-ssr
 *.local
 
-# Environment variables
+# Environment variables - NEVER commit secrets!
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
+*.pem
+*.key
+*.crt
 
 # Database
 data/
 *.db
 *.db-journal
 *.db-wal
+
+# User uploads - don't commit user content
+uploads/
+public/custom-calculators/
 
 # Editor directories and files
 .vscode/*
