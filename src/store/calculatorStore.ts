@@ -14,8 +14,42 @@ import type {
 import { DEFAULT_THEME } from '../types';
 import { FormulaEngine } from '../engine/formula';
 
+const STORAGE_KEY = 'rechner-baukasten-calculators';
+
+// Helper to get all saved calculators from localStorage
+function getSavedCalculators(): CalculatorConfig[] {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (!data) return [];
+    const parsed = JSON.parse(data);
+    // Convert date strings back to Date objects
+    return parsed.map((calc: CalculatorConfig) => ({
+      ...calc,
+      createdAt: new Date(calc.createdAt),
+      updatedAt: new Date(calc.updatedAt),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// Helper to save calculators to localStorage
+function saveCalculatorsToStorage(calculators: CalculatorConfig[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(calculators));
+  } catch (e) {
+    console.error('Failed to save to localStorage:', e);
+  }
+}
+
 interface CalculatorState {
-  // Current calculator
+  // All saved calculators
+  savedCalculators: CalculatorConfig[];
+
+  // Whether the store has been initialized (loadSavedCalculators called)
+  isInitialized: boolean;
+
+  // Current calculator being edited
   calculator: CalculatorConfig | null;
 
   // Variables (runtime values from inputs/sliders)
@@ -30,12 +64,20 @@ interface CalculatorState {
   // Editor mode
   isPreviewMode: boolean;
 
+  // Dirty state (unsaved changes)
+  isDirty: boolean;
+
   // Actions
-  createNewCalculator: (name: string) => void;
+  loadSavedCalculators: () => void;
+  createNewCalculator: (name: string) => string;
   loadCalculator: (config: CalculatorConfig) => void;
+  loadCalculatorById: (id: string) => boolean;
+  saveCalculator: () => void;
+  deleteCalculator: (id: string) => void;
+  closeCalculator: () => void;
 
   // Block operations
-  addBlock: (type: Block['type']) => void;
+  addBlock: (type: Block['type'], atIndex?: number) => void;
   updateBlock: (id: string, updates: Partial<Block>) => void;
   deleteBlock: (id: string) => void;
   reorderBlocks: (activeId: string, overId: string) => void;
@@ -74,11 +116,19 @@ function createDefaultBlocks(): Block[] {
 }
 
 export const useCalculatorStore = create<CalculatorState>((set, get) => ({
+  savedCalculators: [],
+  isInitialized: false,
   calculator: null,
   variables: {},
   engine: new FormulaEngine(),
   selectedBlockId: null,
   isPreviewMode: false,
+  isDirty: false,
+
+  loadSavedCalculators: () => {
+    const calculators = getSavedCalculators();
+    set({ savedCalculators: calculators, isInitialized: true });
+  },
 
   createNewCalculator: (name: string) => {
     const config: CalculatorConfig = {
@@ -91,7 +141,13 @@ export const useCalculatorStore = create<CalculatorState>((set, get) => ({
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    set({ calculator: config, variables: {}, selectedBlockId: null });
+    set({ calculator: config, variables: {}, selectedBlockId: null, isDirty: true });
+    // Immediately save to storage
+    const { savedCalculators } = get();
+    const updated = [...savedCalculators, config];
+    saveCalculatorsToStorage(updated);
+    set({ savedCalculators: updated, isDirty: false });
+    return config.id;
   },
 
   loadCalculator: (config: CalculatorConfig) => {
@@ -107,14 +163,61 @@ export const useCalculatorStore = create<CalculatorState>((set, get) => ({
     });
 
     engine.setVariables(variables);
-    set({ calculator: config, variables, selectedBlockId: null });
+    set({ calculator: config, variables, selectedBlockId: null, isDirty: false });
   },
 
-  addBlock: (type: Block['type']) => {
+  loadCalculatorById: (id: string) => {
+    const { savedCalculators } = get();
+    const calc = savedCalculators.find(c => c.id === id);
+    if (calc) {
+      get().loadCalculator(calc);
+      return true;
+    }
+    return false;
+  },
+
+  saveCalculator: () => {
+    const { calculator, savedCalculators } = get();
+    if (!calculator) return;
+
+    const updatedCalc = { ...calculator, updatedAt: new Date() };
+    const existing = savedCalculators.findIndex(c => c.id === calculator.id);
+
+    let updated: CalculatorConfig[];
+    if (existing >= 0) {
+      updated = [...savedCalculators];
+      updated[existing] = updatedCalc;
+    } else {
+      updated = [...savedCalculators, updatedCalc];
+    }
+
+    saveCalculatorsToStorage(updated);
+    set({ savedCalculators: updated, calculator: updatedCalc, isDirty: false });
+  },
+
+  deleteCalculator: (id: string) => {
+    const { savedCalculators, calculator } = get();
+    const updated = savedCalculators.filter(c => c.id !== id);
+    saveCalculatorsToStorage(updated);
+    set({
+      savedCalculators: updated,
+      calculator: calculator?.id === id ? null : calculator,
+    });
+  },
+
+  closeCalculator: () => {
+    // Save before closing
+    const { isDirty } = get();
+    if (isDirty) {
+      get().saveCalculator();
+    }
+    set({ calculator: null, variables: {}, selectedBlockId: null, isPreviewMode: false });
+  },
+
+  addBlock: (type: Block['type'], atIndex?: number) => {
     const { calculator } = get();
     if (!calculator) return;
 
-    const order = calculator.blocks.length;
     let newBlock: Block;
 
     switch (type) {
@@ -122,18 +225,18 @@ export const useCalculatorStore = create<CalculatorState>((set, get) => ({
         newBlock = {
           id: nanoid(),
           type: 'text',
-          order,
-          content: 'Neuer Text',
+          order: 0,
+          content: '',
           size: 'body',
         } as TextBlock;
         break;
 
-      case 'input':
+      case 'input': {
         const inputVarName = `input_${nanoid(6)}`;
         newBlock = {
           id: nanoid(),
           type: 'input',
-          order,
+          order: 0,
           label: 'Neues Eingabefeld',
           variableName: inputVarName,
           defaultValue: 100,
@@ -141,16 +244,16 @@ export const useCalculatorStore = create<CalculatorState>((set, get) => ({
           min: 0,
           max: 1000,
         } as InputBlock;
-        // Initialize variable
         get().setVariable(inputVarName, 100);
         break;
+      }
 
-      case 'slider':
+      case 'slider': {
         const sliderVarName = `slider_${nanoid(6)}`;
         newBlock = {
           id: nanoid(),
           type: 'slider',
-          order,
+          order: 0,
           label: 'Neuer Slider',
           variableName: sliderVarName,
           defaultValue: 50,
@@ -161,12 +264,13 @@ export const useCalculatorStore = create<CalculatorState>((set, get) => ({
         } as SliderBlock;
         get().setVariable(sliderVarName, 50);
         break;
+      }
 
       case 'result':
         newBlock = {
           id: nanoid(),
           type: 'result',
-          order,
+          order: 0,
           label: 'Ergebnis',
           formula: '0',
           format: 'number',
@@ -179,7 +283,7 @@ export const useCalculatorStore = create<CalculatorState>((set, get) => ({
         newBlock = {
           id: nanoid(),
           type: 'chart',
-          order,
+          order: 0,
           title: 'Vergleich',
           chartType: 'area',
           dataFormula: '',
@@ -192,7 +296,7 @@ export const useCalculatorStore = create<CalculatorState>((set, get) => ({
         newBlock = {
           id: nanoid(),
           type: 'comparison',
-          order,
+          order: 0,
           title: 'Vergleich',
           rows: [
             {
@@ -210,13 +314,26 @@ export const useCalculatorStore = create<CalculatorState>((set, get) => ({
         return;
     }
 
+    // Sort existing blocks by order
+    const sortedBlocks = [...calculator.blocks].sort((a, b) => a.order - b.order);
+
+    // Determine insert position
+    const insertAt = atIndex !== undefined ? atIndex : sortedBlocks.length;
+
+    // Insert new block at position
+    sortedBlocks.splice(insertAt, 0, newBlock);
+
+    // Reorder all blocks
+    const reorderedBlocks = sortedBlocks.map((b, i) => ({ ...b, order: i }));
+
     set({
       calculator: {
         ...calculator,
-        blocks: [...calculator.blocks, newBlock],
+        blocks: reorderedBlocks,
         updatedAt: new Date(),
       },
       selectedBlockId: newBlock.id,
+      isDirty: true,
     });
   },
 
@@ -268,6 +385,7 @@ export const useCalculatorStore = create<CalculatorState>((set, get) => ({
         blocks: updatedBlocks,
         updatedAt: new Date(),
       },
+      isDirty: true,
     });
   },
 
@@ -298,6 +416,7 @@ export const useCalculatorStore = create<CalculatorState>((set, get) => ({
         updatedAt: new Date(),
       },
       selectedBlockId: null,
+      isDirty: true,
     });
   },
 
@@ -324,6 +443,7 @@ export const useCalculatorStore = create<CalculatorState>((set, get) => ({
         blocks: reorderedBlocks,
         updatedAt: new Date(),
       },
+      isDirty: true,
     });
   },
 
@@ -356,6 +476,7 @@ export const useCalculatorStore = create<CalculatorState>((set, get) => ({
         theme: { ...calculator.theme, ...updates },
         updatedAt: new Date(),
       },
+      isDirty: true,
     });
   },
 

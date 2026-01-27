@@ -1,0 +1,30 @@
+# Dependencies
+node_modules
+
+# Build output (will be built in Docker)
+dist
+
+# Development files
+*.log
+.env
+.env.local
+.env.*.local
+.git
+.gitignore
+.vscode
+.idea
+
+# Database (will be mounted as volume)
+data/
+
+# Documentation
+*.md
+!README.md
+
+# Test files
+*.test.*
+*.spec.*
+
+# OS files
+.DS_Store
+Thumbs.db

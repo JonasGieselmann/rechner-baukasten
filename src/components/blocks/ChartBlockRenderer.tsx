@@ -20,16 +20,18 @@ interface ChartTooltipProps {
   active?: boolean;
   payload?: Array<{ value: number; dataKey: string; color: string }>;
   label?: string;
+  beforeLabel: string;
+  afterLabel: string;
 }
 
-function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
+function ChartTooltip({ active, payload, label, beforeLabel, afterLabel }: ChartTooltipProps) {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-[#1a1a24] border border-[#2a2a3a] rounded-lg p-3 shadow-xl">
-        <p className="text-gray-400 text-sm mb-2">{label}</p>
+      <div className="bg-[#1a1f2e] border border-[#2a3142] rounded-lg p-3 shadow-xl">
+        <p className="text-[#b8c7d9] text-sm mb-2">{label}</p>
         {payload.map((entry, i) => (
           <p key={i} className="text-sm" style={{ color: entry.color }}>
-            {entry.dataKey === 'after' ? 'Nachher' : 'Vorher'}: {formatCurrency(entry.value)}
+            {entry.dataKey === 'after' ? afterLabel : beforeLabel}: {formatCurrency(entry.value)}
           </p>
         ))}
       </div>
@@ -41,11 +43,8 @@ function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
 export function ChartBlockRenderer({ block }: Props) {
   const { evaluate } = useCalculatorStore();
 
-  // Generate sample data based on a formula
-  // For demo: we'll use before/after values from variables
   const months = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
 
-  // Try to get values from the data formula (expects "before:after" format)
   let beforeValue = 1000;
   let afterValue = 2500;
 
@@ -66,8 +65,8 @@ export function ChartBlockRenderer({ block }: Props) {
   }));
 
   return (
-    <div className="bg-[#12121a] rounded-xl p-5 border border-[#1f1f2e]">
-      <h3 className="text-lg font-semibold mb-4">{block.title}</h3>
+    <div className="bg-[#10131c] rounded-2xl p-6 border border-[#1a1f2e] hover:border-[#2a3142] transition-colors">
+      <h3 className="text-lg font-semibold mb-4 text-white">{block.title}</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
@@ -81,7 +80,7 @@ export function ChartBlockRenderer({ block }: Props) {
                 <stop offset="95%" stopColor="#6b7a90" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#2a3142" />
             <XAxis
               dataKey="label"
               stroke="#6b7a90"
@@ -92,7 +91,7 @@ export function ChartBlockRenderer({ block }: Props) {
               tick={{ fill: '#6b7a90', fontSize: 12 }}
               tickFormatter={(v) => `${Math.round(v / 1000)}k`}
             />
-            <Tooltip content={<ChartTooltip />} />
+            <Tooltip content={<ChartTooltip beforeLabel={block.beforeLabel} afterLabel={block.afterLabel} />} />
             <Legend
               formatter={(value) => (
                 <span className="text-sm">

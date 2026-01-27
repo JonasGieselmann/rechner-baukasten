@@ -1,23 +1,49 @@
-import { Toolbar, Sidebar, EditorCanvas, PropertiesPanel } from './components';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Home } from './pages/Home';
+import { Editor } from './pages/Editor';
+import { Login } from './pages/Login';
+import { Register } from './pages/Register';
+import { BuilderEmbed } from './pages/BuilderEmbed';
+import { CustomEmbed } from './pages/CustomEmbed';
+import { AuthProvider } from './components/AuthProvider';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
   return (
-    <div className="h-screen flex flex-col bg-[#0a0a0f]">
-      {/* Toolbar */}
-      <Toolbar />
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - Block Palette */}
-        <Sidebar />
+          {/* Embed routes (public, no auth required) */}
+          <Route path="/embed/:id" element={<BuilderEmbed />} />
+          <Route path="/embed/custom/:slug" element={<CustomEmbed />} />
 
-        {/* Center - Editor Canvas */}
-        <EditorCanvas />
+          {/* Protected routes */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Home />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/editor/:id"
+            element={
+              <ProtectedRoute>
+                <Editor />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Right Sidebar - Properties Panel */}
-        <PropertiesPanel />
-      </div>
-    </div>
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

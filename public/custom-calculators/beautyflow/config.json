@@ -1,0 +1,12 @@
+{
+  "id": "beautyflow",
+  "name": "BeautyFlow ROI-Rechner",
+  "description": "Berechne deinen Return on Investment mit BeautyFlow - inkl. Wachstumsprognose",
+  "slug": "beautyflow",
+  "version": "1.0.0",
+  "thumbnail": null,
+  "width": "100%",
+  "height": "900px",
+  "active": true,
+  "createdAt": "2026-01-26T00:00:00.000Z"
+}

@@ -15,9 +15,9 @@ export function SliderBlockRenderer({ block }: Props) {
   };
 
   return (
-    <div className="bg-[#12121a] rounded-xl p-4 border border-[#1f1f2e]">
+    <div className="bg-[#10131c] rounded-2xl p-5 border border-[#1a1f2e] hover:border-[#2a3142] transition-colors">
       <div className="flex justify-between items-baseline mb-3">
-        <label className="text-sm text-gray-400">{block.label}</label>
+        <label className="text-sm text-[#b8c7d9]">{block.label}</label>
         <span className="text-xl font-semibold text-white">
           {value}{block.suffix}
         </span>
@@ -31,10 +31,6 @@ export function SliderBlockRenderer({ block }: Props) {
         onChange={handleChange}
         className="w-full"
       />
-      <div className="flex justify-between text-xs text-gray-500 mt-1">
-        <span>{block.min}{block.suffix}</span>
-        <span>{block.max}{block.suffix}</span>
-      </div>
     </div>
   );
 }

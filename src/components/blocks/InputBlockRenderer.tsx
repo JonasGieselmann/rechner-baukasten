@@ -19,8 +19,8 @@ export function InputBlockRenderer({ block }: Props) {
   };
 
   return (
-    <div className="bg-[#12121a] rounded-xl p-4 border border-[#1f1f2e]">
-      <label className="block text-sm text-gray-400 mb-2">{block.label}</label>
+    <div className="bg-[#10131c] rounded-2xl p-5 border border-[#1a1f2e] hover:border-[#2a3142] transition-colors">
+      <label className="block text-sm text-[#b8c7d9] mb-2">{block.label}</label>
       <div className="relative">
         <input
           type="number"
@@ -28,12 +28,15 @@ export function InputBlockRenderer({ block }: Props) {
           onChange={handleChange}
           min={block.min}
           max={block.max}
-          className="w-full bg-[#1a1a24] rounded-lg py-3 px-4 text-white font-medium
-                     border border-[#2a2a3a] focus:border-[#7EC8F3] focus:ring-1
-                     focus:ring-[#7EC8F3]/30 outline-none transition-all"
+          className="w-full bg-[#1a1f2e] rounded-lg py-3 px-4 text-white font-medium
+                     border border-[#2a3142] focus:border-[#a6daff] focus:ring-1
+                     focus:ring-[#a6daff]/30 outline-none transition-all
+                     [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none
+                     [&::-webkit-inner-spin-button]:appearance-none"
+          style={{ paddingRight: block.suffix ? '3.5rem' : '1rem' }}
         />
         {block.suffix && (
-          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">
+          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6b7a90]">
             {block.suffix}
           </span>
         )}

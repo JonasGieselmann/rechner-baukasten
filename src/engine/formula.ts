@@ -48,7 +48,7 @@ export class FormulaEngine {
 
     try {
       // Replace {variableName} with actual values
-      let expression = formula.replace(/\{(\w+)\}/g, (_, varName) => {
+      const expression = formula.replace(/\{(\w+)\}/g, (_, varName) => {
         const value = this.variables[varName];
         if (value === undefined) {
           console.warn(`Variable "${varName}" not found, using 0`);
