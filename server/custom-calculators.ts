@@ -14,7 +14,7 @@ const router = Router();
 // Security: Authentication & Authorization
 // ============================================
 
-interface AuthenticatedRequest extends Request {
+interface AuthenticatedRequest<P = Record<string, string>> extends Request<P> {
   user?: {
     id: string;
     role: string;
@@ -367,7 +367,7 @@ router.post('/upload', requireAdmin, upload.single('file'), async (req: Authenti
 });
 
 // DELETE /api/custom-calculators/:slug - Delete a calculator (Admin only)
-router.delete('/:slug', requireAdmin, (req: AuthenticatedRequest, res) => {
+router.delete('/:slug', requireAdmin, (req: AuthenticatedRequest<{ slug: string }>, res) => {
   try {
     const { slug } = req.params;
 
@@ -409,7 +409,7 @@ router.delete('/:slug', requireAdmin, (req: AuthenticatedRequest, res) => {
 });
 
 // PATCH /api/custom-calculators/:slug - Update calculator metadata (Admin only)
-router.patch('/:slug', requireAdmin, (req: AuthenticatedRequest, res) => {
+router.patch('/:slug', requireAdmin, (req: AuthenticatedRequest<{ slug: string }>, res) => {
   try {
     const { slug } = req.params;
 
