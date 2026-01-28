@@ -5,8 +5,8 @@ import fs from 'fs';
 import path from 'path';
 import { nanoid } from 'nanoid';
 import { fromNodeHeaders } from 'better-auth/node';
-import { auth } from './auth';
-import { getUserById } from './db';
+import { auth } from './auth.js';
+import { getUserById } from './db.js';
 
 const router = Router();
 

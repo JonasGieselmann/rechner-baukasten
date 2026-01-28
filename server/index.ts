@@ -4,10 +4,10 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { toNodeHandler, fromNodeHeaders } from 'better-auth/node';
-import { auth } from './auth';
-import { checkDb, initAuthSchema } from './db';
-import customCalculatorsRouter from './custom-calculators';
-import adminRouter from './admin';
+import { auth } from './auth.js';
+import { checkDb, initAuthSchema } from './db.js';
+import customCalculatorsRouter from './custom-calculators.js';
+import adminRouter from './admin.js';
 import path from 'path';
 
 // ============================================
@@ -150,7 +150,7 @@ app.get('/api/me', async (req, res) => {
     }
 
     // Get extended user data with role and approved status
-    const { getUserById } = await import('./db');
+    const { getUserById } = await import('./db.js');
     const extendedUser = await getUserById(session.user.id);
 
     // Return only necessary user data (don't expose internal fields)

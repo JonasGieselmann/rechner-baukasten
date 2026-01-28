@@ -9,7 +9,8 @@
       "Grep(*)",
       "Bash(npx @better-auth/cli migrate:*)",
       "Bash(timeout 8 npm run dev:server:*)",
-      "Read(//b/Visual Studio/interaktiver_rechner/**)"
+      "Read(//b/Visual Studio/interaktiver_rechner/**)",
+      "WebFetch(domain:www.better-auth.com)"
     ],
     "additionalDirectories": [
       "b:\\Visual Studio\\interaktiver_rechner\\beautyflow-rechner"

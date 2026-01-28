@@ -1,7 +1,7 @@
 import express from 'express';
 import { fromNodeHeaders } from 'better-auth/node';
-import { auth } from './auth';
-import { getAllUsers, approveUser, deleteUser, getUserById } from './db';
+import { auth } from './auth.js';
+import { getAllUsers, approveUser, deleteUser, getUserById } from './db.js';
 
 // ============================================
 // Types
