@@ -2,7 +2,8 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { useSession, signOut } from '../lib/auth-client';
 import type { Session, User } from 'better-auth/types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// In production, frontend and API are served from the same origin
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 export interface ExtendedUser extends User {
   role: 'super_admin' | 'user';
