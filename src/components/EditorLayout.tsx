@@ -23,8 +23,6 @@ import {
   InputBlockRenderer,
   SliderBlockRenderer,
   ResultBlockRenderer,
-  ChartBlockRenderer,
-  ComparisonBlockRenderer,
 } from './blocks';
 
 // Lightweight placeholder for heavy components during drag
