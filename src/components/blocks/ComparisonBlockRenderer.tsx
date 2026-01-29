@@ -7,7 +7,9 @@ interface Props {
 }
 
 export function ComparisonBlockRenderer({ block }: Props) {
-  const { evaluate } = useCalculatorStore();
+  // Subscribe to variables to trigger re-render on changes
+  const { evaluate, variables } = useCalculatorStore();
+  void variables; // Used for subscription only
 
   return (
     <div className="bg-[#10131c] rounded-2xl p-6 border border-[#1a1f2e] hover:border-[#2a3142] transition-colors">

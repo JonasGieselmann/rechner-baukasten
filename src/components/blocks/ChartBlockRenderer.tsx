@@ -41,7 +41,9 @@ function ChartTooltip({ active, payload, label, beforeLabel, afterLabel }: Chart
 }
 
 export function ChartBlockRenderer({ block }: Props) {
-  const { evaluate } = useCalculatorStore();
+  // Subscribe to variables to trigger re-render on changes
+  const { evaluate, variables } = useCalculatorStore();
+  void variables; // Used for subscription only
 
   const months = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
 

@@ -7,7 +7,9 @@ interface Props {
 }
 
 export function ResultBlockRenderer({ block }: Props) {
-  const { evaluate } = useCalculatorStore();
+  // Subscribe to variables to trigger re-render on changes
+  const { evaluate, variables } = useCalculatorStore();
+  void variables; // Used for subscription only
 
   const value = evaluate(block.formula);
   const formattedValue = formatValue(value, block.format);
