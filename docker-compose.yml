@@ -27,7 +27,9 @@ services:
       - SERVICE_NAME=${SERVICE_NAME}
       - DATABASE_URL=${DATABASE_URL}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
-      # APP_URL und BETTER_AUTH_URL werden vom Entrypoint aus DOMAIN abgeleitet
+      # APP_URL kann direkt gesetzt werden ODER wird vom Entrypoint aus DOMAIN abgeleitet
+      - APP_URL=${APP_URL}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL}
     networks:
       - dokploy-network
     deploy:
