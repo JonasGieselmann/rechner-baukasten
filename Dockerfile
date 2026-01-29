@@ -1,5 +1,5 @@
 # Stage 1: Build the frontend
-FROM node:22-alpine AS frontend-builder
+FROM --platform=linux/amd64 node:22-alpine AS frontend-builder
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Build the server
-FROM node:22-alpine AS server-builder
+FROM --platform=linux/amd64 node:22-alpine AS server-builder
 
 WORKDIR /app
 
@@ -34,7 +34,7 @@ COPY tsconfig.server.json ./
 RUN npm run build:server
 
 # Stage 3: Production image
-FROM node:22-alpine AS production
+FROM --platform=linux/amd64 node:22-alpine AS production
 
 WORKDIR /app
 
