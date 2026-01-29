@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import type { ResultBlock } from '../../types';
 import { useCalculatorStore } from '../../store/calculatorStore';
 import { formatValue } from '../../engine/formula';
@@ -7,12 +8,17 @@ interface Props {
 }
 
 export function ResultBlockRenderer({ block }: Props) {
-  // Subscribe to variables to trigger re-render on changes
+  // Subscribe to both evaluate and variables - variables triggers re-render on input changes
   const { evaluate, variables } = useCalculatorStore();
-  void variables; // Used for subscription only
 
-  const value = evaluate(block.formula);
-  const formattedValue = formatValue(value, block.format);
+  // useMemo with variables dependency ensures re-calculation when inputs change
+  const { value, formattedValue } = useMemo(() => {
+    const val = evaluate(block.formula);
+    return {
+      value: val,
+      formattedValue: formatValue(val, block.format),
+    };
+  }, [block.formula, block.format, evaluate, variables]);
 
   const sizeClasses = {
     small: 'text-xl',

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   AreaChart,
   Area,
@@ -41,30 +42,32 @@ function ChartTooltip({ active, payload, label, beforeLabel, afterLabel }: Chart
 }
 
 export function ChartBlockRenderer({ block }: Props) {
-  // Subscribe to variables to trigger re-render on changes
+  // Subscribe to both evaluate and variables - variables triggers re-render on input changes
   const { evaluate, variables } = useCalculatorStore();
-  void variables; // Used for subscription only
 
   const months = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
 
-  let beforeValue = 1000;
-  let afterValue = 2500;
+  // useMemo with variables dependency ensures re-calculation when inputs change
+  const data = useMemo(() => {
+    let beforeValue = 1000;
+    let afterValue = 2500;
 
-  if (block.dataFormula) {
-    const parts = block.dataFormula.split(':');
-    if (parts.length >= 2) {
-      beforeValue = evaluate(parts[0]) || 1000;
-      afterValue = evaluate(parts[1]) || 2500;
-    } else {
-      afterValue = evaluate(block.dataFormula) || 2500;
+    if (block.dataFormula) {
+      const parts = block.dataFormula.split(':');
+      if (parts.length >= 2) {
+        beforeValue = evaluate(parts[0]) || 1000;
+        afterValue = evaluate(parts[1]) || 2500;
+      } else {
+        afterValue = evaluate(block.dataFormula) || 2500;
+      }
     }
-  }
 
-  const data = months.map((label, i) => ({
-    label,
-    before: Math.round(beforeValue * (i + 1)),
-    after: Math.round(afterValue * (i + 1)),
-  }));
+    return months.map((label, i) => ({
+      label,
+      before: Math.round(beforeValue * (i + 1)),
+      after: Math.round(afterValue * (i + 1)),
+    }));
+  }, [block.dataFormula, evaluate, variables]);
 
   return (
     <div className="bg-[#10131c] rounded-2xl p-6 border border-[#1a1f2e] hover:border-[#2a3142] transition-colors">

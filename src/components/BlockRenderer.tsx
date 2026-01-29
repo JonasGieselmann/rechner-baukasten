@@ -57,9 +57,12 @@ export function BlockRenderer({ block }: Props) {
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
+    // Only apply transition when sorting (not during active drag)
+    transition: isDragging ? 'none' : transition,
+    opacity: isDragging ? 0 : 1,
     zIndex: isDragging ? 50 : undefined,
+    // GPU acceleration for smooth transforms
+    willChange: transform ? 'transform' : undefined,
   };
 
   const renderBlockContent = () => {
@@ -162,7 +165,7 @@ export function BlockRenderer({ block }: Props) {
       {/* Block content with selection ring */}
       <div
         onClick={() => selectBlock(block.id)}
-        className={`relative rounded-xl transition-all duration-150 ${
+        className={`relative rounded-xl transition-shadow duration-150 ${
           isSelected
             ? 'ring-2 ring-[#7EC8F3] ring-offset-2 ring-offset-[#0a0a0f]'
             : 'hover:ring-1 hover:ring-[#3a3a4a] hover:ring-offset-1 hover:ring-offset-[#0a0a0f]'

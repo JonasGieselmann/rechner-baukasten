@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -18,16 +18,68 @@ import { EditorCanvas } from './EditorCanvas';
 import { PropertiesPanel } from './PropertiesPanel';
 import { useCalculatorStore } from '../store/calculatorStore';
 import type { Block } from '../types';
+import {
+  TextBlockRenderer,
+  InputBlockRenderer,
+  SliderBlockRenderer,
+  ResultBlockRenderer,
+  ChartBlockRenderer,
+  ComparisonBlockRenderer,
+} from './blocks';
+
+// Lightweight placeholder for heavy components during drag
+function LightweightBlockPreview({ block, label, icon }: { block: Block; label: string; icon: string }) {
+  return (
+    <div className="bg-[#10131c] rounded-xl p-4 border border-[#2a3142] min-w-[200px]">
+      <div className="flex items-center gap-3">
+        <span className="text-2xl">{icon}</span>
+        <div>
+          <p className="text-white font-medium">{label}</p>
+          <p className="text-[#6b7a90] text-sm">
+            {'title' in block ? block.title : 'label' in block ? block.label : 'Block'}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Render block content for DragOverlay - use lightweight versions for heavy components
+function DragOverlayContent({ block }: { block: Block }) {
+  switch (block.type) {
+    case 'text':
+      return <TextBlockRenderer block={block} />;
+    case 'input':
+      return <InputBlockRenderer block={block} />;
+    case 'slider':
+      return <SliderBlockRenderer block={block} />;
+    case 'result':
+      return <ResultBlockRenderer block={block} />;
+    // Use lightweight placeholders for heavy components
+    case 'chart':
+      return <LightweightBlockPreview block={block} label="Diagramm" icon="📊" />;
+    case 'comparison':
+      return <LightweightBlockPreview block={block} label="Vergleich" icon="⇄" />;
+    default:
+      return <div className="p-4 bg-[#10131c] rounded-xl">Block</div>;
+  }
+}
 
 export function EditorLayout() {
   const { addBlock, reorderBlocks, calculator } = useCalculatorStore();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [dragType, setDragType] = useState<'new' | 'reorder' | null>(null);
 
+  // Find the active block for reordering
+  const activeBlock = useMemo(() => {
+    if (!calculator || !activeId || dragType !== 'reorder') return null;
+    return calculator.blocks.find(b => b.id === activeId) || null;
+  }, [calculator, activeId, dragType]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 5, // Reduced for more responsive dragging
       },
     }),
     useSensor(KeyboardSensor, {
@@ -155,10 +207,16 @@ export function EditorLayout() {
         </div>
       </div>
 
-      {/* Drag Overlay */}
-      <DragOverlay>
+      {/* Drag Overlay - Notion-style floating effect */}
+      <DragOverlay
+        dropAnimation={{
+          duration: 200,
+          easing: 'ease-out',
+        }}
+      >
         {activeId && dragType === 'new' && (
-          <div className="bg-[#10131c] rounded-xl p-3 border-2 border-[#7EC8F3] shadow-2xl shadow-[#7EC8F3]/20 opacity-95">
+          <div className="bg-[#10131c] rounded-xl p-3 border-2 border-[#7EC8F3]
+                          shadow-xl opacity-95">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-[#7EC8F3]/20 flex items-center justify-center">
                 <svg className="w-4 h-4 text-[#7EC8F3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -169,6 +227,15 @@ export function EditorLayout() {
                 {getBlockLabel(activeId)}
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Show block preview when reordering - Notion style */}
+        {activeId && dragType === 'reorder' && activeBlock && (
+          <div className="opacity-95 shadow-xl rounded-xl
+                          ring-2 ring-[#7EC8F3]/50
+                          pointer-events-none max-w-3xl">
+            <DragOverlayContent block={activeBlock} />
           </div>
         )}
       </DragOverlay>
