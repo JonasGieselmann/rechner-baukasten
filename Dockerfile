@@ -1,4 +1,5 @@
 # Stage 1: Build the frontend
+# Platform is determined by docker buildx --platform flag
 FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app
@@ -16,6 +17,7 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Build the server
+# Platform is determined by docker buildx --platform flag
 FROM node:22-alpine AS server-builder
 
 WORKDIR /app
@@ -34,6 +36,7 @@ COPY tsconfig.server.json ./
 RUN npm run build:server
 
 # Stage 3: Production image
+# Platform is determined by docker buildx --platform flag
 FROM node:22-alpine AS production
 
 WORKDIR /app
