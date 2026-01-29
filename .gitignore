@@ -30,7 +30,11 @@ data/
 
 # User uploads - don't commit user content
 uploads/
-public/custom-calculators/
+
+# Custom calculators (user uploads) - but keep default ones
+public/custom-calculators/*
+!public/custom-calculators/registry.json
+!public/custom-calculators/beautyflow/
 
 # Editor directories and files
 .vscode/*

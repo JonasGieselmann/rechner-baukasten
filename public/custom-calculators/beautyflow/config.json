@@ -1,12 +1,13 @@
 {
   "id": "beautyflow",
   "name": "BeautyFlow ROI-Rechner",
-  "description": "Berechne deinen Return on Investment mit BeautyFlow - inkl. Wachstumsprognose",
+  "description": "Berechne deinen Return on Investment mit BeautyFlow - 24-Monats-Prognose inkl. LTV",
   "slug": "beautyflow",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "thumbnail": null,
   "width": "100%",
-  "height": "900px",
+  "height": "1100px",
   "active": true,
-  "createdAt": "2026-01-26T00:00:00.000Z"
+  "createdAt": "2026-01-26T00:00:00.000Z",
+  "updatedAt": "2026-01-29T00:00:00.000Z"
 }
