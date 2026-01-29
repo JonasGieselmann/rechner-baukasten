@@ -1,18 +1,20 @@
-# Stage 1: Build the frontend
-# Platform is determined by docker buildx --platform flag
-FROM node:22-alpine AS frontend-builder
+# Stage 1: Install dependencies (shared between frontend and server builds)
+FROM node:22-alpine AS deps
 
 WORKDIR /app
+
+# Copy package files first for better caching
+COPY package*.json ./
+
+# Install all dependencies once (cached if package.json unchanged)
+RUN npm ci
+
+# Stage 2: Build the frontend
+FROM deps AS frontend-builder
 
 # Build argument for API URL (optional - defaults to relative URLs)
 ARG VITE_API_URL=""
 ENV VITE_API_URL=$VITE_API_URL
-
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci
 
 # Copy source files
 COPY . .
@@ -20,27 +22,17 @@ COPY . .
 # Build the frontend (VITE_API_URL is embedded at build time)
 RUN npm run build
 
-# Stage 2: Build the server
-# Platform is determined by docker buildx --platform flag
-FROM node:22-alpine AS server-builder
+# Stage 3: Build the server
+FROM deps AS server-builder
 
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install all dependencies (including dev for build)
-RUN npm ci
-
-# Copy server source
+# Copy only what's needed for server build
 COPY server ./server
 COPY tsconfig.server.json ./
 
 # Build the server
 RUN npm run build:server
 
-# Stage 3: Production image
-# Platform is determined by docker buildx --platform flag
+# Stage 4: Production image
 FROM node:22-alpine AS production
 
 WORKDIR /app
