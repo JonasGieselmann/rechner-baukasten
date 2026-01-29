@@ -108,7 +108,7 @@ app.use(
 // Better Auth handler - MUST be before express.json()
 // Apply stricter rate limiting to auth endpoints
 app.use('/api/auth', authLimiter);
-app.all('/api/auth/*splat', toNodeHandler(auth));
+app.all('/api/auth/{*splat}', toNodeHandler(auth));
 
 // JSON body parser with size limit to prevent DoS
 app.use(express.json({ limit: '1mb' }));
@@ -199,7 +199,7 @@ if (isProduction) {
   app.use(express.static(path.join(process.cwd(), 'dist'), staticOptions));
 
   // SPA fallback - serve index.html for all non-API routes
-  app.get('*', (req, res) => {
+  app.get('/{*splat}', (req, res) => {
     // Don't serve index.html for custom calculator routes or API routes
     if (req.path.startsWith('/custom-calculators/') || req.path.startsWith('/api/')) {
       res.status(404).json({ error: 'Not found' });
@@ -214,7 +214,7 @@ if (isProduction) {
 // ============================================
 
 // 404 handler for API routes
-app.use('/api/*', (req, res) => {
+app.use('/api/{*splat}', (req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
