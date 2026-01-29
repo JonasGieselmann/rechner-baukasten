@@ -1,22 +1,44 @@
 version: '3.8'
 
+# ENV Variables für Dokploy:
+# Pflicht:
+#   - DOMAIN: z.B. kalku.layer-one.io (für Traefik + URLs)
+#   - DATABASE_URL: PostgreSQL Connection String
+#   - BETTER_AUTH_SECRET: Auth Secret Key
+# Optional:
+#   - SERVICE_NAME: Docker Swarm Service Name (default: aus docker service ls)
+# Automatisch abgeleitet vom Entrypoint:
+#   - APP_URL: https://$DOMAIN
+#   - BETTER_AUTH_URL: https://$DOMAIN
+
 services:
   rechner-baukasten:
     build: .
-    container_name: rechner-baukasten
+    image: ghcr.io/jonasgieselmann/kalku:latest
     ports:
       - "3001:3001"
+    volumes:
+      # Mount Traefik dynamic config dir - Container erstellt automatisch kalku.yml
+      - /etc/dokploy/traefik/dynamic:/traefik-dynamic
     environment:
       - NODE_ENV=production
       - PORT=3001
+      - DOMAIN=${DOMAIN}
+      - SERVICE_NAME=${SERVICE_NAME}
       - DATABASE_URL=${DATABASE_URL}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
-      - BETTER_AUTH_URL=${APP_URL}
-      - APP_URL=${APP_URL}
-    restart: unless-stopped
+      # APP_URL und BETTER_AUTH_URL werden vom Entrypoint aus DOMAIN abgeleitet
+    networks:
+      - dokploy-network
+    deploy:
+      mode: global
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
+
+networks:
+  dokploy-network:
+    external: true

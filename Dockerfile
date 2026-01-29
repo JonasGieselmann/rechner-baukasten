@@ -50,6 +50,10 @@ COPY --from=server-builder /app/dist/server ./dist/server
 # Copy public assets (including custom calculators)
 COPY public ./public
 
+# Copy entrypoint script
+COPY scripts/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # Create data directory for SQLite
 RUN mkdir -p data
 
@@ -64,5 +68,5 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3001/api/health || exit 1
 
-# Start the server
-CMD ["node", "dist/server/index.js"]
+# Start via entrypoint (creates Traefik config if DOMAIN is set)
+ENTRYPOINT ["/docker-entrypoint.sh"]
