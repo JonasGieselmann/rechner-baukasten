@@ -4,6 +4,10 @@ FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app
 
+# Build argument for API URL (optional - defaults to relative URLs)
+ARG VITE_API_URL=""
+ENV VITE_API_URL=$VITE_API_URL
+
 # Copy package files
 COPY package*.json ./
 
@@ -13,7 +17,7 @@ RUN npm ci
 # Copy source files
 COPY . .
 
-# Build the frontend
+# Build the frontend (VITE_API_URL is embedded at build time)
 RUN npm run build
 
 # Stage 2: Build the server
