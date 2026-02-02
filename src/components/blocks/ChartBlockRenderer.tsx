@@ -147,10 +147,11 @@ export function ChartBlockRenderer({ block }: Props) {
     const labels = generateXLabels(xAxisType, xAxisCount);
 
     // Generate data points - linear growth from 0 to final value
+    // Final point (i = xAxisCount - 1) will equal the entered value
     return labels.map((label, i) => ({
       label,
-      before: Math.round(beforeValue * ((i + 1) / xAxisCount) * xAxisCount),
-      after: Math.round(afterValue * ((i + 1) / xAxisCount) * xAxisCount),
+      before: Math.round(beforeValue * ((i + 1) / xAxisCount)),
+      after: Math.round(afterValue * ((i + 1) / xAxisCount)),
     }));
   }, [block.dataFormula, xAxisType, xAxisCount, evaluate, variables]);
 
