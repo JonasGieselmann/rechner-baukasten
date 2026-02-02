@@ -62,13 +62,31 @@ function formatYAxisTick(value: number, format: ChartBlock['yAxisFormat']): stri
 function generateXLabels(type: ChartBlock['xAxisType'], count: number): string[] {
   switch (type) {
     case 'quarters':
-      return Array.from({ length: count }, (_, i) => `Q${(i % 4) + 1}`);
+      // Q1 Y1, Q2 Y1, ... Q4 Y2 etc.
+      return Array.from({ length: count }, (_, i) => {
+        const quarter = (i % 4) + 1;
+        const year = Math.floor(i / 4) + 1;
+        return count > 4 ? `Q${quarter} J${year}` : `Q${quarter}`;
+      });
     case 'numbers':
       return Array.from({ length: count }, (_, i) => String(i + 1));
     case 'months':
     default:
       const months = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
-      return Array.from({ length: count }, (_, i) => months[i % 12]);
+      if (count <= 12) {
+        // Simple month names
+        return Array.from({ length: count }, (_, i) => months[i]);
+      } else {
+        // For >12 months, show only key points to avoid clutter
+        return Array.from({ length: count }, (_, i) => {
+          const month = i + 1;
+          // Show label at months 1, 6, 12, 18, 24, 30, 36...
+          if (month === 1 || month % 6 === 0) {
+            return String(month);
+          }
+          return '';
+        });
+      }
   }
 }
 

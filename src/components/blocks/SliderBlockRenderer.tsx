@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import type { SliderBlock } from '../../types';
 import { useCalculatorStore } from '../../store/calculatorStore';
 
@@ -9,6 +10,13 @@ export function SliderBlockRenderer({ block }: Props) {
   const { variables, setVariable } = useCalculatorStore();
 
   const value = variables[block.variableName] ?? block.defaultValue;
+
+  // Initialize variable with default value on mount
+  useEffect(() => {
+    if (variables[block.variableName] === undefined) {
+      setVariable(block.variableName, block.defaultValue);
+    }
+  }, [block.variableName, block.defaultValue, variables, setVariable]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setVariable(block.variableName, Number(e.target.value));
