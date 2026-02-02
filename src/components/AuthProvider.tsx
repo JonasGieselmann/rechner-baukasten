@@ -33,15 +33,12 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: sessionData, isPending } = useSession();
   const [extendedUser, setExtendedUser] = useState<ExtendedUser | null>(null);
-  const [userLoading, setUserLoading] = useState(false);
+  const [userLoading, setUserLoading] = useState(true); // Start true to prevent flash
 
   // Fetch extended user data with role and approved status
   const fetchExtendedUser = async () => {
-    if (!sessionData?.user) {
-      setExtendedUser(null);
-      return;
-    }
-
+    // If no session user, try fetching /api/me directly (cookie-based)
+    // This handles cases where useSession() hasn't synced yet
     setUserLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/me`, {
@@ -49,14 +46,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       if (response.ok) {
         const data = await response.json();
-        setExtendedUser({
-          ...data.user,
-          role: data.user.role || 'user',
-          approved: data.user.approved ?? false,
-        });
+        if (data.user) {
+          setExtendedUser({
+            ...data.user,
+            role: data.user.role || 'user',
+            approved: data.user.approved ?? false,
+          });
+          return;
+        }
       }
+      // No valid session - user is not logged in
+      setExtendedUser(null);
     } catch (error) {
       console.error('Failed to fetch extended user data:', error);
+      setExtendedUser(null);
     } finally {
       setUserLoading(false);
     }
@@ -67,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fetchExtendedUser();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionData?.user?.id, isPending]);
+  }, [isPending]);
 
   const logout = async () => {
     await signOut();
