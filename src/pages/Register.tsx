@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { signUp } from '../lib/auth-client';
 
 export function Register() {
-  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,7 +36,8 @@ export function Register() {
       if (result.error) {
         setError(result.error.message || 'Registrierung fehlgeschlagen');
       } else {
-        navigate('/');
+        // Force full page reload to ensure session is properly loaded
+        window.location.href = '/';
       }
     } catch (err) {
       setError('Ein Fehler ist aufgetreten. Bitte versuche es erneut.');

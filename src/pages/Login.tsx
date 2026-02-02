@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { signIn } from '../lib/auth-client';
 
 export function Login() {
-  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -23,7 +22,10 @@ export function Login() {
       if (result.error) {
         setError(result.error.message || 'Anmeldung fehlgeschlagen');
       } else {
-        navigate('/');
+        // Force full page reload to ensure session is properly loaded
+        // This prevents the race condition where useSession() hasn't picked up
+        // the new session cookie yet, causing a redirect back to login
+        window.location.href = '/';
       }
     } catch (err) {
       setError('Ein Fehler ist aufgetreten. Bitte versuche es erneut.');
