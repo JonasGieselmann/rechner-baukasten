@@ -35,6 +35,7 @@ uploads/
 public/custom-calculators/*
 !public/custom-calculators/registry.json
 !public/custom-calculators/beautyflow/
+!public/custom-calculators/beautyflow/dist/
 
 # Editor directories and files
 .vscode/*
