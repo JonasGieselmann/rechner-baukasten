@@ -131,9 +131,11 @@ export function ChartBlockRenderer({ block }: Props) {
 
     if (block.dataFormula) {
       const parts = block.dataFormula.split(':');
+      console.log('[Chart Debug] dataFormula:', block.dataFormula, 'parts:', parts);
       if (parts.length >= 2) {
         const evalBefore = evaluate(parts[0].trim());
         const evalAfter = evaluate(parts[1].trim());
+        console.log('[Chart Debug] evalBefore:', evalBefore, 'evalAfter:', evalAfter);
         beforeValue = typeof evalBefore === 'number' ? evalBefore : 0;
         afterValue = typeof evalAfter === 'number' ? evalAfter : 0;
       } else {
@@ -142,6 +144,7 @@ export function ChartBlockRenderer({ block }: Props) {
         beforeValue = 0;
       }
     }
+    console.log('[Chart Debug] Final values - before:', beforeValue, 'after:', afterValue);
 
     // Generate labels based on xAxisType
     const labels = generateXLabels(xAxisType, xAxisCount);

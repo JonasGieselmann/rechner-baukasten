@@ -1,0 +1,18 @@
+# Traefik Dynamic Configuration for Kalku
+# Place this file on the server at: /etc/dokploy/traefik/dynamic/kalku.yml
+
+http:
+  routers:
+    kalku:
+      rule: "Host(`kalku.layer-one.io`)"
+      entryPoints:
+        - websecure
+      service: kalku
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    kalku:
+      loadBalancer:
+        servers:
+          - url: "http://kalku-kalku-kyaelg:3001"

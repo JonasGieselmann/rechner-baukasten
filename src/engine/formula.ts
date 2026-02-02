@@ -124,7 +124,9 @@ export class FormulaEngine {
    * Uses strict sanitization to prevent code injection
    */
   evaluate(formula: string): number {
+    console.log('[Formula Debug] Evaluating:', formula);
     if (!formula || formula.trim() === '') {
+      console.log('[Formula Debug] Empty formula, returning 0');
       return 0;
     }
 
@@ -146,7 +148,9 @@ export class FormulaEngine {
 
       // Step 2: Sanitize expression (returns null if unsafe)
       const sanitized = sanitizeExpression(expression);
+      console.log('[Formula Debug] Expression:', expression, 'Sanitized:', sanitized);
       if (sanitized === null) {
+        console.log('[Formula Debug] Sanitization failed!');
         return 0;
       }
 
