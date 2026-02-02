@@ -1,5 +1,6 @@
 /**
  * Formula Engine - Parses and evaluates formulas with variables
+ * Uses expr-eval library (CSP-safe, no eval/new Function)
  *
  * Syntax: {variableName} for variables
  * Supports: +, -, *, /, %, (), Math functions
@@ -7,89 +8,13 @@
  * Examples:
  * - {leads} * {conversionRate} / 100
  * - ({revenue} - {costs}) / {costs} * 100
- * - Math.max({value1}, {value2})
- *
- * Security: Uses strict whitelist-based validation to prevent code injection
+ * - max({value1}, {value2})
  */
 
-// ============================================
-// Security: Whitelist of allowed Math functions
-// ============================================
-const ALLOWED_MATH_FUNCTIONS = new Set([
-  'abs', 'ceil', 'floor', 'round', 'trunc',
-  'max', 'min', 'pow', 'sqrt', 'cbrt',
-  'log', 'log10', 'log2', 'exp',
-  'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2',
-  'sinh', 'cosh', 'tanh',
-  'sign', 'random',
-  'PI', 'E',
-]);
+import { Parser } from 'expr-eval';
 
-// Dangerous patterns that should NEVER appear in formulas
-const DANGEROUS_PATTERNS = [
-  /constructor/i,
-  /prototype/i,
-  /__proto__/i,
-  /\[\s*['"`]/,          // Bracket notation with strings: obj["prop"]
-  /\[\s*\w+\s*\]/,       // Bracket notation: obj[prop]
-  /\.\s*\(/,             // Method chaining that's not Math: .something()
-  /`/,                   // Template literals
-  /\\/,                  // Escape characters
-  /\$\{/,                // Template interpolation
-  /import|require|eval|Function/i,
-  /window|document|global|process|this/i,
-  /fetch|XMLHttpRequest|WebSocket/i,
-  /localStorage|sessionStorage|cookie/i,
-];
-
-/**
- * Validate that a Math function call is safe
- */
-function isValidMathCall(funcName: string): boolean {
-  return ALLOWED_MATH_FUNCTIONS.has(funcName);
-}
-
-/**
- * Sanitize and validate expression for safe evaluation
- * Returns null if expression is unsafe
- */
-function sanitizeExpression(expression: string): string | null {
-  // Check for dangerous patterns
-  for (const pattern of DANGEROUS_PATTERNS) {
-    if (pattern.test(expression)) {
-      console.warn(`Dangerous pattern detected in formula: ${pattern}`);
-      return null;
-    }
-  }
-
-  // Validate all Math.xxx calls use whitelisted functions
-  const mathCalls = expression.match(/Math\.(\w+)/g);
-  if (mathCalls) {
-    for (const call of mathCalls) {
-      const funcName = call.replace('Math.', '');
-      if (!isValidMathCall(funcName)) {
-        console.warn(`Invalid Math function: ${funcName}`);
-        return null;
-      }
-    }
-  }
-
-  // After removing valid Math calls, check remaining characters
-  // Only allow: digits, whitespace, operators, parentheses, comma, decimal point
-  const withoutMath = expression.replace(/Math\.\w+/g, '0');
-  if (!/^[\d\s+\-*/().,%]+$/.test(withoutMath)) {
-    console.warn('Invalid characters in formula after Math removal');
-    return null;
-  }
-
-  // Additional check: no consecutive operators (except minus for negative numbers)
-  if (/[+*/]{2,}|[+*/]\s*[+*/]/.test(expression)) {
-    console.warn('Invalid operator sequence in formula');
-    return null;
-  }
-
-  return expression;
-}
+// Create a parser instance with default functions
+const parser = new Parser();
 
 export class FormulaEngine {
   private variables: Record<string, number>;
@@ -98,118 +23,66 @@ export class FormulaEngine {
     this.variables = variables;
   }
 
-  /**
-   * Update variables
-   */
   setVariables(variables: Record<string, number>) {
     this.variables = { ...this.variables, ...variables };
   }
 
-  /**
-   * Get all variables
-   */
   getVariables(): Record<string, number> {
     return { ...this.variables };
   }
 
-  /**
-   * Set a single variable
-   */
   setVariable(name: string, value: number) {
     this.variables[name] = value;
   }
 
   /**
-   * Evaluate a formula string
-   * Uses strict sanitization to prevent code injection
+   * Evaluate a formula string (CSP-safe via expr-eval)
    */
   evaluate(formula: string): number {
-    console.log('[Formula Debug] Evaluating:', formula);
     if (!formula || formula.trim() === '') {
-      console.log('[Formula Debug] Empty formula, returning 0');
       return 0;
     }
 
     try {
-      // Step 1: Replace {variableName} with actual numeric values
+      // Step 1: Replace {variableName} with actual variable names for expr-eval
+      // expr-eval uses plain variable names, not {wrapped}
       const expression = formula.replace(/\{(\w+)\}/g, (_, varName) => {
-        const value = this.variables[varName];
-        if (value === undefined) {
-          console.warn(`Variable "${varName}" not found, using 0`);
-          return '0';
-        }
-        // Ensure value is a finite number
-        const numValue = Number(value);
-        if (!Number.isFinite(numValue)) {
-          return '0';
-        }
-        return String(numValue);
+        // Just use the variable name directly - we'll pass variables to evaluate
+        return varName;
       });
 
-      // Step 2: Sanitize expression (returns null if unsafe)
-      const sanitized = sanitizeExpression(expression);
-      console.log('[Formula Debug] Expression:', expression, 'Sanitized:', sanitized);
-      if (sanitized === null) {
-        console.log('[Formula Debug] Sanitization failed!');
-        return 0;
-      }
+      // Step 2: Parse and evaluate with expr-eval
+      const parsed = parser.parse(expression);
+      const result = parsed.evaluate(this.variables);
 
-      // Step 3: Create a frozen Math object with only whitelisted functions
-      const safeMath: Record<string, unknown> = {};
-      for (const func of ALLOWED_MATH_FUNCTIONS) {
-        const mathValue = Math[func as keyof typeof Math];
-        if (mathValue !== undefined) {
-          safeMath[func] = mathValue;
-        }
-      }
-      Object.freeze(safeMath);
-
-      // Step 4: Evaluate with restricted scope
-      const safeEval = new Function(
-        'Math',
-        `"use strict"; return (${sanitized});`
-      );
-
-      const result = safeEval(safeMath);
-
-      // Step 5: Validate result is a safe number
+      // Step 3: Validate result
       if (typeof result !== 'number' || !Number.isFinite(result)) {
         return 0;
       }
 
       return result;
     } catch (error) {
+      // For simple numbers, try direct parsing
+      const trimmed = formula.trim();
+      const num = parseFloat(trimmed);
+      if (!isNaN(num) && Number.isFinite(num)) {
+        return num;
+      }
       console.warn('Formula evaluation error:', error);
       return 0;
     }
   }
 
-  /**
-   * Extract variable names from a formula
-   */
   static extractVariables(formula: string): string[] {
     const matches = formula.match(/\{(\w+)\}/g);
     if (!matches) return [];
     return [...new Set(matches.map(m => m.slice(1, -1)))];
   }
 
-  /**
-   * Validate a formula (check syntax and security)
-   */
   static validate(formula: string): { valid: boolean; error?: string } {
     try {
-      // Replace variables with dummy values for validation
-      const testFormula = formula.replace(/\{(\w+)\}/g, '1');
-
-      // Check security constraints
-      const sanitized = sanitizeExpression(testFormula);
-      if (sanitized === null) {
-        return { valid: false, error: 'Formula contains invalid or dangerous patterns' };
-      }
-
-      // Try to parse it
-      new Function(`"use strict"; return (${sanitized});`);
-
+      const testFormula = formula.replace(/\{(\w+)\}/g, 'x');
+      parser.parse(testFormula);
       return { valid: true };
     } catch (error) {
       return {
@@ -220,7 +93,10 @@ export class FormulaEngine {
   }
 }
 
+// ============================================
 // Formatting utilities
+// ============================================
+
 export function formatNumber(value: number, decimals: number = 1): string {
   return new Intl.NumberFormat('de-DE', {
     minimumFractionDigits: 0,
