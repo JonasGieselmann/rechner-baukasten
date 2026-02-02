@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { signIn } from '../lib/auth-client';
+import { signIn, getSession } from '../lib/auth-client';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -21,12 +21,22 @@ export function Login() {
 
       if (result.error) {
         setError(result.error.message || 'Anmeldung fehlgeschlagen');
-      } else {
-        // Force full page reload to ensure session is properly loaded
-        // This prevents the race condition where useSession() hasn't picked up
-        // the new session cookie yet, causing a redirect back to login
-        window.location.href = '/';
+        return;
       }
+
+      // Verify session was actually created before redirecting
+      // This catches cases where the cookie wasn't set properly
+      const sessionCheck = await getSession();
+      if (!sessionCheck.data?.session) {
+        console.error('Session check failed after login:', sessionCheck);
+        setError('Session konnte nicht erstellt werden. Bitte versuche es erneut.');
+        return;
+      }
+
+      // Force full page reload to ensure session is properly loaded
+      // This prevents the race condition where useSession() hasn't picked up
+      // the new session cookie yet, causing a redirect back to login
+      window.location.href = '/';
     } catch (err) {
       setError('Ein Fehler ist aufgetreten. Bitte versuche es erneut.');
       console.error('Login error:', err);
