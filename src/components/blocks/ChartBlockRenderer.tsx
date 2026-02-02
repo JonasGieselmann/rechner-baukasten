@@ -17,22 +17,78 @@ interface Props {
   block: ChartBlock;
 }
 
+// Format value based on format type
+function formatValue(value: number, format: ChartBlock['yAxisFormat']): string {
+  switch (format) {
+    case 'currency':
+      return formatCurrency(value);
+    case 'percent':
+      return `${value.toLocaleString('de-DE')}%`;
+    case 'number':
+    default:
+      if (value >= 1000000) {
+        return `${(value / 1000000).toLocaleString('de-DE', { maximumFractionDigits: 1 })}M`;
+      } else if (value >= 1000) {
+        return `${(value / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 })}k`;
+      }
+      return value.toLocaleString('de-DE');
+  }
+}
+
+// Format Y-axis tick
+function formatYAxisTick(value: number, format: ChartBlock['yAxisFormat']): string {
+  switch (format) {
+    case 'currency':
+      if (value >= 1000000) {
+        return `${(value / 1000000).toFixed(1)}M €`;
+      } else if (value >= 1000) {
+        return `${Math.round(value / 1000)}k €`;
+      }
+      return `${value} €`;
+    case 'percent':
+      return `${value}%`;
+    case 'number':
+    default:
+      if (value >= 1000000) {
+        return `${(value / 1000000).toFixed(1)}M`;
+      } else if (value >= 1000) {
+        return `${Math.round(value / 1000)}k`;
+      }
+      return String(value);
+  }
+}
+
+// Generate X-axis labels
+function generateXLabels(type: ChartBlock['xAxisType'], count: number): string[] {
+  switch (type) {
+    case 'quarters':
+      return Array.from({ length: count }, (_, i) => `Q${(i % 4) + 1}`);
+    case 'numbers':
+      return Array.from({ length: count }, (_, i) => String(i + 1));
+    case 'months':
+    default:
+      const months = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+      return Array.from({ length: count }, (_, i) => months[i % 12]);
+  }
+}
+
 interface ChartTooltipProps {
   active?: boolean;
   payload?: Array<{ value: number; dataKey: string; color: string }>;
   label?: string;
   beforeLabel: string;
   afterLabel: string;
+  format: ChartBlock['yAxisFormat'];
 }
 
-function ChartTooltip({ active, payload, label, beforeLabel, afterLabel }: ChartTooltipProps) {
+function ChartTooltip({ active, payload, label, beforeLabel, afterLabel, format }: ChartTooltipProps) {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#1a1f2e] border border-[#2a3142] rounded-lg p-3 shadow-xl">
         <p className="text-[#b8c7d9] text-sm mb-2">{label}</p>
         {payload.map((entry, i) => (
           <p key={i} className="text-sm" style={{ color: entry.color }}>
-            {entry.dataKey === 'after' ? afterLabel : beforeLabel}: {formatCurrency(entry.value)}
+            {entry.dataKey === 'after' ? afterLabel : beforeLabel}: {formatValue(entry.value, format)}
           </p>
         ))}
       </div>
@@ -45,29 +101,40 @@ export function ChartBlockRenderer({ block }: Props) {
   // Subscribe to both evaluate and variables - variables triggers re-render on input changes
   const { evaluate, variables } = useCalculatorStore();
 
-  const months = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+  // Get format settings with defaults
+  const yAxisFormat = block.yAxisFormat || 'number';
+  const xAxisType = block.xAxisType || 'months';
+  const xAxisCount = block.xAxisCount || 12;
 
   // useMemo with variables dependency ensures re-calculation when inputs change
   const data = useMemo(() => {
-    let beforeValue = 1000;
-    let afterValue = 2500;
+    let beforeValue = 0;
+    let afterValue = 0;
 
     if (block.dataFormula) {
       const parts = block.dataFormula.split(':');
       if (parts.length >= 2) {
-        beforeValue = evaluate(parts[0]) || 1000;
-        afterValue = evaluate(parts[1]) || 2500;
+        const evalBefore = evaluate(parts[0].trim());
+        const evalAfter = evaluate(parts[1].trim());
+        beforeValue = typeof evalBefore === 'number' ? evalBefore : 0;
+        afterValue = typeof evalAfter === 'number' ? evalAfter : 0;
       } else {
-        afterValue = evaluate(block.dataFormula) || 2500;
+        const evalResult = evaluate(block.dataFormula.trim());
+        afterValue = typeof evalResult === 'number' ? evalResult : 0;
+        beforeValue = 0;
       }
     }
 
-    return months.map((label, i) => ({
+    // Generate labels based on xAxisType
+    const labels = generateXLabels(xAxisType, xAxisCount);
+
+    // Generate data points - linear growth from 0 to final value
+    return labels.map((label, i) => ({
       label,
-      before: Math.round(beforeValue * (i + 1)),
-      after: Math.round(afterValue * (i + 1)),
+      before: Math.round(beforeValue * ((i + 1) / xAxisCount) * xAxisCount),
+      after: Math.round(afterValue * ((i + 1) / xAxisCount) * xAxisCount),
     }));
-  }, [block.dataFormula, evaluate, variables]);
+  }, [block.dataFormula, xAxisType, xAxisCount, evaluate, variables]);
 
   return (
     <div className="bg-[#10131c] rounded-2xl p-6 border border-[#1a1f2e] hover:border-[#2a3142] transition-colors">
@@ -76,11 +143,11 @@ export function ChartBlockRenderer({ block }: Props) {
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
-              <linearGradient id="colorAfter" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={`colorAfter-${block.id}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#7EC8F3" stopOpacity={0.4} />
                 <stop offset="95%" stopColor="#7EC8F3" stopOpacity={0} />
               </linearGradient>
-              <linearGradient id="colorBefore" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={`colorBefore-${block.id}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#6b7a90" stopOpacity={0.3} />
                 <stop offset="95%" stopColor="#6b7a90" stopOpacity={0} />
               </linearGradient>
@@ -94,9 +161,18 @@ export function ChartBlockRenderer({ block }: Props) {
             <YAxis
               stroke="#6b7a90"
               tick={{ fill: '#6b7a90', fontSize: 12 }}
-              tickFormatter={(v) => `${Math.round(v / 1000)}k`}
+              tickFormatter={(v) => formatYAxisTick(v, yAxisFormat)}
+              width={65}
             />
-            <Tooltip content={<ChartTooltip beforeLabel={block.beforeLabel} afterLabel={block.afterLabel} />} />
+            <Tooltip
+              content={
+                <ChartTooltip
+                  beforeLabel={block.beforeLabel}
+                  afterLabel={block.afterLabel}
+                  format={yAxisFormat}
+                />
+              }
+            />
             <Legend
               formatter={(value) => (
                 <span className="text-sm">
@@ -109,14 +185,14 @@ export function ChartBlockRenderer({ block }: Props) {
               dataKey="before"
               stroke="#6b7a90"
               strokeWidth={2}
-              fill="url(#colorBefore)"
+              fill={`url(#colorBefore-${block.id})`}
             />
             <Area
               type="monotone"
               dataKey="after"
               stroke="#7EC8F3"
               strokeWidth={2}
-              fill="url(#colorAfter)"
+              fill={`url(#colorAfter-${block.id})`}
             />
           </AreaChart>
         </ResponsiveContainer>

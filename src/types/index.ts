@@ -59,9 +59,13 @@ export interface ChartBlock extends BaseBlock {
   type: 'chart';
   title: string;
   chartType: 'area' | 'bar' | 'line';
-  dataFormula: string; // Formula that returns array data
+  dataFormula: string; // Formula: "beforeFormula:afterFormula"
   beforeLabel: string;
   afterLabel: string;
+  // Format options
+  yAxisFormat?: 'number' | 'currency' | 'percent';
+  xAxisType?: 'months' | 'numbers' | 'quarters';
+  xAxisCount?: number; // Number of data points (default 12)
 }
 
 // Comparison Block

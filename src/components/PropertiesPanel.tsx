@@ -540,6 +540,66 @@ function ChartProperties({
           placeholder="Mit Lösung"
         />
       </div>
+
+      {/* Format Options */}
+      <div className="bg-[#1a1a24] rounded-lg p-3 border border-[#2a2a3a] space-y-3">
+        <p className="text-xs font-medium text-gray-400">Formatierung</p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Y-Achse Format</label>
+            <select
+              value={block.yAxisFormat || 'number'}
+              onChange={(e) => updateBlock(block.id, { yAxisFormat: e.target.value as ChartBlock['yAxisFormat'] })}
+              className="w-full bg-[#12121a] border border-[#2a2a3a] rounded px-2 py-1.5
+                         text-white text-xs outline-none focus:border-[#7EC8F3]"
+            >
+              <option value="number">Zahl (1k, 10k)</option>
+              <option value="currency">Währung (€)</option>
+              <option value="percent">Prozent (%)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">X-Achse Typ</label>
+            <select
+              value={block.xAxisType || 'months'}
+              onChange={(e) => updateBlock(block.id, { xAxisType: e.target.value as ChartBlock['xAxisType'] })}
+              className="w-full bg-[#12121a] border border-[#2a2a3a] rounded px-2 py-1.5
+                         text-white text-xs outline-none focus:border-[#7EC8F3]"
+            >
+              <option value="months">Monate (Jan-Dez)</option>
+              <option value="numbers">Zahlen (1, 2, 3...)</option>
+              <option value="quarters">Quartale (Q1-Q4)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Anzahl Datenpunkte</label>
+          <input
+            type="number"
+            min={2}
+            max={36}
+            value={block.xAxisCount || 12}
+            onChange={(e) => updateBlock(block.id, { xAxisCount: parseInt(e.target.value) || 12 })}
+            className="w-full bg-[#12121a] border border-[#2a2a3a] rounded px-2 py-1.5
+                       text-white text-xs outline-none focus:border-[#7EC8F3]"
+          />
+        </div>
+      </div>
+
+      {/* Available Variables hint */}
+      {availableVariables.length > 0 && (
+        <div className="text-xs text-gray-500">
+          <p className="mb-1">Verfügbare Variablen:</p>
+          <div className="flex flex-wrap gap-1">
+            {availableVariables.map((v) => (
+              <code key={v} className="text-[#7EC8F3] bg-[#12121a] px-1.5 py-0.5 rounded">{`{${v}}`}</code>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 }
