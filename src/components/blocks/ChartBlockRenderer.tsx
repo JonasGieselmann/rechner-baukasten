@@ -191,6 +191,7 @@ export function ChartBlockRenderer({ block }: Props) {
                   format={yAxisFormat}
                 />
               }
+              cursor={{ stroke: '#2a3142', strokeWidth: 1, strokeDasharray: '5 5' }}
             />
             <Legend
               formatter={(value) => (
@@ -205,7 +206,9 @@ export function ChartBlockRenderer({ block }: Props) {
               stroke="#6b7a90"
               strokeWidth={2}
               fill={`url(#colorBefore-${block.id})`}
-              activeDot={{ r: 6, strokeWidth: 2, stroke: '#6b7a90', fill: '#1a1f2e' }}
+              dot={{ r: 4, fill: '#1a1f2e', stroke: '#6b7a90', strokeWidth: 2 }}
+              activeDot={{ r: 8, strokeWidth: 2, stroke: '#6b7a90', fill: '#1a1f2e' }}
+              isAnimationActive={false}
             />
             <Area
               type="monotone"
@@ -213,7 +216,9 @@ export function ChartBlockRenderer({ block }: Props) {
               stroke="#7EC8F3"
               strokeWidth={2}
               fill={`url(#colorAfter-${block.id})`}
-              activeDot={{ r: 6, strokeWidth: 2, stroke: '#7EC8F3', fill: '#1a1f2e' }}
+              dot={{ r: 4, fill: '#1a1f2e', stroke: '#7EC8F3', strokeWidth: 2 }}
+              activeDot={{ r: 8, strokeWidth: 2, stroke: '#7EC8F3', fill: '#1a1f2e' }}
+              isAnimationActive={false}
             />
           </AreaChart>
         </ResponsiveContainer>
