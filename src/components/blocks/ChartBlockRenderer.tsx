@@ -209,7 +209,6 @@ export function ChartBlockRenderer({ block }: Props) {
               fill={`url(#colorBefore-${block.id})`}
               dot={{ r: 4, fill: '#1a1f2e', stroke: '#6b7a90', strokeWidth: 2 }}
               activeDot={{ r: 8, strokeWidth: 2, stroke: '#6b7a90', fill: '#1a1f2e' }}
-              isAnimationActive={false}
             />
             <Area
               type="monotone"
@@ -219,7 +218,6 @@ export function ChartBlockRenderer({ block }: Props) {
               fill={`url(#colorAfter-${block.id})`}
               dot={{ r: 4, fill: '#1a1f2e', stroke: '#7EC8F3', strokeWidth: 2 }}
               activeDot={{ r: 8, strokeWidth: 2, stroke: '#7EC8F3', fill: '#1a1f2e' }}
-              isAnimationActive={false}
             />
           </AreaChart>
         </ResponsiveContainer>
