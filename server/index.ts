@@ -11,6 +11,7 @@ import adminRouter from './admin.js';
 import { getFromS3, isS3Configured } from './s3.js';
 import { Readable } from 'stream';
 import path from 'path';
+import fs from 'fs';
 
 // ============================================
 // App Configuration
@@ -200,14 +201,14 @@ if (isProduction) {
     },
   };
 
-  // Serve custom calculator files from S3, with fallback to dist/ static files
+  // Serve custom calculator files: local dist/ first (bundled), S3 fallback (dynamic uploads)
   app.get('/custom-calculators/:slug/{*filePath}', async (req, res, next) => {
     const { slug } = req.params;
     const filePath = (req.params as unknown as Record<string, string>).filePath || 'index.html';
 
     // Validate slug
     if (!/^[a-z0-9-]+$/.test(slug) || slug.length > 100) {
-      return next(); // Fall through to static files
+      return next();
     }
 
     // Prevent path traversal
@@ -215,7 +216,13 @@ if (isProduction) {
       return next();
     }
 
-    // Try S3 first
+    // Priority 1: Serve from dist/ (bundled calculators from Docker build - always up-to-date)
+    const localPath = path.join(process.cwd(), 'dist', 'custom-calculators', slug, filePath);
+    if (fs.existsSync(localPath)) {
+      return next(); // Let express.static serve it
+    }
+
+    // Priority 2: Serve from S3 (dynamically uploaded calculators)
     if (isS3Configured()) {
       try {
         const s3Key = `calculators/${slug}/${filePath}`;
@@ -223,7 +230,6 @@ if (isProduction) {
 
         if (body) {
           res.setHeader('Content-Type', contentType);
-          // HTML: no-cache (always revalidate), hashed assets: long cache
           if (filePath.endsWith('.html') || filePath === 'index.html') {
             res.setHeader('Cache-Control', 'no-cache');
           } else {
@@ -236,12 +242,11 @@ if (isProduction) {
       } catch (error: unknown) {
         const s3Error = error as { name?: string };
         if (s3Error.name !== 'NoSuchKey') {
-          console.error('S3 serve error, falling back to static files:', error);
+          console.error('S3 serve error:', error);
         }
       }
     }
 
-    // Fallback: serve from dist/ (Vite copies public/ into dist/ during build)
     next();
   });
 

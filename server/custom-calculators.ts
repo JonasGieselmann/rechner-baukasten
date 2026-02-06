@@ -446,64 +446,64 @@ export default router;
 
 export async function seedCustomCalculators(): Promise<void> {
   if (!isS3Configured()) {
-    console.log('S3 not configured, skipping custom calculator seeding');
+    console.log('[seed] S3 not configured, skipping calculator seeding');
     return;
   }
 
-  // Check if beautyflow files exist in public/
   const fs = await import('fs');
   const publicDir = path.join(process.cwd(), 'public', 'custom-calculators', 'beautyflow');
   if (!fs.existsSync(publicDir)) {
-    console.log('No beautyflow files in public/, skipping seed');
+    console.log('[seed] No beautyflow files in public/, skipping');
     return;
   }
 
-  // Always re-upload on every deploy to ensure latest files are in S3
-  console.log('Syncing BeautyFlow calculator to S3...');
-
+  console.log('[seed] Syncing BeautyFlow calculator to S3...');
   const s3Prefix = `${S3_PREFIX}beautyflow/`;
 
-  // Delete old files from S3 first
+  // Step 1: Delete old S3 files
   try {
     await deletePrefix(s3Prefix);
+    console.log('[seed] Deleted old S3 files');
   } catch (e) {
-    console.log('No existing S3 files to clean up');
+    console.warn('[seed] Delete old files failed (continuing):', e);
   }
 
+  // Step 2: Upload all files from public/
   let fileCount = 0;
+  const uploadedFiles: string[] = [];
 
-  // Recursively upload all files from public/custom-calculators/beautyflow/
   async function uploadDir(dir: string, prefix: string) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
-      if (entry.name === 'config.json') continue; // Skip config.json (metadata only)
+      if (entry.name === 'config.json') continue;
       if (entry.isDirectory()) {
         await uploadDir(fullPath, `${prefix}${entry.name}/`);
       } else {
         const content = fs.readFileSync(fullPath);
         const contentType = getContentType(entry.name);
-        await uploadToS3(`${prefix}${entry.name}`, content, contentType);
+        const s3Key = `${prefix}${entry.name}`;
+        await uploadToS3(s3Key, content, contentType);
+        uploadedFiles.push(s3Key);
         fileCount++;
       }
     }
   }
 
   await uploadDir(publicDir, s3Prefix);
+  console.log(`[seed] Uploaded ${fileCount} files:`, uploadedFiles);
 
-  // Upsert DB entry
+  // Step 3: Upsert DB entry
   const existing = await getCalculatorBySlug('beautyflow');
   if (existing) {
-    // Update existing entry
     const client = db();
     await client`
       UPDATE custom_calculator
       SET file_count = ${fileCount}, updated_at = NOW()
       WHERE slug = 'beautyflow'
     `;
-    console.log(`BeautyFlow updated: ${fileCount} files synced to S3`);
+    console.log(`[seed] BeautyFlow DB updated (${fileCount} files)`);
   } else {
-    // Insert new entry
     await insertCalculator({
       id: 'beautyflow',
       name: 'BeautyFlow ROI-Rechner',
@@ -514,6 +514,8 @@ export async function seedCustomCalculators(): Promise<void> {
       height: '900px',
       fileCount,
     });
-    console.log(`BeautyFlow seeded: ${fileCount} files uploaded to S3`);
+    console.log(`[seed] BeautyFlow DB inserted (${fileCount} files)`);
   }
+
+  console.log('[seed] BeautyFlow sync complete');
 }
