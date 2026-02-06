@@ -192,6 +192,12 @@ if (isProduction) {
     dotfiles: 'deny' as const, // Don't serve hidden files
     index: false, // Don't serve directory indexes
     maxAge: '1d', // Cache for 1 day
+    setHeaders: (res: express.Response, filePath: string) => {
+      // HTML files: no-cache (always revalidate so new deploys take effect)
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache');
+      }
+    },
   };
 
   // Serve custom calculator files from S3, with fallback to dist/ static files
@@ -217,7 +223,12 @@ if (isProduction) {
 
         if (body) {
           res.setHeader('Content-Type', contentType);
-          res.setHeader('Cache-Control', 'public, max-age=86400');
+          // HTML: no-cache (always revalidate), hashed assets: long cache
+          if (filePath.endsWith('.html') || filePath === 'index.html') {
+            res.setHeader('Cache-Control', 'no-cache');
+          } else {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          }
           const readable = body as unknown as Readable;
           readable.pipe(res);
           return;
