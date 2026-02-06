@@ -194,46 +194,44 @@ if (isProduction) {
     maxAge: '1d', // Cache for 1 day
   };
 
-  // Serve custom calculator files directly from S3 (e.g. /custom-calculators/beautyflow/index.html)
-  app.get('/custom-calculators/:slug/{*filePath}', async (req, res) => {
-    try {
-      const { slug } = req.params;
-      const filePath = (req.params as unknown as Record<string, string>).filePath || 'index.html';
+  // Serve custom calculator files from S3, with fallback to dist/ static files
+  app.get('/custom-calculators/:slug/{*filePath}', async (req, res, next) => {
+    const { slug } = req.params;
+    const filePath = (req.params as unknown as Record<string, string>).filePath || 'index.html';
 
-      // Validate slug
-      if (!/^[a-z0-9-]+$/.test(slug) || slug.length > 100) {
-        return res.status(400).json({ error: 'Invalid slug' });
-      }
-
-      // Prevent path traversal
-      if (filePath.includes('..') || filePath.startsWith('/')) {
-        return res.status(400).json({ error: 'Invalid path' });
-      }
-
-      if (!isS3Configured()) {
-        return res.status(503).json({ error: 'Storage not configured' });
-      }
-
-      const s3Key = `calculators/${slug}/${filePath}`;
-      const { body, contentType } = await getFromS3(s3Key);
-
-      if (!body) {
-        return res.status(404).json({ error: 'File not found' });
-      }
-
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Cache-Control', 'public, max-age=86400');
-
-      const readable = body as unknown as Readable;
-      readable.pipe(res);
-    } catch (error: unknown) {
-      const s3Error = error as { name?: string };
-      if (s3Error.name === 'NoSuchKey') {
-        return res.status(404).json({ error: 'File not found' });
-      }
-      console.error('Custom calculator serve error:', error);
-      res.status(500).json({ error: 'Failed to serve file' });
+    // Validate slug
+    if (!/^[a-z0-9-]+$/.test(slug) || slug.length > 100) {
+      return next(); // Fall through to static files
     }
+
+    // Prevent path traversal
+    if (filePath.includes('..') || filePath.startsWith('/')) {
+      return next();
+    }
+
+    // Try S3 first
+    if (isS3Configured()) {
+      try {
+        const s3Key = `calculators/${slug}/${filePath}`;
+        const { body, contentType } = await getFromS3(s3Key);
+
+        if (body) {
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          const readable = body as unknown as Readable;
+          readable.pipe(res);
+          return;
+        }
+      } catch (error: unknown) {
+        const s3Error = error as { name?: string };
+        if (s3Error.name !== 'NoSuchKey') {
+          console.error('S3 serve error, falling back to static files:', error);
+        }
+      }
+    }
+
+    // Fallback: serve from dist/ (Vite copies public/ into dist/ during build)
+    next();
   });
 
   // Serve built frontend
@@ -282,8 +280,12 @@ async function start() {
     // Initialize database schema
     await initAuthSchema();
 
-    // Seed custom calculators to S3 (first run only)
-    await seedCustomCalculators();
+    // Seed custom calculators to S3 (non-fatal - server starts even if S3 fails)
+    try {
+      await seedCustomCalculators();
+    } catch (seedError) {
+      console.error('S3 seeding failed (non-fatal, server continues):', seedError);
+    }
 
     app.listen(PORT, () => {
       console.log(`\n🚀 Server running at http://localhost:${PORT}`);
