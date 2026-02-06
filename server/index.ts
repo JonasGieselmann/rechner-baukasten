@@ -123,20 +123,14 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // API Routes
 // ============================================
 
-// Health check endpoint - simplified for production
+// Health check endpoint with build version for deploy verification
 app.get('/api/health', async (req, res) => {
   try {
     const dbOk = await checkDb();
-    // In production, don't reveal detailed status
-    if (isProduction) {
-      res.json({ status: dbOk ? 'ok' : 'error' });
-    } else {
-      res.json({
-        status: dbOk ? 'ok' : 'error',
-        timestamp: new Date().toISOString(),
-        database: dbOk ? 'connected' : 'disconnected',
-      });
-    }
+    res.json({
+      status: dbOk ? 'ok' : 'error',
+      build: process.env.BUILD_SHA?.slice(0, 7) || 'unknown',
+    });
   } catch {
     res.status(500).json({ status: 'error' });
   }
@@ -216,10 +210,15 @@ if (isProduction) {
       return next();
     }
 
-    // Priority 1: Serve from dist/ (bundled calculators from Docker build - always up-to-date)
+    // Priority 1: Serve from dist/ (bundled calculators - always up-to-date from Docker build)
     const localPath = path.join(process.cwd(), 'dist', 'custom-calculators', slug, filePath);
     if (fs.existsSync(localPath)) {
-      return next(); // Let express.static serve it
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache');
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+      return res.sendFile(localPath);
     }
 
     // Priority 2: Serve from S3 (dynamically uploaded calculators)

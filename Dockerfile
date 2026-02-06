@@ -57,6 +57,10 @@ RUN chmod +x /docker-entrypoint.sh
 # Create data directory for SQLite
 RUN mkdir -p data
 
+# Build SHA for version tracking
+ARG BUILD_SHA="local"
+ENV BUILD_SHA=$BUILD_SHA
+
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3001
