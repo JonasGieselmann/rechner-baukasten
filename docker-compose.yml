@@ -14,7 +14,7 @@ version: '3.8'
 services:
   rechner-baukasten:
     build: .
-    image: ghcr.io/jonasgieselmann/kalku:latest
+    image: ghcr.io/jonasgieselmann/rechner-baukasten:latest
     ports:
       - "3001:3001"
     volumes:
