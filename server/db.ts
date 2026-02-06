@@ -114,7 +114,30 @@ export async function initAuthSchema() {
   `;
   await client`CREATE INDEX IF NOT EXISTS verification_identifier_idx ON verification(identifier)`;
 
+  // Create custom_calculator table for S3-backed custom calculators
+  await client`
+    CREATE TABLE IF NOT EXISTS custom_calculator (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      slug TEXT NOT NULL UNIQUE,
+      s3_prefix TEXT NOT NULL,
+      width TEXT NOT NULL DEFAULT '100%',
+      height TEXT NOT NULL DEFAULT '800px',
+      active BOOLEAN NOT NULL DEFAULT true,
+      file_count INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `;
+  await client`CREATE INDEX IF NOT EXISTS custom_calculator_slug_idx ON custom_calculator(slug)`;
+
   console.log('Auth schema initialized (PostgreSQL)');
+}
+
+// Get raw postgres client for custom queries
+export function getRawClient() {
+  return client;
 }
 
 // Verify database connection

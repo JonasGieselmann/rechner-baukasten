@@ -6,7 +6,7 @@ import rateLimit from 'express-rate-limit';
 import { toNodeHandler, fromNodeHeaders } from 'better-auth/node';
 import { auth } from './auth.js';
 import { checkDb, initAuthSchema } from './db.js';
-import customCalculatorsRouter from './custom-calculators.js';
+import customCalculatorsRouter, { seedCustomCalculators } from './custom-calculators.js';
 import adminRouter from './admin.js';
 import path from 'path';
 
@@ -192,16 +192,22 @@ if (isProduction) {
     maxAge: '1d', // Cache for 1 day
   };
 
-  // Serve public folder (custom calculators)
-  app.use(express.static(path.join(process.cwd(), 'public'), staticOptions));
+  // Serve custom calculator files from S3 (e.g. /custom-calculators/beautyflow/index.html)
+  app.get('/custom-calculators/:slug/{*filePath}', async (req, res, next) => {
+    const { slug } = req.params;
+    const filePath = (req.params as unknown as Record<string, string>).filePath || 'index.html';
+    // Rewrite to the API serve endpoint
+    req.url = `/api/custom-calculators/serve/${slug}/${filePath}`;
+    next();
+  });
 
   // Serve built frontend
   app.use(express.static(path.join(process.cwd(), 'dist'), staticOptions));
 
   // SPA fallback - serve index.html for all non-API routes
   app.get('/{*splat}', (req, res) => {
-    // Don't serve index.html for custom calculator routes or API routes
-    if (req.path.startsWith('/custom-calculators/') || req.path.startsWith('/api/')) {
+    // Don't serve index.html for API routes
+    if (req.path.startsWith('/api/')) {
       res.status(404).json({ error: 'Not found' });
       return;
     }
@@ -240,6 +246,9 @@ async function start() {
   try {
     // Initialize database schema
     await initAuthSchema();
+
+    // Seed custom calculators to S3 (first run only)
+    await seedCustomCalculators();
 
     app.listen(PORT, () => {
       console.log(`\n🚀 Server running at http://localhost:${PORT}`);

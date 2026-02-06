@@ -20,10 +20,6 @@ services:
     volumes:
       # Mount Traefik dynamic config dir - Container erstellt automatisch kalku.yml
       - /etc/dokploy/traefik/dynamic:/traefik-dynamic
-      # Persist custom calculators across deploys (uploaded via admin UI)
-      - kalku-custom-calculators:/app/public/custom-calculators
-      # Persist data directory
-      - kalku-data:/app/data
     environment:
       - NODE_ENV=production
       - PORT=3001
@@ -34,6 +30,13 @@ services:
       # APP_URL kann direkt gesetzt werden ODER wird vom Entrypoint aus DOMAIN abgeleitet
       - APP_URL=${APP_URL}
       - BETTER_AUTH_URL=${BETTER_AUTH_URL}
+      # S3 Storage for custom calculators
+      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_REGION=${S3_REGION}
+      - S3_ENDPOINT=${S3_ENDPOINT}
+      - S3_FORCE_PATH_STYLE=${S3_FORCE_PATH_STYLE}
     networks:
       - dokploy-network
     deploy:
@@ -44,10 +47,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-
-volumes:
-  kalku-custom-calculators:
-  kalku-data:
 
 networks:
   dokploy-network:

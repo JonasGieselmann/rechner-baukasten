@@ -1,14 +1,18 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import AdmZip from 'adm-zip';
-import fs from 'fs';
 import path from 'path';
 import { nanoid } from 'nanoid';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from './auth.js';
-import { getUserById } from './db.js';
+import { getUserById, getRawClient } from './db.js';
+import { uploadToS3, getFromS3, deletePrefix, isS3Configured } from './s3.js';
+import { Readable } from 'stream';
 
 const router = Router();
+
+// S3 key prefix for all custom calculator files
+const S3_PREFIX = 'calculators/';
 
 // ============================================
 // Security: Authentication & Authorization
@@ -21,7 +25,6 @@ interface AuthenticatedRequest<P = Record<string, string>> extends Request<P> {
   };
 }
 
-// Middleware: Require authenticated user with super_admin role
 async function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const session = await auth.api.getSession({
@@ -49,67 +52,57 @@ async function requireAdmin(req: AuthenticatedRequest, res: Response, next: Next
 // Security: Input Validation
 // ============================================
 
-// Validate slug format (only alphanumeric and hyphens)
 function isValidSlug(slug: string): boolean {
   return /^[a-z0-9-]+$/.test(slug) && slug.length > 0 && slug.length <= 100;
 }
 
-// Sanitize string input
 function sanitizeString(input: unknown, maxLength = 500): string {
   if (typeof input !== 'string') return '';
   return input.slice(0, maxLength).trim();
 }
 
-// Validate dimension format (e.g., "100%", "800px", "50vh")
 function isValidDimension(dim: string): boolean {
   return /^(\d+(\.\d+)?(px|%|vh|vw|em|rem)?|auto)$/.test(dim);
 }
 
 // ============================================
-// Security: Path Traversal Protection
+// Content type mapping
 // ============================================
 
-// Ensure path is within allowed directory
-function isPathSafe(basePath: string, targetPath: string): boolean {
-  const resolvedBase = path.resolve(basePath);
-  const resolvedTarget = path.resolve(targetPath);
-  return resolvedTarget.startsWith(resolvedBase + path.sep) || resolvedTarget === resolvedBase;
+const MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html',
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+};
+
+function getContentType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  return MIME_TYPES[ext] || 'application/octet-stream';
 }
 
 // ============================================
-// File Upload Configuration
+// Upload Configuration (temp storage only)
 // ============================================
 
-const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
-const PUBLIC_DIR = path.join(process.cwd(), 'public', 'custom-calculators');
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB max
-
-// Configure multer for ZIP uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    if (!fs.existsSync(UPLOAD_DIR)) {
-      fs.mkdirSync(UPLOAD_DIR, { recursive: true, mode: 0o755 });
-    }
-    cb(null, UPLOAD_DIR);
-  },
-  filename: (req, file, cb) => {
-    // Use random filename to prevent path traversal via filename
-    const safeFilename = `${Date.now()}-${nanoid(10)}.zip`;
-    cb(null, safeFilename);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: {
-    fileSize: MAX_FILE_SIZE,
-    files: 1, // Only allow one file
+    fileSize: 50 * 1024 * 1024, // 50MB
+    files: 1,
   },
   fileFilter: (req, file, cb) => {
-    // Check both MIME type and extension
     const allowedMimes = ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'];
     const ext = path.extname(file.originalname).toLowerCase();
-
     if (allowedMimes.includes(file.mimetype) && ext === '.zip') {
       cb(null, true);
     } else {
@@ -118,289 +111,238 @@ const upload = multer({
   },
 });
 
-// Registry file path
-const REGISTRY_PATH = path.join(process.cwd(), 'public', 'custom-calculators', 'registry.json');
+// ============================================
+// Slug Generation
+// ============================================
 
-interface CustomCalculator {
-  id: string;
-  name: string;
-  description: string;
-  slug: string;
-  path: string;
-  thumbnail: string | null;
-  width: string;
-  height: string;
-  active: boolean;
-}
-
-interface Registry {
-  calculators: CustomCalculator[];
-}
-
-// Read registry
-function readRegistry(): Registry {
-  try {
-    const data = fs.readFileSync(REGISTRY_PATH, 'utf-8');
-    return JSON.parse(data);
-  } catch {
-    return { calculators: [] };
-  }
-}
-
-// Write registry
-function writeRegistry(registry: Registry): void {
-  // Ensure directory exists
-  const registryDir = path.dirname(REGISTRY_PATH);
-  if (!fs.existsSync(registryDir)) {
-    fs.mkdirSync(registryDir, { recursive: true });
-  }
-  fs.writeFileSync(REGISTRY_PATH, JSON.stringify(registry, null, 2));
-}
-
-// Generate URL-safe slug with security constraints
 function generateSlug(name: string): string {
   const slug = name
     .toLowerCase()
     .replace(/[äöü]/g, (char) => ({ ä: 'ae', ö: 'oe', ü: 'ue' })[char] || char)
     .replace(/ß/g, 'ss')
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
-    .replace(/-{2,}/g, '-') // Replace multiple hyphens with single
-    .slice(0, 50); // Limit length
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
+    .slice(0, 50);
 
-  // Ensure slug is not empty and doesn't start with a dot (hidden file)
   if (!slug || slug.startsWith('.')) {
     return `calculator-${nanoid(6)}`;
   }
-
   return slug;
 }
 
+// ============================================
+// Database Helpers
+// ============================================
+
+const db = () => getRawClient();
+
+async function getAllCalculators() {
+  return await db()`
+    SELECT id, name, description, slug, s3_prefix, width, height, active, file_count, created_at, updated_at
+    FROM custom_calculator
+    ORDER BY created_at DESC
+  `;
+}
+
+async function getCalculatorBySlug(slug: string) {
+  const rows = await db()`
+    SELECT id, name, description, slug, s3_prefix, width, height, active, file_count, created_at, updated_at
+    FROM custom_calculator
+    WHERE slug = ${slug}
+  `;
+  return rows[0] || null;
+}
+
+async function insertCalculator(calc: {
+  id: string;
+  name: string;
+  description: string;
+  slug: string;
+  s3Prefix: string;
+  width: string;
+  height: string;
+  fileCount: number;
+}) {
+  await db()`
+    INSERT INTO custom_calculator (id, name, description, slug, s3_prefix, width, height, file_count)
+    VALUES (${calc.id}, ${calc.name}, ${calc.description}, ${calc.slug}, ${calc.s3Prefix}, ${calc.width}, ${calc.height}, ${calc.fileCount})
+  `;
+}
+
+async function deleteCalculatorBySlug(slug: string) {
+  await db()`DELETE FROM custom_calculator WHERE slug = ${slug}`;
+}
+
+async function updateCalculatorFields(slug: string, fields: Record<string, unknown>) {
+  const setClauses: string[] = [];
+  const values: unknown[] = [];
+
+  if ('name' in fields) { setClauses.push('name'); values.push(fields.name); }
+  if ('description' in fields) { setClauses.push('description'); values.push(fields.description); }
+  if ('width' in fields) { setClauses.push('width'); values.push(fields.width); }
+  if ('height' in fields) { setClauses.push('height'); values.push(fields.height); }
+  if ('active' in fields) { setClauses.push('active'); values.push(fields.active); }
+
+  // Use raw SQL for dynamic updates
+  const client = db();
+  if ('name' in fields) await client`UPDATE custom_calculator SET name = ${fields.name as string}, updated_at = NOW() WHERE slug = ${slug}`;
+  if ('description' in fields) await client`UPDATE custom_calculator SET description = ${fields.description as string}, updated_at = NOW() WHERE slug = ${slug}`;
+  if ('width' in fields) await client`UPDATE custom_calculator SET width = ${fields.width as string}, updated_at = NOW() WHERE slug = ${slug}`;
+  if ('height' in fields) await client`UPDATE custom_calculator SET height = ${fields.height as string}, updated_at = NOW() WHERE slug = ${slug}`;
+  if ('active' in fields) await client`UPDATE custom_calculator SET active = ${fields.active as boolean}, updated_at = NOW() WHERE slug = ${slug}`;
+}
+
+// ============================================
+// Routes
+// ============================================
+
 // GET /api/custom-calculators - List all calculators
-router.get('/', (req, res) => {
-  const registry = readRegistry();
-  res.json(registry.calculators);
+router.get('/', async (req, res) => {
+  try {
+    const rows = await getAllCalculators();
+    const calculators = rows.map((r: Record<string, unknown>) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      slug: r.slug,
+      path: `/custom-calculators/${r.slug}/index.html`,
+      width: r.width,
+      height: r.height,
+      active: r.active,
+    }));
+    res.json(calculators);
+  } catch (error) {
+    console.error('List error:', error);
+    res.status(500).json({ error: 'Failed to list calculators' });
+  }
 });
 
-// POST /api/custom-calculators/upload - Upload a new calculator (Admin only)
+// POST /api/custom-calculators/upload - Upload new calculator (Admin only)
 router.post('/upload', requireAdmin, upload.single('file'), async (req: AuthenticatedRequest, res) => {
-  const uploadedFile = req.file;
-
-  // Helper to clean up uploaded file
-  const cleanupUpload = () => {
-    if (uploadedFile && fs.existsSync(uploadedFile.path)) {
-      try {
-        fs.unlinkSync(uploadedFile.path);
-      } catch { /* ignore cleanup errors */ }
-    }
-  };
-
   try {
-    if (!uploadedFile) {
+    if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    // Validate and sanitize inputs
+    if (!isS3Configured()) {
+      return res.status(500).json({ error: 'S3 storage not configured' });
+    }
+
     const name = sanitizeString(req.body.name, 100);
     const description = sanitizeString(req.body.description, 500);
     const width = sanitizeString(req.body.width, 20) || '100%';
     const height = sanitizeString(req.body.height, 20) || '800px';
 
     if (!name || name.length < 1) {
-      cleanupUpload();
       return res.status(400).json({ error: 'Name is required' });
     }
 
-    // Validate dimensions
     if (!isValidDimension(width) || !isValidDimension(height)) {
-      cleanupUpload();
       return res.status(400).json({ error: 'Invalid dimension format' });
     }
 
-    // Generate slug and check for duplicates
+    // Generate unique slug
     let slug = generateSlug(name);
-    const registry = readRegistry();
-
-    // Ensure unique slug
+    let existing = await getCalculatorBySlug(slug);
     let counter = 1;
     const baseSlug = slug;
-    while (registry.calculators.some((c) => c.slug === slug)) {
+    while (existing) {
       slug = `${baseSlug}-${counter}`;
+      existing = await getCalculatorBySlug(slug);
       counter++;
       if (counter > 100) {
-        cleanupUpload();
         return res.status(400).json({ error: 'Unable to generate unique slug' });
       }
     }
 
-    const targetDir = path.join(PUBLIC_DIR, slug);
+    // Extract ZIP and upload to S3
+    const zip = new AdmZip(req.file.buffer);
+    const zipEntries = zip.getEntries();
 
-    // Security: Verify target directory is within allowed path
-    if (!isPathSafe(PUBLIC_DIR, targetDir)) {
-      cleanupUpload();
-      return res.status(400).json({ error: 'Invalid calculator path' });
+    // Security checks
+    const dangerousExtensions = ['.php', '.jsp', '.asp', '.aspx', '.exe', '.sh', '.bat', '.cmd', '.ps1'];
+    for (const entry of zipEntries) {
+      const ext = path.extname(entry.entryName).toLowerCase();
+      if (dangerousExtensions.includes(ext)) {
+        return res.status(400).json({ error: 'ZIP contains forbidden file types' });
+      }
     }
 
-    // Extract ZIP with security checks
-    try {
-      const zip = new AdmZip(uploadedFile.path);
-      const zipEntries = zip.getEntries();
+    // Detect root folder in ZIP
+    const fileEntries = zipEntries.filter(e => !e.isDirectory);
+    const hasRootFolder = fileEntries.length > 0 && fileEntries.every((entry) => {
+      const parts = entry.entryName.split('/');
+      return parts.length > 1 && parts[0] === zipEntries[0].entryName.split('/')[0];
+    });
 
-      // Security: Check for Zip Slip vulnerability
-      for (const entry of zipEntries) {
-        const entryPath = path.join(targetDir, entry.entryName);
-        if (!isPathSafe(targetDir, entryPath)) {
-          cleanupUpload();
-          console.error(`Zip Slip attempt detected: ${entry.entryName}`);
-          return res.status(400).json({ error: 'Invalid ZIP file structure' });
-        }
+    // Get root folder name to strip from paths
+    const rootFolder = hasRootFolder ? zipEntries[0].entryName.split('/')[0] + '/' : '';
 
-        // Security: Block potentially dangerous file types
-        const ext = path.extname(entry.entryName).toLowerCase();
-        const dangerousExtensions = ['.php', '.jsp', '.asp', '.aspx', '.exe', '.sh', '.bat', '.cmd', '.ps1'];
-        if (dangerousExtensions.includes(ext)) {
-          cleanupUpload();
-          return res.status(400).json({ error: 'ZIP contains forbidden file types' });
-        }
+    // Upload each file to S3
+    const s3Prefix = `${S3_PREFIX}${slug}/`;
+    let fileCount = 0;
+    let hasIndex = false;
+
+    for (const entry of fileEntries) {
+      let relativePath = entry.entryName;
+      if (rootFolder && relativePath.startsWith(rootFolder)) {
+        relativePath = relativePath.slice(rootFolder.length);
       }
+      if (!relativePath) continue;
 
-      // Check if ZIP has a single root folder or files directly
-      const hasRootFolder = zipEntries.length > 0 &&
-        zipEntries.filter(e => !e.isDirectory).length > 0 &&
-        zipEntries.every((entry) => {
-          const parts = entry.entryName.split('/');
-          return parts.length > 1 && parts[0] === zipEntries[0].entryName.split('/')[0];
-        });
+      const s3Key = `${s3Prefix}${relativePath}`;
+      const contentType = getContentType(relativePath);
+      const data = entry.getData();
 
-      // Create target directory
-      if (!fs.existsSync(targetDir)) {
-        fs.mkdirSync(targetDir, { recursive: true, mode: 0o755 });
-      }
+      await uploadToS3(s3Key, data, contentType);
+      fileCount++;
 
-      if (hasRootFolder) {
-        // Extract and move contents out of root folder
-        const tempDir = path.join(UPLOAD_DIR, `temp-${nanoid(10)}`);
-        zip.extractAllTo(tempDir, true);
-
-        // Find the root folder
-        const entries = fs.readdirSync(tempDir);
-        const rootFolder = entries.find(e => fs.statSync(path.join(tempDir, e)).isDirectory());
-
-        if (rootFolder) {
-          const rootPath = path.join(tempDir, rootFolder);
-
-          // Move contents to target
-          const contents = fs.readdirSync(rootPath);
-          for (const item of contents) {
-            const sourcePath = path.join(rootPath, item);
-            const destPath = path.join(targetDir, item);
-
-            // Security check for each item
-            if (!isPathSafe(targetDir, destPath)) {
-              fs.rmSync(tempDir, { recursive: true, force: true });
-              fs.rmSync(targetDir, { recursive: true, force: true });
-              cleanupUpload();
-              return res.status(400).json({ error: 'Invalid file path in ZIP' });
-            }
-
-            fs.renameSync(sourcePath, destPath);
-          }
-        }
-
-        // Clean up temp directory
-        fs.rmSync(tempDir, { recursive: true, force: true });
-      } else {
-        // Extract directly to target
-        zip.extractAllTo(targetDir, true);
-      }
-
-      // Verify index.html exists (non-recursive search for security)
-      const indexPath = path.join(targetDir, 'index.html');
-      if (!fs.existsSync(indexPath)) {
-        fs.rmSync(targetDir, { recursive: true, force: true });
-        cleanupUpload();
-        return res.status(400).json({ error: 'ZIP must contain an index.html file in the root' });
-      }
-
-    } catch (extractError) {
-      console.error('ZIP extraction error:', extractError);
-      // Clean up target directory if it was created
-      if (fs.existsSync(targetDir)) {
-        fs.rmSync(targetDir, { recursive: true, force: true });
-      }
-      cleanupUpload();
-      return res.status(400).json({ error: 'Failed to extract ZIP file' });
+      if (relativePath === 'index.html') hasIndex = true;
     }
 
-    // Clean up uploaded ZIP
-    cleanupUpload();
+    if (!hasIndex) {
+      // Clean up uploaded files
+      await deletePrefix(s3Prefix);
+      return res.status(400).json({ error: 'ZIP must contain an index.html file in the root' });
+    }
 
-    // Create new calculator entry
-    const newCalculator: CustomCalculator = {
-      id: nanoid(10),
-      name,
-      description,
-      slug,
-      path: `/custom-calculators/${slug}/index.html`,
-      thumbnail: null,
-      width,
-      height,
-      active: true,
-    };
+    // Save metadata to DB
+    const id = nanoid(10);
+    await insertCalculator({ id, name, description, slug, s3Prefix, width, height, fileCount });
 
-    // Add to registry
-    registry.calculators.push(newCalculator);
-    writeRegistry(registry);
-
-    // Audit log
-    console.log(`[AUDIT] Calculator uploaded: ${slug} by admin ${req.user?.id}`);
+    console.log(`[AUDIT] Calculator uploaded: ${slug} (${fileCount} files) by admin ${req.user?.id}`);
 
     res.json({
       success: true,
-      calculator: newCalculator,
+      calculator: { id, name, description, slug, path: `/custom-calculators/${slug}/index.html`, width, height, active: true },
     });
   } catch (error) {
     console.error('Upload error:', error);
-    cleanupUpload();
     res.status(500).json({ error: 'Upload failed' });
   }
 });
 
-// DELETE /api/custom-calculators/:slug - Delete a calculator (Admin only)
-router.delete('/:slug', requireAdmin, (req: AuthenticatedRequest<{ slug: string }>, res) => {
+// DELETE /api/custom-calculators/:slug - Delete calculator (Admin only)
+router.delete('/:slug', requireAdmin, async (req: AuthenticatedRequest<{ slug: string }>, res) => {
   try {
     const { slug } = req.params;
-
-    // Security: Validate slug format
     if (!isValidSlug(slug)) {
       return res.status(400).json({ error: 'Invalid slug format' });
     }
 
-    const registry = readRegistry();
-
-    const calcIndex = registry.calculators.findIndex((c) => c.slug === slug);
-    if (calcIndex === -1) {
+    const calc = await getCalculatorBySlug(slug);
+    if (!calc) {
       return res.status(404).json({ error: 'Calculator not found' });
     }
 
-    // Security: Verify path is safe before deletion
-    const calcDir = path.join(PUBLIC_DIR, slug);
-    if (!isPathSafe(PUBLIC_DIR, calcDir)) {
-      return res.status(400).json({ error: 'Invalid calculator path' });
-    }
+    // Delete files from S3
+    await deletePrefix(calc.s3_prefix);
 
-    // Remove directory
-    if (fs.existsSync(calcDir)) {
-      fs.rmSync(calcDir, { recursive: true, force: true });
-    }
+    // Delete from DB
+    await deleteCalculatorBySlug(slug);
 
-    // Remove from registry
-    registry.calculators.splice(calcIndex, 1);
-    writeRegistry(registry);
-
-    // Audit log
     console.log(`[AUDIT] Calculator deleted: ${slug} by admin ${req.user?.id}`);
-
     res.json({ success: true });
   } catch (error) {
     console.error('Delete error:', error);
@@ -408,72 +350,156 @@ router.delete('/:slug', requireAdmin, (req: AuthenticatedRequest<{ slug: string 
   }
 });
 
-// PATCH /api/custom-calculators/:slug - Update calculator metadata (Admin only)
-router.patch('/:slug', requireAdmin, (req: AuthenticatedRequest<{ slug: string }>, res) => {
+// PATCH /api/custom-calculators/:slug - Update metadata (Admin only)
+router.patch('/:slug', requireAdmin, async (req: AuthenticatedRequest<{ slug: string }>, res) => {
   try {
     const { slug } = req.params;
-
-    // Security: Validate slug format
     if (!isValidSlug(slug)) {
       return res.status(400).json({ error: 'Invalid slug format' });
     }
 
-    const registry = readRegistry();
-    const calc = registry.calculators.find((c) => c.slug === slug);
-
+    const calc = await getCalculatorBySlug(slug);
     if (!calc) {
       return res.status(404).json({ error: 'Calculator not found' });
     }
 
-    // Sanitize and validate inputs
-    const { name, description, width, height, active } = req.body;
+    const updates: Record<string, unknown> = {};
 
-    // Update fields if provided with validation
-    if (name !== undefined) {
-      const sanitizedName = sanitizeString(name, 100);
-      if (sanitizedName.length < 1) {
-        return res.status(400).json({ error: 'Name cannot be empty' });
-      }
-      calc.name = sanitizedName;
+    if (req.body.name !== undefined) {
+      const sanitized = sanitizeString(req.body.name, 100);
+      if (sanitized.length < 1) return res.status(400).json({ error: 'Name cannot be empty' });
+      updates.name = sanitized;
+    }
+    if (req.body.description !== undefined) updates.description = sanitizeString(req.body.description, 500);
+    if (req.body.width !== undefined) {
+      const w = sanitizeString(req.body.width, 20);
+      if (!isValidDimension(w)) return res.status(400).json({ error: 'Invalid width' });
+      updates.width = w;
+    }
+    if (req.body.height !== undefined) {
+      const h = sanitizeString(req.body.height, 20);
+      if (!isValidDimension(h)) return res.status(400).json({ error: 'Invalid height' });
+      updates.height = h;
+    }
+    if (req.body.active !== undefined) {
+      if (typeof req.body.active !== 'boolean') return res.status(400).json({ error: 'Active must be boolean' });
+      updates.active = req.body.active;
     }
 
-    if (description !== undefined) {
-      calc.description = sanitizeString(description, 500);
+    if (Object.keys(updates).length > 0) {
+      await updateCalculatorFields(slug, updates);
     }
 
-    if (width !== undefined) {
-      const sanitizedWidth = sanitizeString(width, 20);
-      if (!isValidDimension(sanitizedWidth)) {
-        return res.status(400).json({ error: 'Invalid width format' });
-      }
-      calc.width = sanitizedWidth;
-    }
-
-    if (height !== undefined) {
-      const sanitizedHeight = sanitizeString(height, 20);
-      if (!isValidDimension(sanitizedHeight)) {
-        return res.status(400).json({ error: 'Invalid height format' });
-      }
-      calc.height = sanitizedHeight;
-    }
-
-    if (active !== undefined) {
-      if (typeof active !== 'boolean') {
-        return res.status(400).json({ error: 'Active must be a boolean' });
-      }
-      calc.active = active;
-    }
-
-    writeRegistry(registry);
-
-    // Audit log
+    const updated = await getCalculatorBySlug(slug);
     console.log(`[AUDIT] Calculator updated: ${slug} by admin ${req.user?.id}`);
-
-    res.json({ success: true, calculator: calc });
+    res.json({ success: true, calculator: updated });
   } catch (error) {
     console.error('Update error:', error);
     res.status(500).json({ error: 'Update failed' });
   }
 });
 
+// GET /api/custom-calculators/serve/:slug/* - Serve files from S3
+router.get('/serve/:slug/*', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    // Express puts the rest of the path in params[0]
+    const filePath = (req.params as unknown as Record<string, string>)[0] || 'index.html';
+
+    if (!isValidSlug(slug)) {
+      return res.status(400).json({ error: 'Invalid slug' });
+    }
+
+    // Prevent path traversal
+    if (filePath.includes('..') || filePath.startsWith('/')) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    const s3Key = `${S3_PREFIX}${slug}/${filePath}`;
+
+    const { body, contentType } = await getFromS3(s3Key);
+    if (!body) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
+
+    // Stream the S3 response to the client
+    const readable = body as unknown as Readable;
+    readable.pipe(res);
+  } catch (error: unknown) {
+    const s3Error = error as { name?: string };
+    if (s3Error.name === 'NoSuchKey') {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    console.error('Serve error:', error);
+    res.status(500).json({ error: 'Failed to serve file' });
+  }
+});
+
 export default router;
+
+// ============================================
+// Seed: Upload BeautyFlow from public/ to S3
+// ============================================
+
+export async function seedCustomCalculators(): Promise<void> {
+  if (!isS3Configured()) {
+    console.log('S3 not configured, skipping custom calculator seeding');
+    return;
+  }
+
+  // Check if beautyflow already exists in DB
+  const existing = await getCalculatorBySlug('beautyflow');
+  if (existing) {
+    console.log('BeautyFlow calculator already in DB, skipping seed');
+    return;
+  }
+
+  // Check if beautyflow files exist in public/
+  const fs = await import('fs');
+  const publicDir = path.join(process.cwd(), 'public', 'custom-calculators', 'beautyflow');
+  if (!fs.existsSync(publicDir)) {
+    console.log('No beautyflow files in public/, skipping seed');
+    return;
+  }
+
+  console.log('Seeding BeautyFlow calculator to S3...');
+
+  const s3Prefix = `${S3_PREFIX}beautyflow/`;
+  let fileCount = 0;
+
+  // Recursively upload all files from public/custom-calculators/beautyflow/
+  async function uploadDir(dir: string, prefix: string) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.name === 'config.json') continue; // Skip config.json (metadata only)
+      if (entry.isDirectory()) {
+        await uploadDir(fullPath, `${prefix}${entry.name}/`);
+      } else {
+        const content = fs.readFileSync(fullPath);
+        const contentType = getContentType(entry.name);
+        await uploadToS3(`${prefix}${entry.name}`, content, contentType);
+        fileCount++;
+      }
+    }
+  }
+
+  await uploadDir(publicDir, s3Prefix);
+
+  // Insert into DB
+  await insertCalculator({
+    id: 'beautyflow',
+    name: 'BeautyFlow ROI-Rechner',
+    description: 'Berechne deinen Return on Investment mit BeautyFlow - inkl. Wachstumsprognose',
+    slug: 'beautyflow',
+    s3Prefix,
+    width: '100%',
+    height: '900px',
+    fileCount,
+  });
+
+  console.log(`BeautyFlow seeded: ${fileCount} files uploaded to S3`);
+}
