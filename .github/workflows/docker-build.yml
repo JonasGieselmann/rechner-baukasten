@@ -46,8 +46,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=min
+          # Fresh cache scope to invalidate stale layers from mode=max
+          cache-from: type=gha,scope=buildkit-v2
+          cache-to: type=gha,mode=min,scope=buildkit-v2
 
       - name: Trigger Dokploy Deployment
         run: |
