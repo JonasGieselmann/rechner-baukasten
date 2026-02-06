@@ -50,9 +50,9 @@ COPY --from=server-builder /app/dist/server ./dist/server
 # Copy public assets (including custom calculators)
 COPY public ./public
 
-# Copy entrypoint script
+# Copy entrypoint script (sed fixes Windows CRLF line endings)
 COPY scripts/docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+RUN sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
 
 # Create data directory for SQLite
 RUN mkdir -p data
