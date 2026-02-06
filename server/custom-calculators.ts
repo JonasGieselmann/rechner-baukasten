@@ -503,7 +503,7 @@ export async function seedCustomCalculators(): Promise<void> {
     const client = db();
     await client`
       UPDATE custom_calculator
-      SET file_count = ${fileCount}, updated_at = NOW()
+      SET file_count = ${fileCount}, height = '1800px', updated_at = NOW()
       WHERE slug = 'beautyflow'
     `;
     console.log(`[seed] BeautyFlow DB updated (${fileCount} files)`);
@@ -515,7 +515,7 @@ export async function seedCustomCalculators(): Promise<void> {
       slug: 'beautyflow',
       s3Prefix,
       width: '100%',
-      height: '900px',
+      height: '1800px',
       fileCount,
     });
     console.log(`[seed] BeautyFlow DB inserted (${fileCount} files)`);
