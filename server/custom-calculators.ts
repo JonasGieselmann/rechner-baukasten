@@ -450,13 +450,6 @@ export async function seedCustomCalculators(): Promise<void> {
     return;
   }
 
-  // Check if beautyflow already exists in DB
-  const existing = await getCalculatorBySlug('beautyflow');
-  if (existing) {
-    console.log('BeautyFlow calculator already in DB, skipping seed');
-    return;
-  }
-
   // Check if beautyflow files exist in public/
   const fs = await import('fs');
   const publicDir = path.join(process.cwd(), 'public', 'custom-calculators', 'beautyflow');
@@ -465,9 +458,18 @@ export async function seedCustomCalculators(): Promise<void> {
     return;
   }
 
-  console.log('Seeding BeautyFlow calculator to S3...');
+  // Always re-upload on every deploy to ensure latest files are in S3
+  console.log('Syncing BeautyFlow calculator to S3...');
 
   const s3Prefix = `${S3_PREFIX}beautyflow/`;
+
+  // Delete old files from S3 first
+  try {
+    await deletePrefix(s3Prefix);
+  } catch (e) {
+    console.log('No existing S3 files to clean up');
+  }
+
   let fileCount = 0;
 
   // Recursively upload all files from public/custom-calculators/beautyflow/
@@ -489,17 +491,29 @@ export async function seedCustomCalculators(): Promise<void> {
 
   await uploadDir(publicDir, s3Prefix);
 
-  // Insert into DB
-  await insertCalculator({
-    id: 'beautyflow',
-    name: 'BeautyFlow ROI-Rechner',
-    description: 'Berechne deinen Return on Investment mit BeautyFlow - inkl. Wachstumsprognose',
-    slug: 'beautyflow',
-    s3Prefix,
-    width: '100%',
-    height: '900px',
-    fileCount,
-  });
-
-  console.log(`BeautyFlow seeded: ${fileCount} files uploaded to S3`);
+  // Upsert DB entry
+  const existing = await getCalculatorBySlug('beautyflow');
+  if (existing) {
+    // Update existing entry
+    const client = db();
+    await client`
+      UPDATE custom_calculator
+      SET file_count = ${fileCount}, updated_at = NOW()
+      WHERE slug = 'beautyflow'
+    `;
+    console.log(`BeautyFlow updated: ${fileCount} files synced to S3`);
+  } else {
+    // Insert new entry
+    await insertCalculator({
+      id: 'beautyflow',
+      name: 'BeautyFlow ROI-Rechner',
+      description: 'Berechne deinen Return on Investment mit BeautyFlow - inkl. Wachstumsprognose',
+      slug: 'beautyflow',
+      s3Prefix,
+      width: '100%',
+      height: '900px',
+      fileCount,
+    });
+    console.log(`BeautyFlow seeded: ${fileCount} files uploaded to S3`);
+  }
 }

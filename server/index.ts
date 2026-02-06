@@ -8,6 +8,8 @@ import { auth } from './auth.js';
 import { checkDb, initAuthSchema } from './db.js';
 import customCalculatorsRouter, { seedCustomCalculators } from './custom-calculators.js';
 import adminRouter from './admin.js';
+import { getFromS3, isS3Configured } from './s3.js';
+import { Readable } from 'stream';
 import path from 'path';
 
 // ============================================
@@ -192,13 +194,46 @@ if (isProduction) {
     maxAge: '1d', // Cache for 1 day
   };
 
-  // Serve custom calculator files from S3 (e.g. /custom-calculators/beautyflow/index.html)
-  app.get('/custom-calculators/:slug/{*filePath}', async (req, res, next) => {
-    const { slug } = req.params;
-    const filePath = (req.params as unknown as Record<string, string>).filePath || 'index.html';
-    // Rewrite to the API serve endpoint
-    req.url = `/api/custom-calculators/serve/${slug}/${filePath}`;
-    next();
+  // Serve custom calculator files directly from S3 (e.g. /custom-calculators/beautyflow/index.html)
+  app.get('/custom-calculators/:slug/{*filePath}', async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const filePath = (req.params as unknown as Record<string, string>).filePath || 'index.html';
+
+      // Validate slug
+      if (!/^[a-z0-9-]+$/.test(slug) || slug.length > 100) {
+        return res.status(400).json({ error: 'Invalid slug' });
+      }
+
+      // Prevent path traversal
+      if (filePath.includes('..') || filePath.startsWith('/')) {
+        return res.status(400).json({ error: 'Invalid path' });
+      }
+
+      if (!isS3Configured()) {
+        return res.status(503).json({ error: 'Storage not configured' });
+      }
+
+      const s3Key = `calculators/${slug}/${filePath}`;
+      const { body, contentType } = await getFromS3(s3Key);
+
+      if (!body) {
+        return res.status(404).json({ error: 'File not found' });
+      }
+
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+
+      const readable = body as unknown as Readable;
+      readable.pipe(res);
+    } catch (error: unknown) {
+      const s3Error = error as { name?: string };
+      if (s3Error.name === 'NoSuchKey') {
+        return res.status(404).json({ error: 'File not found' });
+      }
+      console.error('Custom calculator serve error:', error);
+      res.status(500).json({ error: 'Failed to serve file' });
+    }
   });
 
   // Serve built frontend
