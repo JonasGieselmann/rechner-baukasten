@@ -423,7 +423,11 @@ router.get('/serve/:slug/{*filePath}', async (req, res) => {
     }
 
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
 
     // Stream the S3 response to the client
     const readable = body as unknown as Readable;
