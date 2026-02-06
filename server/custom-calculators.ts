@@ -400,11 +400,11 @@ router.patch('/:slug', requireAdmin, async (req: AuthenticatedRequest<{ slug: st
 });
 
 // GET /api/custom-calculators/serve/:slug/* - Serve files from S3
-router.get('/serve/:slug/*', async (req, res) => {
+router.get('/serve/:slug/{*filePath}', async (req, res) => {
   try {
     const { slug } = req.params;
-    // Express puts the rest of the path in params[0]
-    const filePath = (req.params as unknown as Record<string, string>)[0] || 'index.html';
+    const rawFilePath = (req.params as Record<string, unknown>).filePath;
+    const filePath = Array.isArray(rawFilePath) ? rawFilePath.join('/') : String(rawFilePath || 'index.html');
 
     if (!isValidSlug(slug)) {
       return res.status(400).json({ error: 'Invalid slug' });

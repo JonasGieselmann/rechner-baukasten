@@ -198,7 +198,8 @@ if (isProduction) {
   // Serve custom calculator files: local dist/ first (bundled), S3 fallback (dynamic uploads)
   app.get('/custom-calculators/:slug/{*filePath}', async (req, res, next) => {
     const { slug } = req.params;
-    const filePath = (req.params as unknown as Record<string, string>).filePath || 'index.html';
+    const rawFilePath = (req.params as Record<string, unknown>).filePath;
+    const filePath = Array.isArray(rawFilePath) ? rawFilePath.join('/') : String(rawFilePath || 'index.html');
 
     // Validate slug
     if (!/^[a-z0-9-]+$/.test(slug) || slug.length > 100) {
