@@ -1,6 +1,6 @@
-// Single source of truth for design tokens used by the public funnel runner.
-// Mirror of DEFAULT_FUNNEL_THEME but exported separately for non-React tools
-// (e.g. the puppeteer PDF template in Release 3, or external dashboards).
+// Single source of truth for design tokens used by the customer surfaces.
+// Exported separately from src/types so non-React tools (puppeteer PDF
+// template, external dashboards) can consume the same values.
 
 export const BRAND = {
   colors: {

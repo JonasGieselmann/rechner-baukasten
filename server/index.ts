@@ -3,12 +3,13 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { toNodeHandler, fromNodeHeaders } from 'better-auth/node';
+import { toNodeHandler } from 'better-auth/node';
 import { auth } from './auth.js';
 import { checkDb, initAuthSchema, initFunnelSchema } from './db.js';
 import customCalculatorsRouter from './custom-calculators.js';
 import adminRouter from './admin.js';
 import funnelsRouter from './funnels.js';
+import meRouter from './me.js';
 import path from 'path';
 
 // ============================================
@@ -144,40 +145,8 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Get current user session with extended user data
-app.get('/api/me', async (req, res) => {
-  try {
-    const session = await auth.api.getSession({
-      headers: fromNodeHeaders(req.headers),
-    });
-    if (!session) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    // Get extended user data with role and approved status
-    const { getUserById } = await import('./db.js');
-    const extendedUser = await getUserById(session.user.id);
-
-    // Return only necessary user data (don't expose internal fields)
-    res.json({
-      session: {
-        id: session.session.id,
-        expiresAt: session.session.expiresAt,
-      },
-      user: {
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email,
-        image: session.user.image,
-        role: extendedUser?.role || 'user',
-        approved: extendedUser?.approved ?? false,
-      },
-    });
-  } catch (error) {
-    console.error('Session error:', error);
-    res.status(500).json({ error: 'Request failed' });
-  }
-});
+// Me (self-service) API: GET (session+user), PATCH (profile), GET /leads
+app.use('/api/me', meRouter);
 
 // Custom Calculators API
 app.use('/api/custom-calculators', customCalculatorsRouter);

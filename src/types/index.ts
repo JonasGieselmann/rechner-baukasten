@@ -1,3 +1,5 @@
+import { BRAND } from '../../branding/tokens';
+
 // Block Types
 export type BlockType =
   | 'text'
@@ -261,6 +263,7 @@ export interface Funnel {
 export interface Lead {
   id: string;
   funnelId: string;
+  userId: string | null;
   name: string | null;
   email: string | null;
   phone: string | null;
@@ -283,12 +286,12 @@ export interface Lead {
 
 export const DEFAULT_FUNNEL_THEME: FunnelTheme = {
   mode: 'light',
-  primaryColor: '#0a0a0a',
-  accentColor: '#7EC8F3',
-  backgroundColor: '#ffffff',
-  cardColor: '#f7f7f8',
-  textColor: '#0a0a0a',
-  borderColor: '#e6e8eb',
+  primaryColor: BRAND.colors.primary,
+  accentColor: BRAND.colors.accent,
+  backgroundColor: BRAND.colors.background,
+  cardColor: BRAND.colors.card,
+  textColor: BRAND.colors.text,
+  borderColor: BRAND.colors.border,
 };
 
 export const SPIDER_DIMENSIONS: { key: SpiderDimension; label: string }[] = [

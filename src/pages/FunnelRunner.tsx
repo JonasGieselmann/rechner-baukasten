@@ -22,6 +22,7 @@ import {
   RECOMMENDATION_TEXTS,
 } from '../engine/score';
 import type { DimScores, RecommendationKey } from '../engine/score';
+import { renderTitleWithItalics } from '../lib/textFormat';
 
 type LeadState = Partial<Record<LeadField, string>>;
 type AnswersState = Record<string, string[]>;
@@ -160,18 +161,6 @@ function IntroStep({
   );
 }
 
-// Renders text with *asterisks* converted to <em> for italic accent words.
-function renderTitleWithItalics(title?: string): React.ReactNode {
-  if (!title) return null;
-  const parts = title.split(/(\*[^*]+\*)/g).filter(Boolean);
-  return parts.map((p, i) =>
-    p.startsWith('*') && p.endsWith('*') ? (
-      <em key={i} className="italic font-medium">{p.slice(1, -1)}</em>
-    ) : (
-      <span key={i}>{p}</span>
-    ),
-  );
-}
 
 function LeadCaptureStep({
   step,

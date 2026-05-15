@@ -71,6 +71,7 @@ export const lead = pgTable('lead', {
   funnelId: text('funnel_id')
     .notNull()
     .references(() => funnel.id, { onDelete: 'cascade' }),
+  userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
   name: text('name'),
   email: text('email'),
   phone: text('phone'),

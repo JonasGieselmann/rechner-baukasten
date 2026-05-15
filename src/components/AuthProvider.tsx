@@ -5,8 +5,10 @@ import type { Session, User } from 'better-auth/types';
 // In production, frontend and API are served from the same origin
 const API_URL = import.meta.env.VITE_API_URL || '';
 
+export type UserRole = 'super_admin' | 'user' | 'customer';
+
 export interface ExtendedUser extends User {
-  role: 'super_admin' | 'user';
+  role: UserRole;
   approved: boolean;
 }
 
@@ -15,6 +17,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isSuperAdmin: boolean;
+  isCustomer: boolean;
   isApproved: boolean;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -25,6 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   loading: true,
   isSuperAdmin: false,
+  isCustomer: false,
   isApproved: false,
   logout: async () => {},
   refreshUser: async () => {},
@@ -86,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session: sessionData?.session || null,
         loading: isLoading,
         isSuperAdmin: extendedUser?.role === 'super_admin',
+        isCustomer: extendedUser?.role === 'customer',
         isApproved: extendedUser?.approved ?? false,
         logout,
         refreshUser: fetchExtendedUser,

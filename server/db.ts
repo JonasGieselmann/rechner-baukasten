@@ -163,6 +163,9 @@ export async function initFunnelSchema() {
   await client`CREATE INDEX IF NOT EXISTS lead_funnel_id_idx ON lead(funnel_id)`;
   await client`CREATE INDEX IF NOT EXISTS lead_created_at_idx ON lead(created_at DESC)`;
 
+  await client`ALTER TABLE lead ADD COLUMN IF NOT EXISTS user_id TEXT REFERENCES "user"(id) ON DELETE SET NULL`;
+  await client`CREATE INDEX IF NOT EXISTS lead_user_id_idx ON lead(user_id)`;
+
   console.log('Funnel schema initialized (PostgreSQL)');
 }
 
@@ -206,6 +209,16 @@ export async function approveUser(userId: string): Promise<void> {
   await client`
     UPDATE "user"
     SET approved = true, updated_at = NOW()
+    WHERE id = ${validatedId}
+  `;
+}
+
+// Set a user as customer (approved, role=customer) in one statement
+export async function setUserAsCustomer(userId: string): Promise<void> {
+  const validatedId = validateUserId(userId);
+  await client`
+    UPDATE "user"
+    SET role = 'customer', approved = true, updated_at = NOW()
     WHERE id = ${validatedId}
   `;
 }
