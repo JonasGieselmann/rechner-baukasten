@@ -117,6 +117,55 @@ export async function initAuthSchema() {
   console.log('Auth schema initialized (PostgreSQL)');
 }
 
+// Initialize funnel-builder tables
+export async function initFunnelSchema() {
+  await client`
+    CREATE TABLE IF NOT EXISTS funnel (
+      id TEXT PRIMARY KEY,
+      owner_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      description TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'draft',
+      config JSONB NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `;
+  await client`CREATE INDEX IF NOT EXISTS funnel_owner_id_idx ON funnel(owner_id)`;
+  await client`CREATE INDEX IF NOT EXISTS funnel_slug_idx ON funnel(slug)`;
+
+  await client`
+    CREATE TABLE IF NOT EXISTS lead (
+      id TEXT PRIMARY KEY,
+      funnel_id TEXT NOT NULL REFERENCES funnel(id) ON DELETE CASCADE,
+      name TEXT,
+      email TEXT,
+      phone TEXT,
+      business_name TEXT,
+      website_url TEXT,
+      instagram_handle TEXT,
+      gmb_url TEXT,
+      answers JSONB NOT NULL DEFAULT '{}'::jsonb,
+      scores JSONB NOT NULL DEFAULT '{}'::jsonb,
+      recommendation TEXT,
+      kalku_potential JSONB,
+      scrape_data JSONB,
+      scrape_status TEXT NOT NULL DEFAULT 'pending',
+      pdf_url TEXT,
+      source TEXT,
+      status TEXT NOT NULL DEFAULT 'new',
+      utm JSONB,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `;
+  await client`CREATE INDEX IF NOT EXISTS lead_funnel_id_idx ON lead(funnel_id)`;
+  await client`CREATE INDEX IF NOT EXISTS lead_created_at_idx ON lead(created_at DESC)`;
+
+  console.log('Funnel schema initialized (PostgreSQL)');
+}
+
 // Verify database connection
 export async function checkDb() {
   try {

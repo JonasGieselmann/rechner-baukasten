@@ -5,9 +5,10 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { toNodeHandler, fromNodeHeaders } from 'better-auth/node';
 import { auth } from './auth.js';
-import { checkDb, initAuthSchema } from './db.js';
+import { checkDb, initAuthSchema, initFunnelSchema } from './db.js';
 import customCalculatorsRouter from './custom-calculators.js';
 import adminRouter from './admin.js';
+import funnelsRouter from './funnels.js';
 import path from 'path';
 
 // ============================================
@@ -17,6 +18,10 @@ import path from 'path';
 const app = express();
 const PORT = process.env.PORT || 3001;
 const isProduction = process.env.NODE_ENV === 'production';
+
+// Behind Traefik/Dokploy reverse proxy. Required for express-rate-limit to
+// see real client IPs via X-Forwarded-For.
+app.set('trust proxy', 1);
 
 // ============================================
 // Security Middleware
@@ -177,6 +182,9 @@ app.get('/api/me', async (req, res) => {
 // Custom Calculators API
 app.use('/api/custom-calculators', customCalculatorsRouter);
 
+// Funnels API
+app.use('/api/funnels', funnelsRouter);
+
 // Admin API
 app.use('/api/admin', adminRouter);
 
@@ -240,6 +248,7 @@ async function start() {
   try {
     // Initialize database schema
     await initAuthSchema();
+    await initFunnelSchema();
 
     app.listen(PORT, () => {
       console.log(`\n🚀 Server running at http://localhost:${PORT}`);

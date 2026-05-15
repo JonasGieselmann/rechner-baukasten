@@ -6,6 +6,9 @@ import { Register } from './pages/Register';
 import { BuilderEmbed } from './pages/BuilderEmbed';
 import { CustomEmbed } from './pages/CustomEmbed';
 import { AdminUsers } from './pages/AdminUsers';
+import FunnelRunner from './pages/FunnelRunner';
+import { FunnelEditor } from './pages/FunnelEditor';
+import { FunnelLeads } from './pages/FunnelLeads';
 import { AuthProvider } from './components/AuthProvider';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -21,6 +24,7 @@ function App() {
           {/* Embed routes (public, no auth required) */}
           <Route path="/embed/:id" element={<BuilderEmbed />} />
           <Route path="/embed/custom/:slug" element={<CustomEmbed />} />
+          <Route path="/funnel/:slug" element={<FunnelRunner />} />
 
           {/* Protected routes */}
           <Route
@@ -36,6 +40,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <Editor />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/funnels/:id"
+            element={
+              <ProtectedRoute>
+                <FunnelEditor />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/funnels/:id/leads"
+            element={
+              <ProtectedRoute>
+                <FunnelLeads />
               </ProtectedRoute>
             }
           />

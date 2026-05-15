@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCalculatorStore } from '../store/calculatorStore';
+import { useFunnelStore } from '../store/funnelStore';
 import { useAuth } from '../components/AuthProvider';
 
 interface CustomCalculator {
@@ -14,7 +15,7 @@ interface CustomCalculator {
   active: boolean;
 }
 
-type TabType = 'builder' | 'custom';
+type TabType = 'builder' | 'custom' | 'funnel';
 
 // API base URL - different in dev vs production
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : '';
@@ -24,6 +25,15 @@ export function Home() {
   const { isSuperAdmin, user, logout } = useAuth();
   const { savedCalculators, loadSavedCalculators, createNewCalculator, deleteCalculator } =
     useCalculatorStore();
+  const {
+    funnels,
+    loadFunnels,
+    createFunnel,
+    deleteFunnel,
+  } = useFunnelStore();
+  const [showNewFunnelModal, setShowNewFunnelModal] = useState(false);
+  const [newFunnelName, setNewFunnelName] = useState('');
+  const [deleteFunnelConfirm, setDeleteFunnelConfirm] = useState<string | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
   const [newName, setNewName] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -46,7 +56,28 @@ export function Home() {
 
   useEffect(() => {
     loadSavedCalculators();
-  }, [loadSavedCalculators]);
+    loadFunnels().catch(() => { /* surfaced via store error path */ });
+  }, [loadSavedCalculators, loadFunnels]);
+
+  const handleCreateFunnel = async () => {
+    if (!newFunnelName.trim()) return;
+    try {
+      const id = await createFunnel(newFunnelName.trim());
+      setShowNewFunnelModal(false);
+      setNewFunnelName('');
+      navigate(`/funnels/${id}`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Funnel konnte nicht erstellt werden');
+    }
+  };
+
+  const handleDeleteFunnel = async (id: string) => {
+    try {
+      await deleteFunnel(id);
+    } finally {
+      setDeleteFunnelConfirm(null);
+    }
+  };
 
   // Load custom calculators from API
   const loadCustomCalculators = async () => {
@@ -239,6 +270,18 @@ export function Home() {
                   Hochladen
                 </button>
               )}
+              {activeTab === 'funnel' && (
+                <button
+                  onClick={() => setShowNewFunnelModal(true)}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-[#7EC8F3] text-[#0a0a0f] rounded-lg
+                             font-medium hover:bg-[#a6daff] transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Neuer Funnel
+                </button>
+              )}
 
               {/* User menu */}
               <div className="flex items-center gap-2 pl-3 border-l border-[#1a1f2e]">
@@ -292,6 +335,21 @@ export function Home() {
               {customCalculators.length > 0 && (
                 <span className="ml-2 px-1.5 py-0.5 rounded-full text-xs bg-[#1a1f2e]">
                   {customCalculators.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('funnel')}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'funnel'
+                  ? 'text-[#7EC8F3] border-[#7EC8F3]'
+                  : 'text-[#6b7a90] border-transparent hover:text-white'
+              }`}
+            >
+              Custom Funnels
+              {funnels.length > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 rounded-full text-xs bg-[#1a1f2e]">
+                  {funnels.length}
                 </span>
               )}
             </button>
@@ -842,6 +900,69 @@ export function Home() {
                 onClick={() => handleDeleteCustom(deleteCustomConfirm)}
                 className="px-5 py-2 rounded-lg bg-red-500 text-white font-medium
                            hover:bg-red-600 transition-colors"
+              >
+                Löschen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showNewFunnelModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#12121a] rounded-2xl w-full max-w-md border border-[#1f1f2e] shadow-2xl">
+            <div className="p-5 border-b border-[#1f1f2e]">
+              <h2 className="text-lg font-semibold text-white">Neuen Funnel erstellen</h2>
+            </div>
+            <div className="p-5">
+              <label className="block text-sm text-[#b8c7d9] mb-2">Name</label>
+              <input
+                type="text"
+                value={newFunnelName}
+                onChange={(e) => setNewFunnelName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateFunnel()}
+                placeholder="z.B. Potenzialanalyse"
+                className="w-full bg-[#1a1f2e] rounded-lg py-3 px-4 text-white border border-[#2a3142] focus:border-[#7EC8F3] focus:ring-1 focus:ring-[#7EC8F3]/30 outline-none transition-all"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3 justify-end p-5 border-t border-[#1f1f2e]">
+              <button onClick={() => { setShowNewFunnelModal(false); setNewFunnelName(''); }} className="px-4 py-2 rounded-lg text-[#b8c7d9] hover:text-white transition-colors">
+                Abbrechen
+              </button>
+              <button
+                onClick={handleCreateFunnel}
+                disabled={!newFunnelName.trim()}
+                className="px-5 py-2 rounded-lg bg-[#7EC8F3] text-[#0a0a0f] font-medium hover:bg-[#a6daff] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Erstellen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteFunnelConfirm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#12121a] rounded-2xl w-full max-w-sm border border-[#1f1f2e] shadow-2xl">
+            <div className="p-5">
+              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-white text-center mb-2">Funnel löschen?</h3>
+              <p className="text-[#6b7a90] text-center text-sm">
+                Funnel und alle eingesammelten Leads werden permanent gelöscht.
+              </p>
+            </div>
+            <div className="flex gap-3 justify-center p-5 border-t border-[#1f1f2e]">
+              <button onClick={() => setDeleteFunnelConfirm(null)} className="px-4 py-2 rounded-lg text-[#b8c7d9] hover:text-white transition-colors">
+                Abbrechen
+              </button>
+              <button
+                onClick={() => handleDeleteFunnel(deleteFunnelConfirm)}
+                className="px-5 py-2 rounded-lg bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
               >
                 Löschen
               </button>
