@@ -93,7 +93,7 @@ export async function loadSmtpConfig(): Promise<SmtpConfig> {
   if (!fromEmail) missing.push('smtp.fromEmail');
 
   if (missing.length > 0) {
-    throw new Error(`SMTP-Konfiguration unvollstaendig. Fehlende Felder: ${missing.join(', ')}`);
+    throw new Error(`SMTP-Konfiguration unvollständig. Fehlende Felder: ${missing.join(', ')}`);
   }
 
   return {
