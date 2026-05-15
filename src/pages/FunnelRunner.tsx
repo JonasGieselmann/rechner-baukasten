@@ -1,12 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  Radar,
-  ResponsiveContainer,
-} from 'recharts';
 import { getFunnelBySlug, submitFunnelLead } from '../lib/funnelApi';
 import type { LeadSubmission } from '../lib/funnelApi';
 import type {
@@ -386,115 +379,124 @@ function ResultSpiderStep({
   onNext: () => void;
   hasNextStep: boolean;
 }) {
-  const chartData = SPIDER_DIMENSIONS.map((d) => ({
-    subject: d.label,
-    score: scores[d.key] ?? 0,
-  }));
+  // Scale to Spinnennetz 0..10 range (scores are 0..100)
+  const spiderValues = SPIDER_DIMENSIONS.map((d) => (scores[d.key] ?? 0) / 10);
+  const spiderLabels = SPIDER_DIMENSIONS.map((d) => d.label);
 
   const kalku = step.showKalkuChart ? computeKalkuPotential(calcVars) : null;
 
   return (
-    <div className="flex flex-col gap-6">
-      {step.title && <h2 className="text-2xl font-semibold">{step.title}</h2>}
-      {step.body && <p className="text-sm opacity-70">{step.body}</p>}
+    <div className="flex flex-col gap-12 sm:gap-16">
+      {(step.title || step.body) && (
+        <header className="flex flex-col gap-2">
+          {step.title && (
+            <h2 className="text-3xl sm:text-4xl font-medium tracking-tight leading-tight">
+              {step.title}
+            </h2>
+          )}
+          {step.body && <p className="text-base opacity-70 leading-relaxed">{step.body}</p>}
+        </header>
+      )}
 
-      <div className="w-full" style={{ height: 280 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <RadarChart data={chartData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
-            <PolarGrid stroke={theme.borderColor} />
-            <PolarAngleAxis
-              dataKey="subject"
-              tick={{ fill: theme.textColor, fontSize: 11 }}
-            />
-            <Radar
-              name="Score"
-              dataKey="score"
-              stroke={theme.accentColor}
-              fill={theme.accentColor}
-              fillOpacity={0.25}
-            />
-          </RadarChart>
-        </ResponsiveContainer>
-      </div>
-
+      {/* SECTION 1: Wachstum / Mehrumsatz HERO */}
       {kalku && (
-        <div
-          className="rounded-xl border p-4"
-          style={{ borderColor: theme.borderColor, backgroundColor: theme.backgroundColor }}
-        >
-          <p className="text-sm font-medium opacity-60 mb-2">Ihr Umsatz-Potenzial</p>
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <p className="text-xs opacity-60">Aktuell / Monat</p>
-              <p className="text-lg font-semibold">{formatCurrency(kalku.aktuell)}</p>
+        <section className="flex flex-col gap-6">
+          <p className="text-xs uppercase tracking-[0.12em] opacity-50 font-semibold">
+            Ihr Wachstumspotenzial
+          </p>
+          <div className="flex flex-col gap-2">
+            <p className="text-base opacity-70">Mehrumsatz pro Monat</p>
+            <p
+              className="text-6xl sm:text-7xl font-semibold tracking-tight"
+              style={{ color: theme.accentColor }}
+            >
+              {kalku.delta > 0 ? `+${formatCurrency(kalku.delta)}` : formatCurrency(0)}
+            </p>
+          </div>
+          <div
+            className="grid grid-cols-2 gap-px rounded-2xl overflow-hidden border"
+            style={{ borderColor: theme.borderColor, backgroundColor: theme.borderColor }}
+          >
+            <div className="p-5" style={{ backgroundColor: theme.cardColor }}>
+              <p className="text-xs uppercase tracking-wider opacity-50 mb-2">Aktuell</p>
+              <p className="text-2xl font-semibold">{formatCurrency(kalku.aktuell)}</p>
+              <p className="text-xs opacity-50 mt-1">pro Monat</p>
             </div>
-            <div>
-              <p className="text-xs opacity-60">Mit Kapazität</p>
-              <p className="text-lg font-semibold">{formatCurrency(kalku.potential)}</p>
+            <div className="p-5" style={{ backgroundColor: theme.cardColor }}>
+              <p className="text-xs uppercase tracking-wider opacity-50 mb-2">Mit voller Kapazität</p>
+              <p className="text-2xl font-semibold">{formatCurrency(kalku.potential)}</p>
+              <p className="text-xs opacity-50 mt-1">pro Monat</p>
             </div>
           </div>
-          {kalku.delta > 0 && (
-            <p className="text-sm font-semibold" style={{ color: theme.accentColor }}>
-              +{formatCurrency(kalku.delta)} Mehrumsatz pro Monat möglich
-            </p>
-          )}
-        </div>
+        </section>
       )}
 
-      <div
-        className="rounded-xl border p-4"
-        style={{
-          borderColor: theme.borderColor,
-          backgroundColor: theme.backgroundColor,
-        }}
-      >
-        <p className="text-sm font-medium opacity-60 mb-1">
-          Empfehlung
+      {/* SECTION 2: Spider-Profil */}
+      <section className="flex flex-col gap-6">
+        <p className="text-xs uppercase tracking-[0.12em] opacity-50 font-semibold">
+          Ihr Profil in 8 Dimensionen
         </p>
-        <p className="text-base font-semibold">
+        <div className="w-full" style={{ height: 380 }}>
+          <Spinnennetz
+            values={spiderValues}
+            labels={spiderLabels}
+            accentColor={theme.accentColor}
+            gridColor={theme.borderColor}
+            labelColor={theme.textColor}
+            pointStrokeColor={theme.cardColor}
+            fillOpacity={0.3}
+            radius={160}
+            fontSize={11}
+            enableWiggle={false}
+          />
+        </div>
+      </section>
+
+      {/* SECTION 3: Empfehlung */}
+      <section className="flex flex-col gap-3">
+        <p className="text-xs uppercase tracking-[0.12em] opacity-50 font-semibold">
+          Unsere Empfehlung
+        </p>
+        <p className="text-lg font-medium leading-relaxed">
           {RECOMMENDATION_TEXTS[recommendation]}
         </p>
-      </div>
+        {step.cliffhanger && (
+          <p className="text-sm opacity-60 italic mt-2">{step.cliffhanger}</p>
+        )}
+      </section>
 
-      {step.cliffhanger && (
-        <p className="text-sm opacity-60 italic">{step.cliffhanger}</p>
-      )}
-
-      <p className="text-xs opacity-50">
-        Wir senden Ihnen gleich die vollständige Auswertung per E-Mail.
-      </p>
-
-      {submitError && (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs text-red-500">
-            Lead-Speicherung fehlgeschlagen, wir versuchen es nochmal
-          </p>
-          <button
-            onClick={onRetry}
-            className="text-xs underline opacity-70 self-start"
+      {/* SECTION 4: Status + CTA */}
+      <section className="flex flex-col gap-4 pt-2">
+        <p className="text-sm opacity-60">
+          Wir senden Ihnen die vollständige Auswertung als PDF an Ihre E-Mail.
+        </p>
+        {submitError && (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-red-600">
+              Speicherung fehlgeschlagen, wir versuchen es nochmal.
+            </p>
+            <button onClick={onRetry} className="text-xs underline opacity-70 self-start">
+              Erneut versuchen
+            </button>
+          </div>
+        )}
+        {submitted && !submitError && (
+          <p className="text-xs opacity-50">Auswertung gespeichert.</p>
+        )}
+        {hasNextStep ? (
+          <PrimaryButton label="Weiter" onClick={onNext} theme={theme} />
+        ) : ctaUrl ? (
+          <a
+            href={ctaUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-3 px-6 rounded-xl font-semibold text-base text-center block transition-opacity hover:opacity-90"
+            style={{ backgroundColor: theme.primaryColor, color: theme.backgroundColor }}
           >
-            Retry
-          </button>
-        </div>
-      )}
-
-      {submitted && !submitError && (
-        <p className="text-xs opacity-40">Anfrage gespeichert.</p>
-      )}
-
-      {hasNextStep ? (
-        <PrimaryButton label="Weiter" onClick={onNext} theme={theme} />
-      ) : ctaUrl ? (
-        <a
-          href={ctaUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-2 w-full py-3 px-6 rounded-xl font-semibold text-base text-center block transition-opacity hover:opacity-90"
-          style={{ backgroundColor: theme.primaryColor, color: theme.backgroundColor }}
-        >
-          Termin buchen
-        </a>
-      ) : null}
+            Strategiegespräch buchen
+          </a>
+        ) : null}
+      </section>
     </div>
   );
 }

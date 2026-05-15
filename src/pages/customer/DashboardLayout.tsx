@@ -1,12 +1,12 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../components/AuthProvider';
 import { BRAND } from '../../../branding/tokens';
 import { Wordmark } from '../../components/Wordmark';
 
 const iconBase = {
-  width: 18,
-  height: 18,
+  width: 22,
+  height: 22,
   viewBox: '0 0 24 24',
   fill: 'none',
   stroke: 'currentColor',
@@ -48,7 +48,7 @@ const AccountIcon = () => (
 );
 
 const BellIcon = () => (
-  <svg {...iconBase} aria-hidden="true">
+  <svg {...iconBase} width="18" height="18" aria-hidden="true">
     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
     <path d="M13.73 21a2 2 0 0 1-3.46 0" />
   </svg>
@@ -56,20 +56,20 @@ const BellIcon = () => (
 
 interface NavItem {
   label: string;
+  shortLabel: string;
   path: string;
   icon: ReactNode;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Übersicht', path: '/dashboard', icon: <OverviewIcon /> },
-  { label: 'Potenzialanalyse', path: '/dashboard/potenzialanalyse', icon: <PotenzialIcon /> },
-  { label: 'Leitfaden', path: '/dashboard/leitfaden', icon: <LeitfadenIcon /> },
-  { label: 'Account', path: '/dashboard/account', icon: <AccountIcon /> },
+  { label: 'Übersicht', shortLabel: 'Übersicht', path: '/dashboard', icon: <OverviewIcon /> },
+  { label: 'Potenzialanalyse', shortLabel: 'Analyse', path: '/dashboard/potenzialanalyse', icon: <PotenzialIcon /> },
+  { label: 'Leitfaden', shortLabel: 'Leitfaden', path: '/dashboard/leitfaden', icon: <LeitfadenIcon /> },
+  { label: 'Account', shortLabel: 'Account', path: '/dashboard/account', icon: <AccountIcon /> },
 ];
 
 export default function DashboardLayout() {
   const { logout, isSuperAdmin } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div
@@ -81,15 +81,6 @@ export default function DashboardLayout() {
         style={{ borderColor: BRAND.colors.border, backgroundColor: BRAND.colors.background }}
       >
         <div className="flex items-center gap-2">
-          <button
-            className="md:hidden p-1 rounded"
-            aria-label="Menü öffnen"
-            onClick={() => setSidebarOpen((v) => !v)}
-          >
-            <span className="block w-5 h-0.5 bg-current mb-1" />
-            <span className="block w-5 h-0.5 bg-current mb-1" />
-            <span className="block w-5 h-0.5 bg-current" />
-          </button>
           <Wordmark size="md" />
           <span
             className="w-1.5 h-1.5 rounded-full"
@@ -127,12 +118,9 @@ export default function DashboardLayout() {
       </header>
 
       <div className="flex flex-1 min-h-0">
+        {/* Desktop sidebar */}
         <nav
-          className={[
-            'flex-shrink-0 w-60 border-r flex flex-col pt-6 gap-1 z-20',
-            'fixed inset-y-0 left-0 transition-transform md:static md:translate-x-0',
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
-          ].join(' ')}
+          className="hidden md:flex flex-shrink-0 w-60 border-r flex-col pt-6 gap-1"
           style={{ borderColor: BRAND.colors.border, backgroundColor: BRAND.colors.background }}
         >
           {NAV_ITEMS.map((item) => (
@@ -140,7 +128,6 @@ export default function DashboardLayout() {
               key={item.path}
               to={item.path}
               end={item.path === '/dashboard'}
-              onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
                 [
                   'mx-2 px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-3',
@@ -166,21 +153,40 @@ export default function DashboardLayout() {
           ))}
         </nav>
 
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 z-10 md:hidden"
-            style={{ backgroundColor: 'rgba(15, 47, 91, 0.4)' }}
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
         <main
-          className="flex-1 p-4 sm:p-6 overflow-y-auto"
+          className="flex-1 p-4 sm:p-6 overflow-y-auto pb-24 md:pb-6"
           style={{ backgroundColor: BRAND.colors.background }}
         >
           <Outlet />
         </main>
       </div>
+
+      {/* Mobile bottom tab bar (Apple iOS style) */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-30 border-t flex items-stretch"
+        style={{
+          backgroundColor: `${BRAND.colors.background}F2`,
+          borderColor: BRAND.colors.border,
+          backdropFilter: 'saturate(180%) blur(20px)',
+          WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
+      >
+        {NAV_ITEMS.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            end={item.path === '/dashboard'}
+            className="flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-opacity"
+            style={({ isActive }) => ({
+              color: isActive ? BRAND.colors.accent : BRAND.colors.muted,
+            })}
+          >
+            {item.icon}
+            <span className="text-[11px] font-medium">{item.shortLabel}</span>
+          </NavLink>
+        ))}
+      </nav>
     </div>
   );
 }
