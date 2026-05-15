@@ -77,9 +77,14 @@ function PrimaryButton({
 }) {
   const cls =
     'mt-6 w-full py-3 px-6 rounded-xl font-semibold text-base transition-opacity hover:opacity-90 disabled:opacity-40 cursor-pointer';
-  const style = { backgroundColor: theme.primaryColor, color: theme.backgroundColor };
+  const style = {
+    backgroundColor: theme.primaryColor,
+    color: theme.backgroundColor,
+    opacity: disabled ? 0.4 : 1,
+    pointerEvents: disabled ? ('none' as const) : ('auto' as const),
+  };
 
-  if (href) {
+  if (href && !disabled) {
     return (
       <a
         href={href}
@@ -372,6 +377,8 @@ function ResultSpiderStep({
   theme,
   ctaUrl,
   calcVars,
+  onNext,
+  hasNextStep,
 }: {
   step: Extract<FunnelStep, { type: 'result-spider' }>;
   scores: DimScores;
@@ -382,6 +389,8 @@ function ResultSpiderStep({
   theme: FunnelTheme;
   ctaUrl: string;
   calcVars: CalcVarsState;
+  onNext: () => void;
+  hasNextStep: boolean;
 }) {
   const chartData = SPIDER_DIMENSIONS.map((d) => ({
     subject: d.label,
@@ -479,15 +488,19 @@ function ResultSpiderStep({
         <p className="text-xs opacity-40">Anfrage gespeichert.</p>
       )}
 
-      <a
-        href={ctaUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-2 w-full py-3 px-6 rounded-xl font-semibold text-base text-center block transition-opacity hover:opacity-90"
-        style={{ backgroundColor: theme.primaryColor, color: theme.backgroundColor }}
-      >
-        Termin buchen
-      </a>
+      {hasNextStep ? (
+        <PrimaryButton label="Weiter" onClick={onNext} theme={theme} />
+      ) : ctaUrl ? (
+        <a
+          href={ctaUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 w-full py-3 px-6 rounded-xl font-semibold text-base text-center block transition-opacity hover:opacity-90"
+          style={{ backgroundColor: theme.primaryColor, color: theme.backgroundColor }}
+        >
+          Termin buchen
+        </a>
+      ) : null}
     </div>
   );
 }
@@ -499,15 +512,22 @@ function CtaBookingStep({
   step: Extract<FunnelStep, { type: 'cta-booking' }>;
   theme: FunnelTheme;
 }) {
+  const hasUrl = Boolean(step.calendarUrl && step.calendarUrl.trim());
   return (
     <div className="flex flex-col gap-4">
       {step.title && <h2 className="text-2xl font-semibold">{step.title}</h2>}
       {step.body && <p className="text-base opacity-80">{step.body}</p>}
       <PrimaryButton
         label={step.ctaLabel ?? 'Termin buchen'}
-        href={step.calendarUrl}
+        href={hasUrl ? step.calendarUrl : undefined}
+        disabled={!hasUrl}
         theme={theme}
       />
+      {!hasUrl && (
+        <p className="text-xs opacity-60 text-center">
+          Termin-Buchung wird noch freigeschaltet. Wir melden uns per E-Mail bei Ihnen.
+        </p>
+      )}
       {step.noteUnderButton && (
         <p className="text-xs opacity-50 text-center">{step.noteUnderButton}</p>
       )}
@@ -706,6 +726,8 @@ export default function FunnelRunner() {
             theme={theme}
             ctaUrl={ctaUrl}
             calcVars={calcVars}
+            onNext={advance}
+            hasNextStep={currentStepIndex < steps.length - 1}
             onMount={handleResultMount}
           />
         );
@@ -781,6 +803,8 @@ function ResultSpiderStepWrapper({
   theme,
   ctaUrl,
   calcVars,
+  onNext,
+  hasNextStep,
   onMount,
 }: {
   step: Extract<FunnelStep, { type: 'result-spider' }>;
@@ -792,6 +816,8 @@ function ResultSpiderStepWrapper({
   theme: FunnelTheme;
   ctaUrl: string;
   calcVars: CalcVarsState;
+  onNext: () => void;
+  hasNextStep: boolean;
   onMount: () => void;
 }) {
   const fired = useRef(false);
@@ -812,6 +838,8 @@ function ResultSpiderStepWrapper({
       theme={theme}
       ctaUrl={ctaUrl}
       calcVars={calcVars}
+      onNext={onNext}
+      hasNextStep={hasNextStep}
     />
   );
 }
