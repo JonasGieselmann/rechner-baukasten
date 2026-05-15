@@ -114,6 +114,24 @@ export async function initAuthSchema() {
   `;
   await client`CREATE INDEX IF NOT EXISTS verification_identifier_idx ON verification(identifier)`;
 
+  // Create custom_calculator table for S3-backed custom calculators
+  await client`
+    CREATE TABLE IF NOT EXISTS custom_calculator (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      slug TEXT NOT NULL UNIQUE,
+      s3_prefix TEXT NOT NULL,
+      width TEXT NOT NULL DEFAULT '100%',
+      height TEXT NOT NULL DEFAULT '800px',
+      active BOOLEAN NOT NULL DEFAULT true,
+      file_count INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `;
+  await client`CREATE INDEX IF NOT EXISTS custom_calculator_slug_idx ON custom_calculator(slug)`;
+
   console.log('Auth schema initialized (PostgreSQL)');
 }
 
@@ -163,7 +181,15 @@ export async function initFunnelSchema() {
   await client`CREATE INDEX IF NOT EXISTS lead_funnel_id_idx ON lead(funnel_id)`;
   await client`CREATE INDEX IF NOT EXISTS lead_created_at_idx ON lead(created_at DESC)`;
 
+  await client`ALTER TABLE lead ADD COLUMN IF NOT EXISTS user_id TEXT REFERENCES "user"(id) ON DELETE SET NULL`;
+  await client`CREATE INDEX IF NOT EXISTS lead_user_id_idx ON lead(user_id)`;
+
   console.log('Funnel schema initialized (PostgreSQL)');
+}
+
+// Get raw postgres client for custom queries (used by custom-calculators S3 sync)
+export function getRawClient() {
+  return client;
 }
 
 // Verify database connection
@@ -206,6 +232,16 @@ export async function approveUser(userId: string): Promise<void> {
   await client`
     UPDATE "user"
     SET approved = true, updated_at = NOW()
+    WHERE id = ${validatedId}
+  `;
+}
+
+// Set a user as customer (approved, role=customer) in one statement
+export async function setUserAsCustomer(userId: string): Promise<void> {
+  const validatedId = validateUserId(userId);
+  await client`
+    UPDATE "user"
+    SET role = 'customer', approved = true, updated_at = NOW()
     WHERE id = ${validatedId}
   `;
 }

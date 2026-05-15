@@ -36,6 +36,9 @@ jobs:
             type=raw,value=latest
             type=sha,prefix=
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -43,6 +46,10 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_SHA=${{ github.sha }}
+          cache-from: type=gha,scope=buildkit-v2
+          cache-to: type=gha,mode=min,scope=buildkit-v2
 
       - name: Trigger Dokploy Deployment
         run: |

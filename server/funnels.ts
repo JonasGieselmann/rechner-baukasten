@@ -1,31 +1,13 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request } from 'express';
 import rateLimit from 'express-rate-limit';
 import { nanoid } from 'nanoid';
 import { fromNodeHeaders } from 'better-auth/node';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { auth } from './auth.js';
 import { db, schema } from './db.js';
-import { getUserById } from './db.js';
+import { requireAuth, type AuthenticatedRequest } from './middleware.js';
 
 const router = Router();
-
-interface AuthenticatedRequest<P = Record<string, string>> extends Request<P> {
-  user?: { id: string; role: string };
-}
-
-async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  try {
-    const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
-    if (!session) return res.status(401).json({ error: 'Authentication required' });
-    const user = await getUserById(session.user.id);
-    if (!user || !user.approved) return res.status(403).json({ error: 'User not approved' });
-    req.user = { id: user.id, role: user.role };
-    next();
-  } catch (err) {
-    console.error('Auth error:', err);
-    res.status(500).json({ error: 'Authentication failed' });
-  }
-}
 
 function isValidSlug(slug: string): boolean {
   return /^[a-z0-9-]+$/.test(slug) && slug.length > 0 && slug.length <= 100;
@@ -142,12 +124,16 @@ router.post('/by-slug/:slug/submit', submitLimiter, async (req: Request<{ slug: 
     const gmbUrl = sanitizeString(body.gmbUrl, 500) || null;
     const hasScrapableInput = Boolean(websiteUrl || instagramHandle || gmbUrl);
 
+    const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) }).catch(() => null);
+    const userId = session?.user?.id ?? null;
+
     const id = nanoid();
     const [inserted] = await db
       .insert(schema.lead)
       .values({
         id,
         funnelId: funnelRow.id,
+        userId,
         name: sanitizeString(body.name, 200) || null,
         email: sanitizeString(body.email, 200) || null,
         phone: sanitizeString(body.phone, 50) || null,

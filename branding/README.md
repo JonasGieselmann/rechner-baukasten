@@ -1,64 +1,71 @@
-# Kalku Funnel Branding
+# BeautyFlow Brand System
 
-Visual identity for the Kalku Funnel-Builder. This is the source of truth for
-designers, agents, and reviewers. Anything that ships on `kalku.layer-one.io`
-or in embedded funnels follows what is in this folder.
+Visual identity for the BeautyFlow customer portal (everything served at
+`/dashboard/*`, `/funnel/:slug`, and customer-facing entry pages). This is
+the source of truth. Anything that ships on a customer surface follows what
+is in this folder.
 
-> Reference image: [`reference-intro-hero.png`](./reference-intro-hero.png)
+> Reference layout: [`reference-intro-hero.png`](./reference-intro-hero.png)
+> (The reference image uses the older Du copy; the actual app uses Sie.)
 
 ---
 
 ## Voice
 
-- Cliffhanger, makes the reader curious, never overpromises.
-- Speaks Du. No corporate.
-- No em-dashes. Use commas, colons, hyphens, or new sentences.
-- Accent words in headlines can be italicized via `*asterisks*` in the funnel
-  config. The runner converts these to `<em>` with `italic font-medium`.
+- **Anrede: Sie**. Niemals Du auf Customer-Surfaces. Internal admin chrome may stay Du.
+- Cliffhanger, weckt Neugier, kein Marktgeschrei.
+- Keine Em-Dashes. Komma, Doppelpunkt, Klammern, neue Sätze.
+- Akzentwörter in Headlines kommen zwischen `*Sternchen*` im Funnel-Config-Title und werden im Frontend automatisch in Instrument Serif italic gerendert (siehe `src/lib/textFormat.tsx` und `.brand-accent` in `src/index.css`).
 
-## Color tokens
+## Farben
 
-These match `DEFAULT_FUNNEL_THEME` in `src/types/index.ts` and the default
-seed config in `scripts/seed-potenzialanalyse.ts`.
+Source of truth: [`tokens.ts`](./tokens.ts) `BRAND.colors`. Mirror in
+`src/types/index.ts` `DEFAULT_FUNNEL_THEME`.
 
-| Token             | Hex       | Role                                                  |
-| ----------------- | --------- | ----------------------------------------------------- |
-| `backgroundColor` | `#ffffff` | Page background                                       |
-| `cardColor`       | `#f7f7f8` | Step cards on white page (lead-capture, question ...) |
-| `textColor`       | `#0a0a0a` | Headlines and body                                    |
-| `primaryColor`    | `#0a0a0a` | CTAs background                                       |
-| `accentColor`     | `#7EC8F3` | Spider-web fill / stroke, success states              |
-| `borderColor`     | `#e6e8eb` | Card borders, dividers                                |
+| Token-Key      | Hex       | Rolle                                                    |
+| -------------- | --------- | -------------------------------------------------------- |
+| `background`   | `#F7FAFF` | Porzellan-Weiß, Background der Customer-Seiten           |
+| `primary`      | `#0F2F5B` | Deep Navy, Headlines, Body-Text, CTA-Background          |
+| `text`         | `#0F2F5B` | identisch mit `primary`, semantischer Alias              |
+| `accent`       | `#7EC8F3` | Light Blue, Spider-Web Fill/Stroke, Active States        |
+| `dark`         | `#04070D` | Charcoal Black, NUR Admin-Chrome, nicht auf Customer     |
+| `card`         | `#FFFFFF` | Karten-Background auf Porzellan-Seite                    |
+| `border`       | `#E0E7F2` | dezenter navy-tinted border                              |
+| `muted`        | `#5A7090` | gedämpfter Navy für Sekundärtext, Captions               |
 
-The hero on the intro-step is full-bleed on the white page, not boxed.
-Other steps render inside a `max-w-xl` card with `cardColor` background.
+CTAs auf Customer-Side: Navy-Pill (`bg: BRAND.colors.primary`, `text: BRAND.colors.background`),
+nicht Schwarz.
 
-## Typography
+## Typografie
 
-- Family: system sans-serif (inherits the Vite + Tailwind v4 default).
-- Hero headline: `text-4xl sm:text-5xl font-bold leading-[1.1] tracking-tight`.
-- Hero subline: `text-sm opacity-60` ("kostenlos in 2 Minuten" pattern).
-- Body: `text-base opacity-70 leading-relaxed`.
-- Step titles in cards: `text-2xl font-semibold`.
+Loaded in [`../index.html`](../index.html) via Google Fonts.
+
+- **Inter** (400, 500, 600, 700) für Headings (Medium) und Body (Regular)
+- **Instrument Serif** (regular + italic) für Akzentwörter in Headlines
+
+| Element        | Größe       | Gewicht / Stil                            |
+| -------------- | ----------- | ----------------------------------------- |
+| H1             | 38–44 px    | Inter Medium + Instrument Serif Italic    |
+| H2             | 28–36 px    | Inter Semibold                            |
+| H3             | 20–26 px    | Inter Semibold                            |
+| Body           | 16–18 px    | Inter Regular                             |
+| Caption / Hint | 12–14 px    | Inter Regular, `color: muted`             |
 
 ## Components
 
-### Pill CTA (black)
+### Pill CTA (Navy)
 
 ```tsx
-<button className="inline-flex items-center gap-2 px-6 py-3 rounded-full
-                   bg-black text-white text-sm font-semibold
-                   hover:bg-neutral-800 transition-colors">
+<button
+  className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+  style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
+>
   Jetzt Potenzial erkunden
   <span aria-hidden="true">↪</span>
 </button>
 ```
 
-This is the CTA on the intro hero. CTAs inside lead-capture and question
-cards use the accent-color `PrimaryButton` instead, to keep the intro
-visually special.
-
-### Spider-web (Recharts)
+### Spider-Web (Recharts)
 
 ```tsx
 <RadarChart data={data} margin={{ top: 8, right: 24, bottom: 8, left: 24 }}>
@@ -68,13 +75,11 @@ visually special.
 </RadarChart>
 ```
 
-`fillOpacity` 0.35 on the intro demo, 0.25 on the real result. The demo
-hints at the result without revealing actual scores; the result is the
-real Spider for the user.
+`fillOpacity` 0.35 auf dem Intro-Demo, 0.25 auf dem echten Result.
 
-## Spider dimensions (in clockwise order, starting at the top)
+## Spider-Dimensionen (clockwise ab oben)
 
-These must stay in sync with `SPIDER_DIMENSIONS` in `src/types/index.ts`.
+Diese acht müssen `SPIDER_DIMENSIONS` in `src/types/index.ts` exakt entsprechen.
 
 1. Social Media
 2. Website
@@ -87,24 +92,23 @@ These must stay in sync with `SPIDER_DIMENSIONS` in `src/types/index.ts`.
 
 ## Layout
 
-- Mobile first. Hero is stacked on mobile (chart appears above text), grid
-  splits into 2 columns at `md:` breakpoint (chart right, text left).
-- Step transitions: keep on the same page, no full-screen takeover.
-- Progress bar lives at the top of the viewport and uses `accentColor` fill
-  on a `borderColor` track.
+- Mobile-first. Hero auf Mobile gestackt (Chart über Text), Desktop 2 Spalten ab `md:`.
+- Step-Übergänge: kein Full-Screen-Takeover, gleiche Seite.
+- Progressbar oben mit `accent`-Fill auf `border`-Track.
 
-## Out of scope
+## Out of Scope
 
-- No dark mode in the public funnel runner. The editor (dashboard side) is
-  dark by design and is the only place where the dark Kalku chrome appears.
-- No multi-language. German only.
-- No price reveal anywhere on the funnel or in the lead-magnet PDF.
+- Kein Dark Mode auf Customer-Side. Dark Kalku-Chrome bleibt admin-only.
+- Keine Mehrsprachigkeit (nur Deutsch, Sie).
+- Keine Preisanzeige im Funnel oder im Lead-Magnet-PDF.
 
 ## Where this is enforced
 
-- `src/types/index.ts` :: `DEFAULT_FUNNEL_THEME`
-- `src/pages/FunnelRunner.tsx` :: `IntroStep`, `Card`, `PrimaryButton`,
-  `renderTitleWithItalics`
-- `scripts/seed-potenzialanalyse.ts` :: intro copy and theme
+- `tokens.ts` (this folder) – Source of Truth
+- `src/index.css` – Body-Defaults und `.brand-accent` Klasse
+- `src/types/index.ts` – `DEFAULT_FUNNEL_THEME` aus `BRAND.colors` abgeleitet
+- `src/pages/FunnelRunner.tsx` – IntroStep + Card + PrimaryButton
+- `src/pages/customer/*` – Layout, Overview, Account, Leitfaden
+- `scripts/seed-potenzialanalyse.ts` – Funnel-Copy in Sie-Form
 
-If you change any token in this README, change it in those files too.
+Wenn ein Token hier geändert wird, muss er in `tokens.ts` und `src/types/index.ts` zugleich aktualisiert werden.

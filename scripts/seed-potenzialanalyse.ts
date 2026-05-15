@@ -23,7 +23,7 @@ type QuestionDef = {
 const QUESTIONS: QuestionDef[] = [
   {
     id: 'q-social',
-    question: 'Auf welchen Plattformen postest du regelmäßig?',
+    question: 'Auf welchen Plattformen posten Sie regelmäßig?',
     dimension: 'social-media',
     options: [
       { id: 'social-0', label: 'Auf keiner', score: 0 },
@@ -35,7 +35,7 @@ const QUESTIONS: QuestionDef[] = [
   },
   {
     id: 'q-website',
-    question: 'Wie würdest du deine Website beschreiben?',
+    question: 'Wie würden Sie Ihre Website beschreiben?',
     dimension: 'website',
     options: [
       { id: 'web-none', label: 'Habe keine Website', score: 0 },
@@ -47,7 +47,7 @@ const QUESTIONS: QuestionDef[] = [
   },
   {
     id: 'q-branding',
-    question: 'Hast du ein einheitliches visuelles Auftreten (Logo, Farben, Style)?',
+    question: 'Haben Sie ein einheitliches visuelles Auftreten (Logo, Farben, Style)?',
     dimension: 'branding',
     options: [
       { id: 'br-no', label: 'Nein, gar nichts', score: 0 },
@@ -58,7 +58,7 @@ const QUESTIONS: QuestionDef[] = [
   },
   {
     id: 'q-trust',
-    question: 'Wie viele Google-/Jameda-Bewertungen hast du (Schnitt ab 4,5)?',
+    question: 'Wie viele Google- oder Jameda-Bewertungen haben Sie (Schnitt ab 4,5)?',
     dimension: 'trust',
     options: [
       { id: 'tr-0', label: 'Keine', score: 0 },
@@ -70,7 +70,7 @@ const QUESTIONS: QuestionDef[] = [
   },
   {
     id: 'q-auffindbarkeit',
-    question: 'Wirst du bei Google für deine Hauptbehandlung in deiner Stadt gefunden?',
+    question: 'Werden Sie bei Google für Ihre Hauptbehandlung in Ihrer Stadt gefunden?',
     dimension: 'auffindbarkeit',
     options: [
       { id: 'au-none', label: 'Gar nicht', score: 0 },
@@ -82,7 +82,7 @@ const QUESTIONS: QuestionDef[] = [
   },
   {
     id: 'q-umsatz',
-    question: 'Wie hoch ist dein durchschnittlicher Umsatz pro Termin?',
+    question: 'Wie hoch ist Ihr durchschnittlicher Umsatz pro Termin?',
     dimension: 'umsatzpotenzial',
     options: [
       { id: 'um-50', label: 'Unter 50 €', score: 20 },
@@ -105,7 +105,7 @@ const QUESTIONS: QuestionDef[] = [
   },
   {
     id: 'q-regional',
-    question: 'Wie groß ist dein Einzugsgebiet?',
+    question: 'Wie groß ist Ihr Einzugsgebiet?',
     dimension: 'regional',
     options: [
       { id: 'rg-dorf', label: 'Dorf unter 10k Einwohner', score: 40 },
@@ -120,12 +120,12 @@ function buildConfig() {
   return {
     theme: {
       mode: 'light' as const,
-      primaryColor: '#0a0a0a',
+      primaryColor: '#0F2F5B',
       accentColor: '#7EC8F3',
-      backgroundColor: '#ffffff',
-      cardColor: '#f7f7f8',
-      textColor: '#0a0a0a',
-      borderColor: '#e6e8eb',
+      backgroundColor: '#F7FAFF',
+      cardColor: '#FFFFFF',
+      textColor: '#0F2F5B',
+      borderColor: '#E0E7F2',
     },
     settings: {
       progressBar: true,
@@ -135,17 +135,17 @@ function buildConfig() {
       {
         id: 'intro',
         type: 'intro',
-        title: 'Sieh dein Profil in 8 *Dimensionen*',
-        body: 'Wir messen acht Bereiche, die zusammen darüber entscheiden, wie planbar deine Praxis wächst. Du siehst dein Profil sofort als Spinnennetz, verständlich und ohne Fachjargon. So weißt du, wo dein nächster Hebel liegt.',
+        title: 'Sehen Sie Ihr Profil in 8 *Dimensionen*',
+        body: 'Wir messen acht Bereiche, die zusammen darüber entscheiden, wie planbar Ihre Praxis wächst. Sie sehen Ihr Profil sofort als Spinnennetz, verständlich und ohne Fachjargon. So wissen Sie, wo Ihr nächster Hebel liegt.',
         ctaLabel: 'Jetzt Potenzial erkunden',
       },
       {
         id: 'lead',
         type: 'lead-capture',
-        title: 'Damit wir parallel deine Sichtbarkeit prüfen können',
-        body: 'Wir analysieren deine Website live im Hintergrund, das spart dir Tipparbeit.',
+        title: 'Damit wir parallel Ihre Sichtbarkeit prüfen können',
+        body: 'Wir analysieren Ihre Website live im Hintergrund, das spart Ihnen Tipparbeit.',
         fields: [
-          { key: 'name', label: 'Dein Name', required: true },
+          { key: 'name', label: 'Ihr Name', required: true },
           { key: 'email', label: 'E-Mail', required: true },
           { key: 'phone', label: 'Telefon', required: false },
           { key: 'businessName', label: 'Praxisname', required: true },
@@ -167,7 +167,7 @@ function buildConfig() {
       {
         id: 'calc-termine',
         type: 'calc-input',
-        title: 'Wie viele Termine pro Woche behandelst du aktuell?',
+        title: 'Wie viele Termine pro Woche behandeln Sie aktuell?',
         label: 'Termine pro Woche',
         variableName: 'terminePerWeek',
         inputType: 'slider',
@@ -179,7 +179,7 @@ function buildConfig() {
       {
         id: 'calc-umsatz',
         type: 'calc-input',
-        title: 'Dein durchschnittlicher Umsatz pro Termin',
+        title: 'Ihr durchschnittlicher Umsatz pro Termin',
         label: 'Umsatz pro Termin',
         variableName: 'umsatzProTermin',
         inputType: 'number',
@@ -203,16 +203,16 @@ function buildConfig() {
       {
         id: 'result',
         type: 'result-spider',
-        title: 'Deine Potenzialanalyse',
-        body: 'Hier ist deine Auswertung. Die volle Version kommt gleich per Mail.',
+        title: 'Ihre Potenzialanalyse',
+        body: 'Hier ist Ihre Auswertung. Die vollständige Version erhalten Sie gleich per E-Mail.',
         showKalkuChart: true,
-        cliffhanger: 'Deine schwächste Säule ist der größte Hebel. Im Strategiegespräch zeigen wir dir den Plan dazu.',
+        cliffhanger: 'Ihre schwächste Säule ist der größte Hebel. Im Strategiegespräch zeigen wir Ihnen den Plan dazu.',
       },
       {
         id: 'cta',
         type: 'cta-booking',
         title: 'Bereit für den nächsten Schritt?',
-        body: 'Im Strategiegespräch leiten wir aus deinem Spider-Web einen konkreten Plan ab. Keine Verkaufsmasche, kein Druck.',
+        body: 'Im Strategiegespräch leiten wir aus Ihrem Spider-Web einen konkreten Plan ab. Keine Verkaufsmasche, kein Druck.',
         ctaLabel: 'Strategiegespräch buchen',
         calendarUrl: '',
       },

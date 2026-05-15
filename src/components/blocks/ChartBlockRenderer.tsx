@@ -147,10 +147,11 @@ export function ChartBlockRenderer({ block }: Props) {
     const labels = generateXLabels(xAxisType, xAxisCount);
 
     // Generate data points - linear growth from 0 to final value
+    // Final point (i = xAxisCount - 1) will equal the entered value
     return labels.map((label, i) => ({
       label,
-      before: Math.round(beforeValue * ((i + 1) / xAxisCount) * xAxisCount),
-      after: Math.round(afterValue * ((i + 1) / xAxisCount) * xAxisCount),
+      before: Math.round(beforeValue * ((i + 1) / xAxisCount)),
+      after: Math.round(afterValue * ((i + 1) / xAxisCount)),
     }));
   }, [block.dataFormula, xAxisType, xAxisCount, evaluate, variables]);
 
@@ -159,7 +160,7 @@ export function ChartBlockRenderer({ block }: Props) {
       <h3 className="text-lg font-semibold mb-4 text-white">{block.title}</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <AreaChart data={data} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
             <defs>
               <linearGradient id={`colorAfter-${block.id}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#7EC8F3" stopOpacity={0.4} />
@@ -175,6 +176,7 @@ export function ChartBlockRenderer({ block }: Props) {
               dataKey="label"
               stroke="#6b7a90"
               tick={{ fill: '#6b7a90', fontSize: 12 }}
+              padding={{ left: 20, right: 20 }}
             />
             <YAxis
               stroke="#6b7a90"
@@ -190,6 +192,7 @@ export function ChartBlockRenderer({ block }: Props) {
                   format={yAxisFormat}
                 />
               }
+              cursor={{ stroke: '#2a3142', strokeWidth: 1, strokeDasharray: '5 5' }}
             />
             <Legend
               formatter={(value) => (
@@ -204,6 +207,7 @@ export function ChartBlockRenderer({ block }: Props) {
               stroke="#6b7a90"
               strokeWidth={2}
               fill={`url(#colorBefore-${block.id})`}
+              activeDot={{ r: 6, strokeWidth: 2, stroke: '#6b7a90', fill: '#1a1f2e' }}
             />
             <Area
               type="monotone"
@@ -211,6 +215,7 @@ export function ChartBlockRenderer({ block }: Props) {
               stroke="#7EC8F3"
               strokeWidth={2}
               fill={`url(#colorAfter-${block.id})`}
+              activeDot={{ r: 6, strokeWidth: 2, stroke: '#7EC8F3', fill: '#1a1f2e' }}
             />
           </AreaChart>
         </ResponsiveContainer>

@@ -3,13 +3,17 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { toNodeHandler, fromNodeHeaders } from 'better-auth/node';
+import { toNodeHandler } from 'better-auth/node';
 import { auth } from './auth.js';
 import { checkDb, initAuthSchema, initFunnelSchema } from './db.js';
-import customCalculatorsRouter from './custom-calculators.js';
+import customCalculatorsRouter, { seedCustomCalculators } from './custom-calculators.js';
 import adminRouter from './admin.js';
 import funnelsRouter from './funnels.js';
+import meRouter from './me.js';
+import { getFromS3, isS3Configured } from './s3.js';
+import { Readable } from 'stream';
 import path from 'path';
+import fs from 'fs';
 
 // ============================================
 // App Configuration
@@ -125,59 +129,21 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // API Routes
 // ============================================
 
-// Health check endpoint - simplified for production
+// Health check endpoint with build version for deploy verification
 app.get('/api/health', async (req, res) => {
   try {
     const dbOk = await checkDb();
-    // In production, don't reveal detailed status
-    if (isProduction) {
-      res.json({ status: dbOk ? 'ok' : 'error' });
-    } else {
-      res.json({
-        status: dbOk ? 'ok' : 'error',
-        timestamp: new Date().toISOString(),
-        database: dbOk ? 'connected' : 'disconnected',
-      });
-    }
+    res.json({
+      status: dbOk ? 'ok' : 'error',
+      build: process.env.BUILD_SHA?.slice(0, 7) || 'unknown',
+    });
   } catch {
     res.status(500).json({ status: 'error' });
   }
 });
 
-// Get current user session with extended user data
-app.get('/api/me', async (req, res) => {
-  try {
-    const session = await auth.api.getSession({
-      headers: fromNodeHeaders(req.headers),
-    });
-    if (!session) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    // Get extended user data with role and approved status
-    const { getUserById } = await import('./db.js');
-    const extendedUser = await getUserById(session.user.id);
-
-    // Return only necessary user data (don't expose internal fields)
-    res.json({
-      session: {
-        id: session.session.id,
-        expiresAt: session.session.expiresAt,
-      },
-      user: {
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email,
-        image: session.user.image,
-        role: extendedUser?.role || 'user',
-        approved: extendedUser?.approved ?? false,
-      },
-    });
-  } catch (error) {
-    console.error('Session error:', error);
-    res.status(500).json({ error: 'Request failed' });
-  }
-});
+// Me (self-service) API: GET (session+user), PATCH (profile), GET /leads
+app.use('/api/me', meRouter);
 
 // Custom Calculators API
 app.use('/api/custom-calculators', customCalculatorsRouter);
@@ -198,18 +164,76 @@ if (isProduction) {
     dotfiles: 'deny' as const, // Don't serve hidden files
     index: false, // Don't serve directory indexes
     maxAge: '1d', // Cache for 1 day
+    setHeaders: (res: express.Response, filePath: string) => {
+      // HTML files: no-cache (always revalidate so new deploys take effect)
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache');
+      }
+    },
   };
 
-  // Serve public folder (custom calculators)
-  app.use(express.static(path.join(process.cwd(), 'public'), staticOptions));
+  // Serve custom calculator files: local dist/ first (bundled), S3 fallback (dynamic uploads)
+  app.get('/custom-calculators/:slug/{*filePath}', async (req, res, next) => {
+    const { slug } = req.params;
+    const rawFilePath = (req.params as Record<string, unknown>).filePath;
+    const filePath = Array.isArray(rawFilePath) ? rawFilePath.join('/') : String(rawFilePath || 'index.html');
+
+    // Validate slug
+    if (!/^[a-z0-9-]+$/.test(slug) || slug.length > 100) {
+      return next();
+    }
+
+    // Prevent path traversal
+    if (filePath.includes('..') || filePath.startsWith('/')) {
+      return next();
+    }
+
+    // Priority 1: Serve from dist/ (bundled calculators - always up-to-date from Docker build)
+    const localPath = path.join(process.cwd(), 'dist', 'custom-calculators', slug, filePath);
+    if (fs.existsSync(localPath)) {
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache');
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+      return res.sendFile(localPath);
+    }
+
+    // Priority 2: Serve from S3 (dynamically uploaded calculators)
+    if (isS3Configured()) {
+      try {
+        const s3Key = `calculators/${slug}/${filePath}`;
+        const { body, contentType } = await getFromS3(s3Key);
+
+        if (body) {
+          res.setHeader('Content-Type', contentType);
+          if (filePath.endsWith('.html') || filePath === 'index.html') {
+            res.setHeader('Cache-Control', 'no-cache');
+          } else {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          }
+          const readable = body as unknown as Readable;
+          readable.pipe(res);
+          return;
+        }
+      } catch (error: unknown) {
+        const s3Error = error as { name?: string };
+        if (s3Error.name !== 'NoSuchKey') {
+          console.error('S3 serve error:', error);
+        }
+      }
+    }
+
+    next();
+  });
 
   // Serve built frontend
   app.use(express.static(path.join(process.cwd(), 'dist'), staticOptions));
 
   // SPA fallback - serve index.html for all non-API routes
   app.get('/{*splat}', (req, res) => {
-    // Don't serve index.html for custom calculator routes or API routes
-    if (req.path.startsWith('/custom-calculators/') || req.path.startsWith('/api/')) {
+    // Don't serve index.html for API routes
+    if (req.path.startsWith('/api/')) {
       res.status(404).json({ error: 'Not found' });
       return;
     }
@@ -249,6 +273,13 @@ async function start() {
     // Initialize database schema
     await initAuthSchema();
     await initFunnelSchema();
+
+    // Seed custom calculators to S3 (non-fatal - server starts even if S3 fails)
+    try {
+      await seedCustomCalculators();
+    } catch (seedError) {
+      console.error('S3 seeding failed (non-fatal, server continues):', seedError);
+    }
 
     app.listen(PORT, () => {
       console.log(`\n🚀 Server running at http://localhost:${PORT}`);

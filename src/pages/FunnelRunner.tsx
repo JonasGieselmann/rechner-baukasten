@@ -22,6 +22,7 @@ import {
   RECOMMENDATION_TEXTS,
 } from '../engine/score';
 import type { DimScores, RecommendationKey } from '../engine/score';
+import { renderTitleWithItalics } from '../lib/textFormat';
 
 type LeadState = Partial<Record<LeadField, string>>;
 type AnswersState = Record<string, string[]>;
@@ -74,8 +75,8 @@ function PrimaryButton({
   href?: string;
 }) {
   const cls =
-    'mt-6 w-full py-3 px-6 rounded-xl font-semibold text-white text-base transition-opacity disabled:opacity-40 cursor-pointer';
-  const style = { backgroundColor: theme.accentColor };
+    'mt-6 w-full py-3 px-6 rounded-xl font-semibold text-base transition-opacity hover:opacity-90 disabled:opacity-40 cursor-pointer';
+  const style = { backgroundColor: theme.primaryColor, color: theme.backgroundColor };
 
   if (href) {
     return (
@@ -121,7 +122,7 @@ function IntroStep({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
       <div className="flex flex-col gap-4 order-2 md:order-1">
         {rendered && (
-          <h1 className="text-4xl sm:text-5xl font-bold leading-[1.1] tracking-tight">
+          <h1 className="text-4xl sm:text-5xl font-medium leading-[1.1] tracking-tight">
             {rendered}
           </h1>
         )}
@@ -130,7 +131,8 @@ function IntroStep({
         <div className="mt-2">
           <button
             onClick={onNext}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-black text-white text-sm font-semibold hover:bg-neutral-800 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+            style={{ backgroundColor: theme.primaryColor, color: theme.backgroundColor }}
           >
             {step.ctaLabel ?? 'Jetzt Potenzial erkunden'}
             <span aria-hidden="true">↪</span>
@@ -160,18 +162,6 @@ function IntroStep({
   );
 }
 
-// Renders text with *asterisks* converted to <em> for italic accent words.
-function renderTitleWithItalics(title?: string): React.ReactNode {
-  if (!title) return null;
-  const parts = title.split(/(\*[^*]+\*)/g).filter(Boolean);
-  return parts.map((p, i) =>
-    p.startsWith('*') && p.endsWith('*') ? (
-      <em key={i} className="italic font-medium">{p.slice(1, -1)}</em>
-    ) : (
-      <span key={i}>{p}</span>
-    ),
-  );
-}
 
 function LeadCaptureStep({
   step,
@@ -285,7 +275,7 @@ function QuestionStep({
               style={{
                 backgroundColor: active ? theme.accentColor : theme.cardColor,
                 borderColor: active ? theme.accentColor : theme.borderColor,
-                color: active ? '#ffffff' : theme.textColor,
+                color: active ? theme.backgroundColor : theme.textColor,
               }}
             >
               {opt.label}
@@ -428,7 +418,7 @@ function ResultSpiderStep({
           className="rounded-xl border p-4"
           style={{ borderColor: theme.borderColor, backgroundColor: theme.backgroundColor }}
         >
-          <p className="text-sm font-medium opacity-60 mb-2">Dein Umsatz-Potential</p>
+          <p className="text-sm font-medium opacity-60 mb-2">Ihr Umsatz-Potenzial</p>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <p className="text-xs opacity-60">Aktuell / Monat</p>
@@ -467,7 +457,7 @@ function ResultSpiderStep({
       )}
 
       <p className="text-xs opacity-50">
-        Wir senden dir gleich die vollstaendige Auswertung per Mail.
+        Wir senden Ihnen gleich die vollständige Auswertung per E-Mail.
       </p>
 
       {submitError && (
@@ -492,8 +482,8 @@ function ResultSpiderStep({
         href={ctaUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-2 w-full py-3 px-6 rounded-xl font-semibold text-white text-base text-center block transition-opacity"
-        style={{ backgroundColor: theme.accentColor }}
+        className="mt-2 w-full py-3 px-6 rounded-xl font-semibold text-base text-center block transition-opacity hover:opacity-90"
+        style={{ backgroundColor: theme.primaryColor, color: theme.backgroundColor }}
       >
         Termin buchen
       </a>
@@ -760,7 +750,7 @@ export default function FunnelRunner() {
             className="text-sm opacity-50 hover:opacity-80 transition-opacity"
             style={{ color: theme.textColor }}
           >
-            &larr; Zurueck
+            &larr; Zurück
           </button>
         </div>
       )}

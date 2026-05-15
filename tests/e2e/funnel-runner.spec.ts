@@ -4,20 +4,21 @@ import postgres from 'postgres';
 
 const SLUG = 'e2e-funnel-runner';
 const USER_ID = 'e2e-user';
+const BRAND_THEME = {
+  mode: 'light',
+  primaryColor: '#0F2F5B',
+  accentColor: '#7EC8F3',
+  backgroundColor: '#F7FAFF',
+  cardColor: '#FFFFFF',
+  textColor: '#0F2F5B',
+  borderColor: '#E0E7F2',
+};
+
 const FUNNEL_CONFIG = {
-  theme: {
-    mode: 'light',
-    primaryColor: '#0a0a0a',
-    accentColor: '#7EC8F3',
-    backgroundColor: '#ffffff',
-    cardColor: '#f7f7f8',
-    textColor: '#0a0a0a',
-    borderColor: '#e6e8eb',
-  },
+  theme: BRAND_THEME,
   settings: {
     progressBar: true,
     ctaCalendarUrl: 'https://cal.com/test',
-    submitWebhookUrl: '',
   },
   steps: [
     {
@@ -52,7 +53,7 @@ const FUNNEL_CONFIG = {
     {
       id: 's4',
       type: 'result-spider',
-      title: 'Dein Ergebnis',
+      title: 'Ihr Ergebnis',
       body: '',
       showKalkuChart: false,
       cliffhanger: '',
@@ -173,7 +174,7 @@ test('should complete funnel flow and persist lead in database', async ({ page }
   await expect(page.getByText('Frage 1')).toBeVisible();
   await page.getByRole('button', { name: 'Antwort A' }).click();
 
-  await expect(page.getByText('Dein Ergebnis')).toBeVisible();
+  await expect(page.getByText('Ihr Ergebnis')).toBeVisible();
 
   await expect(page.locator('svg').first()).toBeVisible({ timeout: 5000 });
 
@@ -197,24 +198,16 @@ const FULL_SLUG = 'e2e-funnel-full';
 let fullFunnelId: string;
 
 const FULL_CONFIG = {
-  theme: {
-    mode: 'light',
-    primaryColor: '#0a0a0a',
-    accentColor: '#7EC8F3',
-    backgroundColor: '#ffffff',
-    cardColor: '#f7f7f8',
-    textColor: '#0a0a0a',
-    borderColor: '#e6e8eb',
-  },
+  theme: BRAND_THEME,
   settings: { progressBar: true, ctaCalendarUrl: 'https://cal.com/test-full' },
   steps: [
-    { id: 'i1', type: 'intro', title: 'Sieh dein Profil in 8 *Dimensionen*', body: 'Mini analyse.', ctaLabel: 'Jetzt Potenzial erkunden' },
+    { id: 'i1', type: 'intro', title: 'Sehen Sie Ihr Profil in 8 *Dimensionen*', body: 'Mini Analyse.', ctaLabel: 'Jetzt Potenzial erkunden' },
     { id: 'l1', type: 'lead-capture', title: 'Daten', fields: [{ key: 'name', label: 'Name', required: true }, { key: 'email', label: 'Mail', required: true }], ctaLabel: 'Weiter' },
-    { id: 'q1', type: 'question', question: 'Wie viele Bewertungen?', dimension: 'trust', options: [{ id: 't0', label: 'Keine', score: 0 }, { id: 't1', label: 'Viele', score: 100 }], required: true },
+    { id: 'q1', type: 'question', question: 'Wie viele Bewertungen haben Sie?', dimension: 'trust', options: [{ id: 't0', label: 'Keine', score: 0 }, { id: 't1', label: 'Viele', score: 100 }], required: true },
     { id: 'c1', type: 'calc-input', title: 'Termine pro Woche', label: 'Termine pro Woche', variableName: 'terminePerWeek', inputType: 'number', defaultValue: 20, min: 0, max: 200 },
     { id: 'c2', type: 'calc-input', title: 'Umsatz pro Termin', label: 'Umsatz pro Termin', variableName: 'umsatzProTermin', inputType: 'number', defaultValue: 100, min: 0, max: 1000, suffix: '€' },
     { id: 'c3', type: 'calc-input', title: 'Kapazität pro Woche', label: 'Kapazität pro Woche', variableName: 'kapazitaetPerWeek', inputType: 'number', defaultValue: 40, min: 0, max: 200 },
-    { id: 'r1', type: 'result-spider', title: 'Dein Ergebnis', showKalkuChart: true, cliffhanger: '' },
+    { id: 'r1', type: 'result-spider', title: 'Ihr Ergebnis', showKalkuChart: true, cliffhanger: '' },
     { id: 'cta1', type: 'cta-booking', title: 'Termin buchen', body: 'Lass uns reden.', ctaLabel: 'Strategiegespraech buchen', calendarUrl: 'https://cal.com/test-full' },
   ],
 };
@@ -244,8 +237,9 @@ test('full path: hero with italic accent, calc-input, Kalku block, CTA, kalkuPot
   // Hero renders the italicized accent word
   const italicAccent = page.locator('em', { hasText: 'Dimensionen' });
   await expect(italicAccent).toBeVisible();
+  await page.screenshot({ path: 'test-results/funnel-runner-full/1-hero.png', fullPage: true });
 
-  // CTA on the hero is the black pill with the brand label
+  // CTA on the hero is the Navy pill with the brand label
   await page.getByRole('button', { name: 'Jetzt Potenzial erkunden' }).click();
 
   // Lead-capture
@@ -262,9 +256,10 @@ test('full path: hero with italic accent, calc-input, Kalku block, CTA, kalkuPot
   }
 
   // Result step: Kalku block and recommendation present
-  await expect(page.getByText('Dein Umsatz-Potential')).toBeVisible();
+  await expect(page.getByText('Ihr Umsatz-Potenzial')).toBeVisible();
   await expect(page.getByText('Mehrumsatz pro Monat')).toBeVisible();
   await expect(page.getByText(/Skalierungsliga|Fundament|automatische Buchungen|qualifizierte Leads/)).toBeVisible();
+  await page.screenshot({ path: 'test-results/funnel-runner-full/2-result.png', fullPage: true });
 
   // Submit fired, lead in DB with kalkuPotential
   await page.waitForTimeout(1500);

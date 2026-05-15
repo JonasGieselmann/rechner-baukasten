@@ -1,6 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { db, schema, trySetFirstUserAsSuperAdmin } from './db.js';
+import { db, schema, trySetFirstUserAsSuperAdmin, setUserAsCustomer } from './db.js';
 
 // ============================================
 // Security Configuration
@@ -71,11 +71,12 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
-          // Atomically try to set this user as super_admin if no super_admin exists
-          // This prevents race conditions when multiple users register simultaneously
           const wasPromoted = await trySetFirstUserAsSuperAdmin(user.id);
           if (wasPromoted) {
             console.log(`First user ${user.email} set as super_admin (auto-approved)`);
+          } else {
+            await setUserAsCustomer(user.id);
+            console.log(`User ${user.email} auto-approved as customer`);
           }
         },
       },

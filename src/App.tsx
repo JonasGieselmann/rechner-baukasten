@@ -9,8 +9,15 @@ import { AdminUsers } from './pages/AdminUsers';
 import FunnelRunner from './pages/FunnelRunner';
 import { FunnelEditor } from './pages/FunnelEditor';
 import { FunnelLeads } from './pages/FunnelLeads';
+import DashboardLayout from './pages/customer/DashboardLayout';
+import Overview from './pages/customer/Overview';
+import PotenzialanalyseEmbed from './pages/customer/PotenzialanalyseEmbed';
+import Leitfaden from './pages/customer/Leitfaden';
+import Account from './pages/customer/Account';
 import { AuthProvider } from './components/AuthProvider';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { AdminRoute } from './components/AdminRoute';
+import { IndexRedirect } from './components/IndexRedirect';
 
 function App() {
   return (
@@ -26,45 +33,63 @@ function App() {
           <Route path="/embed/custom/:slug" element={<CustomEmbed />} />
           <Route path="/funnel/:slug" element={<FunnelRunner />} />
 
-          {/* Protected routes */}
+          {/* Root: role-based redirect to /admin or /dashboard */}
+          <Route path="/" element={<IndexRedirect />} />
+
+          {/* Customer dashboard */}
           <Route
-            path="/"
+            path="/dashboard"
             element={
               <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Overview />} />
+            <Route path="potenzialanalyse" element={<PotenzialanalyseEmbed />} />
+            <Route path="leitfaden" element={<Leitfaden />} />
+            <Route path="account" element={<Account />} />
+          </Route>
+
+          {/* Admin (super_admin only): old calculator builder + funnel editor */}
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
                 <Home />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/editor/:id"
-            element={
-              <ProtectedRoute>
-                <Editor />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/funnels/:id"
-            element={
-              <ProtectedRoute>
-                <FunnelEditor />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/funnels/:id/leads"
-            element={
-              <ProtectedRoute>
-                <FunnelLeads />
-              </ProtectedRoute>
+              </AdminRoute>
             }
           />
           <Route
             path="/admin/users"
             element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <AdminUsers />
-              </ProtectedRoute>
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/editor/:id"
+            element={
+              <AdminRoute>
+                <Editor />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/funnels/:id"
+            element={
+              <AdminRoute>
+                <FunnelEditor />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/funnels/:id/leads"
+            element={
+              <AdminRoute>
+                <FunnelLeads />
+              </AdminRoute>
             }
           />
 
