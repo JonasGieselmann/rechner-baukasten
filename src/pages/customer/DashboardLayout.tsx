@@ -16,7 +16,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 export default function DashboardLayout() {
-  const { logout } = useAuth();
+  const { logout, isSuperAdmin } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -47,13 +47,25 @@ export default function DashboardLayout() {
             aria-hidden="true"
           />
         </div>
-        <button
-          onClick={logout}
-          className="text-sm px-3 py-1.5 rounded-full border transition-colors hover:opacity-70"
-          style={{ borderColor: BRAND.colors.border }}
-        >
-          Abmelden
-        </button>
+        <div className="flex items-center gap-2">
+          {isSuperAdmin && (
+            <NavLink
+              to="/admin"
+              className="text-sm px-3 py-1.5 rounded-full border transition-colors hover:opacity-70"
+              style={{ borderColor: BRAND.colors.border, color: BRAND.colors.text }}
+              title="Zurück zur Admin-Ansicht"
+            >
+              ← Admin
+            </NavLink>
+          )}
+          <button
+            onClick={logout}
+            className="text-sm px-3 py-1.5 rounded-full border transition-colors hover:opacity-70"
+            style={{ borderColor: BRAND.colors.border }}
+          >
+            Abmelden
+          </button>
+        </div>
       </header>
 
       <div className="flex flex-1 min-h-0">
