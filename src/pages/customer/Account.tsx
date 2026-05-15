@@ -70,8 +70,8 @@ function ProfileCard() {
       <button
         onClick={handleSave}
         disabled={saving}
-        className="inline-flex items-center px-5 py-2 rounded-full text-sm font-semibold transition-colors hover:bg-neutral-800 disabled:opacity-40"
-        style={{ backgroundColor: BRAND.colors.primary, color: '#ffffff' }}
+        className="inline-flex items-center px-5 py-2 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
+        style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
       >
         {saving ? 'Speichern...' : 'Speichern'}
       </button>
@@ -169,8 +169,8 @@ function PasswordCard() {
       <button
         onClick={handleSubmit}
         disabled={saving}
-        className="inline-flex items-center px-5 py-2 rounded-full text-sm font-semibold transition-colors hover:bg-neutral-800 disabled:opacity-40"
-        style={{ backgroundColor: BRAND.colors.primary, color: '#ffffff' }}
+        className="inline-flex items-center px-5 py-2 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
+        style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
       >
         {saving ? 'Speichern...' : 'Passwort ändern'}
       </button>

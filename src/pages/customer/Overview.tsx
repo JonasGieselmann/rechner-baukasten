@@ -14,8 +14,8 @@ function PillCTA({ label, to }: { label: string; to: string }) {
   return (
     <Link
       to={to}
-      className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition-colors hover:bg-neutral-800"
-      style={{ backgroundColor: BRAND.colors.primary, color: '#ffffff' }}
+      className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+      style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
     >
       {label}
       <span aria-hidden="true">&#x21AA;</span>
@@ -50,7 +50,7 @@ export default function Overview() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="text-3xl font-bold" style={{ color: BRAND.colors.text }}>
+      <h1 className="text-4xl font-medium" style={{ color: BRAND.colors.text }}>
         {renderTitleWithItalics(displayName ? `Willkommen *zurück*, ${displayName}` : 'Willkommen *zurück*')}
       </h1>
 
@@ -58,8 +58,8 @@ export default function Overview() {
         className="rounded-2xl border p-6"
         style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
       >
-        <h2 className="text-lg font-semibold mb-4" style={{ color: BRAND.colors.text }}>
-          Deine letzte Auswertung
+        <h2 className="text-xl font-semibold mb-4" style={{ color: BRAND.colors.text }}>
+          Ihre letzte Auswertung
         </h2>
 
         {loading && (
@@ -69,7 +69,7 @@ export default function Overview() {
         {!loading && empty && (
           <div className="space-y-4">
             <p className="text-sm opacity-70" style={{ color: BRAND.colors.text }}>
-              Noch keine Analyse. Starte sie unter Potenzialanalyse.
+              Noch keine Analyse. Starten Sie unter Potenzialanalyse.
             </p>
             <PillCTA label="Zur Potenzialanalyse" to="/dashboard/potenzialanalyse" />
           </div>

@@ -39,8 +39,8 @@ test.afterAll(async () => {
 test('registration auto-approves as customer and redirects to /dashboard', async ({ page }: { page: Page }) => {
   await page.goto('/register');
 
-  await page.getByPlaceholder('Dein Name').fill(TEST_NAME);
-  await page.getByPlaceholder('deine@email.de').fill(TEST_EMAIL);
+  await page.getByPlaceholder('Ihr Name').fill(TEST_NAME);
+  await page.getByPlaceholder('ihre@email.de').fill(TEST_EMAIL);
   await page.getByPlaceholder('Mindestens 8 Zeichen').fill(TEST_PASSWORD);
   await page.getByPlaceholder('Passwort wiederholen').fill(TEST_PASSWORD);
 

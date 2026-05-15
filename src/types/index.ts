@@ -306,7 +306,7 @@ export const SPIDER_DIMENSIONS: { key: SpiderDimension; label: string }[] = [
 ];
 
 export const DEFAULT_LEAD_FIELDS: { key: LeadField; label: string; required: boolean }[] = [
-  { key: 'name', label: 'Dein Name', required: true },
+  { key: 'name', label: 'Ihr Name', required: true },
   { key: 'email', label: 'E-Mail', required: true },
   { key: 'phone', label: 'Telefon', required: false },
   { key: 'businessName', label: 'Praxisname', required: true },

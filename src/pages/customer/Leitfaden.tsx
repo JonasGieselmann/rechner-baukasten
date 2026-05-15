@@ -17,8 +17,8 @@ export default function Leitfaden() {
           href="https://beauty-flow.de/blueprint"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition-colors hover:bg-neutral-800"
-          style={{ backgroundColor: BRAND.colors.primary, color: '#ffffff' }}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+          style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
         >
           Vorab herunterladen
           <span aria-hidden="true">&#x21AA;</span>

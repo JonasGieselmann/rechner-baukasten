@@ -38,10 +38,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
           className="rounded-2xl border p-8 max-w-md w-full text-center"
           style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
         >
-          <h1 className="text-xl font-bold mb-2">Genehmigung ausstehend</h1>
+          <h1 className="text-xl font-semibold mb-2">Genehmigung ausstehend</h1>
           <p className="opacity-70 mb-6">
-            Dein Konto wartet auf die Genehmigung durch einen Administrator.
-            Du wirst benachrichtigt, sobald dein Konto freigeschaltet wurde.
+            Ihr Konto wartet auf die Genehmigung durch einen Administrator.
+            Sie werden benachrichtigt, sobald Ihr Konto freigeschaltet wurde.
           </p>
           <div
             className="p-4 rounded-xl mb-6"
@@ -54,7 +54,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
           <button
             onClick={logout}
             className="w-full py-3 px-4 rounded-full font-medium transition-opacity hover:opacity-90"
-            style={{ backgroundColor: BRAND.colors.primary, color: '#ffffff' }}
+            style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
           >
             Abmelden
           </button>
