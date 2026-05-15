@@ -24,6 +24,7 @@ import {
 import type { DimScores, RecommendationKey } from '../engine/score';
 import { renderTitleWithItalics } from '../lib/textFormat';
 import { formatCurrency } from '../engine/formula';
+import { Spinnennetz } from '../components/Spinnennetz';
 
 type LeadState = Partial<Record<LeadField, string>>;
 type AnswersState = Record<string, string[]>;
@@ -115,12 +116,10 @@ function IntroStep({
   theme: FunnelTheme;
   onNext: () => void;
 }) {
-  // Demo profile that hints at the result without revealing scores.
-  // Wave shape per brand reference, not a flat circle.
-  const demoData = SPIDER_DIMENSIONS.map((d, i) => ({
-    subject: d.label,
-    score: [55, 70, 65, 50, 48, 80, 60, 75][i] ?? 60,
-  }));
+  // Demo profile values (0..10 scale) for the Spinnennetz hero preview.
+  // Wave shape, not a flat circle, hints at the result without revealing it.
+  const demoValues = [7.5, 6.5, 5.0, 8.0, 4.5, 7.0, 6.0, 5.5];
+  const demoLabels = SPIDER_DIMENSIONS.map((d) => d.label);
 
   const rendered = renderTitleWithItalics(step.title);
 
@@ -146,23 +145,18 @@ function IntroStep({
         </div>
       </div>
 
-      <div className="order-1 md:order-2 w-full" style={{ height: 320 }} aria-hidden="true">
-        <ResponsiveContainer width="100%" height="100%">
-          <RadarChart data={demoData} margin={{ top: 8, right: 24, bottom: 8, left: 24 }}>
-            <PolarGrid stroke={theme.borderColor} />
-            <PolarAngleAxis
-              dataKey="subject"
-              tick={{ fill: theme.textColor, fontSize: 11, opacity: 0.7 }}
-            />
-            <Radar
-              name="Demo"
-              dataKey="score"
-              stroke={theme.accentColor}
-              fill={theme.accentColor}
-              fillOpacity={0.35}
-            />
-          </RadarChart>
-        </ResponsiveContainer>
+      <div className="order-1 md:order-2 w-full" style={{ height: 380 }} aria-hidden="true">
+        <Spinnennetz
+          values={demoValues}
+          labels={demoLabels}
+          accentColor={theme.accentColor}
+          gridColor={theme.borderColor}
+          labelColor={theme.textColor}
+          pointStrokeColor={theme.backgroundColor}
+          fillOpacity={0.25}
+          radius={180}
+          fontSize={11}
+        />
       </div>
     </div>
   );

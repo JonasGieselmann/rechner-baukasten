@@ -1,5 +1,12 @@
 import { pgTable, text, timestamp, boolean, jsonb, integer } from 'drizzle-orm/pg-core';
 
+export const appSetting = pgTable('app_setting', {
+  key: text('key').primaryKey(),
+  value: text('value'),
+  encrypted: boolean('encrypted').notNull().default(false),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -104,6 +111,8 @@ export const lead = pgTable('lead', {
   source: text('source'),
   status: text('status').notNull().default('new'),
   utm: jsonb('utm'),
+  emailSentAt: timestamp('email_sent_at'),
+  emailError: text('email_error'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

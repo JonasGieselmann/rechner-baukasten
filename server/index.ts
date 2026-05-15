@@ -5,9 +5,10 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { toNodeHandler } from 'better-auth/node';
 import { auth } from './auth.js';
-import { checkDb, initAuthSchema, initFunnelSchema } from './db.js';
+import { checkDb, initAuthSchema, initFunnelSchema, initAppSettings } from './db.js';
 import customCalculatorsRouter, { seedCustomCalculators } from './custom-calculators.js';
 import adminRouter from './admin.js';
+import settingsRouter from './settings.js';
 import funnelsRouter from './funnels.js';
 import meRouter from './me.js';
 import { getFromS3, isS3Configured } from './s3.js';
@@ -154,6 +155,9 @@ app.use('/api/funnels', funnelsRouter);
 // Admin API
 app.use('/api/admin', adminRouter);
 
+// Settings API (super_admin only)
+app.use('/api/admin/settings', settingsRouter);
+
 // ============================================
 // Static File Serving (Production Only)
 // ============================================
@@ -273,6 +277,7 @@ async function start() {
     // Initialize database schema
     await initAuthSchema();
     await initFunnelSchema();
+    await initAppSettings();
 
     // Seed custom calculators to S3 (non-fatal - server starts even if S3 fails)
     try {

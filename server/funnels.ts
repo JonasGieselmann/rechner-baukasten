@@ -4,9 +4,11 @@ import { nanoid } from 'nanoid';
 import { fromNodeHeaders } from 'better-auth/node';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { auth } from './auth.js';
-import { db, schema } from './db.js';
+import { db, schema, getRawClient } from './db.js';
 import { requireAuth, type AuthenticatedRequest } from './middleware.js';
 import { isValidSlug, sanitizeString } from './utils.js';
+import { renderLeadReportPdf } from './pdf/leadReport.js';
+import { sendLeadReportEmail } from './mailer.js';
 
 const router = Router();
 
@@ -145,6 +147,46 @@ router.post('/by-slug/:slug/submit', submitLimiter, async (req: Request<{ slug: 
       .returning({ id: schema.lead.id });
 
     console.log(`[FUNNEL] New lead ${inserted.id} for funnel ${funnelRow.id}`);
+
+    // Retrieve the full lead row so the PDF renderer has all fields
+    const [leadRow] = await db
+      .select()
+      .from(schema.lead)
+      .where(eq(schema.lead.id, inserted.id))
+      .limit(1);
+
+    const leadEmail = leadRow?.email;
+
+    // Send PDF report email when the lead provided an email address
+    if (leadEmail) {
+      const rawClient = getRawClient();
+      // Fetch funnel name for the PDF header
+      const [funnelMeta] = await rawClient<{ name: string }[]>`
+        SELECT name FROM funnel WHERE id = ${funnelRow.id} LIMIT 1
+      `;
+      const funnelName = funnelMeta?.name ?? 'BeautyFlow';
+
+      try {
+        const pdf = await renderLeadReportPdf({ funnelName, lead: leadRow as Parameters<typeof renderLeadReportPdf>[0]['lead'] });
+        await sendLeadReportEmail({
+          to: leadEmail,
+          leadName: leadRow.name ?? '',
+          funnelName,
+          pdf,
+        });
+        await rawClient`
+          UPDATE lead SET email_sent_at = NOW(), email_error = NULL WHERE id = ${inserted.id}
+        `;
+        console.log(`[FUNNEL] PDF email sent to ${leadEmail} for lead ${inserted.id}`);
+      } catch (emailErr) {
+        const msg = emailErr instanceof Error ? emailErr.message : String(emailErr);
+        console.error(`[FUNNEL] Email failed for lead ${inserted.id}:`, msg);
+        await rawClient`
+          UPDATE lead SET email_error = ${msg} WHERE id = ${inserted.id}
+        `.catch(() => undefined);
+      }
+    }
+
     res.status(201).json({ leadId: inserted.id });
   } catch (err) {
     console.error('Lead submit error:', err);

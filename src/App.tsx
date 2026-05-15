@@ -7,6 +7,7 @@ import { BuilderEmbed } from './pages/BuilderEmbed';
 import { CustomEmbed } from './pages/CustomEmbed';
 import { AdminUsers } from './pages/AdminUsers';
 import { AdminCustomers } from './pages/AdminCustomers';
+import { AdminSettings } from './pages/AdminSettings';
 import { AdminCustomerDetail } from './pages/AdminCustomerDetail';
 import FunnelRunner from './pages/FunnelRunner';
 import { FunnelEditor } from './pages/FunnelEditor';
@@ -107,6 +108,14 @@ function App() {
             element={
               <AdminRoute>
                 <FunnelLeads />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/settings"
+            element={
+              <AdminRoute>
+                <AdminSettings />
               </AdminRoute>
             }
           />

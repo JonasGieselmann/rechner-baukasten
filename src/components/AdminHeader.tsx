@@ -14,6 +14,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Funnels', path: '/admin?tab=funnel' },
   { label: 'Kunden', path: '/admin/customers' },
   { label: 'Benutzer', path: '/admin/users' },
+  { label: 'Einstellungen', path: '/admin/settings' },
 ];
 
 export function AdminHeader() {

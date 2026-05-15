@@ -184,7 +184,23 @@ export async function initFunnelSchema() {
   await client`ALTER TABLE lead ADD COLUMN IF NOT EXISTS user_id TEXT REFERENCES "user"(id) ON DELETE SET NULL`;
   await client`CREATE INDEX IF NOT EXISTS lead_user_id_idx ON lead(user_id)`;
 
+  await client`ALTER TABLE lead ADD COLUMN IF NOT EXISTS email_sent_at TIMESTAMP`;
+  await client`ALTER TABLE lead ADD COLUMN IF NOT EXISTS email_error TEXT`;
+
   console.log('Funnel schema initialized (PostgreSQL)');
+}
+
+// Initialize app_setting table
+export async function initAppSettings() {
+  await client`
+    CREATE TABLE IF NOT EXISTS app_setting (
+      key TEXT PRIMARY KEY,
+      value TEXT,
+      encrypted BOOLEAN NOT NULL DEFAULT false,
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `;
+  console.log('App settings schema initialized (PostgreSQL)');
 }
 
 // Get raw postgres client for custom queries (used by custom-calculators S3 sync)
