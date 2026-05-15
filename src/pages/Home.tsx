@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCalculatorStore } from '../store/calculatorStore';
 import { useFunnelStore } from '../store/funnelStore';
 import { useAuth } from '../components/AuthProvider';
@@ -20,6 +20,8 @@ interface CustomCalculator {
 
 type TabType = 'builder' | 'custom' | 'funnel';
 
+const TABS: TabType[] = ['builder', 'custom', 'funnel'];
+
 // API base URL - different in dev vs production
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : '';
 
@@ -30,6 +32,7 @@ const OVERLAY_STYLE: React.CSSProperties = {
 
 export function Home() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isSuperAdmin } = useAuth();
   const { savedCalculators, loadSavedCalculators, createNewCalculator, deleteCalculator } =
     useCalculatorStore();
@@ -46,7 +49,17 @@ export function Home() {
   const [newName, setNewName] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteCustomConfirm, setDeleteCustomConfirm] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>('builder');
+  const urlTab = searchParams.get('tab') as TabType | null;
+  const activeTab: TabType = urlTab && TABS.includes(urlTab) ? urlTab : 'builder';
+  const setActiveTab = (tab: TabType) => {
+    if (tab === 'builder') {
+      searchParams.delete('tab');
+      setSearchParams(searchParams, { replace: true });
+    } else {
+      searchParams.set('tab', tab);
+      setSearchParams(searchParams, { replace: true });
+    }
+  };
   const [customCalculators, setCustomCalculators] = useState<CustomCalculator[]>([]);
   const [showEmbedModal, setShowEmbedModal] = useState<{ type: 'builder' | 'custom'; id: string; name: string } | null>(null);
   const [embedCopied, setEmbedCopied] = useState(false);

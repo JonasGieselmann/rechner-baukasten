@@ -10,7 +10,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Tools', path: '/admin' },
+  { label: 'Rechner', path: '/admin' },
   { label: 'Funnels', path: '/admin?tab=funnel' },
   { label: 'Kunden', path: '/admin/customers' },
   { label: 'Benutzer', path: '/admin/users' },
@@ -39,10 +39,13 @@ export function AdminHeader() {
 
         <nav className="hidden md:flex items-center gap-1">
           {NAV_ITEMS.map((item) => {
-            const itemPath = item.path.split('?')[0];
-          const active =
-            location.pathname === itemPath ||
-            (itemPath !== '/admin' && location.pathname.startsWith(itemPath + '/'));
+            const [itemPath, itemQuery] = item.path.split('?');
+            const currentTab = new URLSearchParams(location.search).get('tab');
+            const itemTab = itemQuery ? new URLSearchParams(itemQuery).get('tab') : null;
+            const pathMatches =
+              location.pathname === itemPath ||
+              (itemPath !== '/admin' && location.pathname.startsWith(itemPath + '/'));
+            const active = pathMatches && currentTab === itemTab;
             return (
               <button
                 key={item.path}
