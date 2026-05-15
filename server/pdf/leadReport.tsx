@@ -54,7 +54,7 @@ const SPIDER_DIMENSIONS: Array<{ key: string; label: string }> = [
 
 const NEXT_STEPS = [
   'Kostenloses Erstgespraech vereinbaren und individuelle Potenziale besprechen.',
-  'Massnahmenplan fuer die drei wichtigsten Optimierungsfelder erstellen.',
+  'Maßnahmenplan für die drei wichtigsten Optimierungsfelder erstellen.',
   'Erste Quick-Wins umsetzen und Fortschritt nach 30 Tagen messen.',
 ];
 

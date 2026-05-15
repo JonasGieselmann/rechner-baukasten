@@ -208,7 +208,7 @@ const FULL_CONFIG = {
     { id: 'c2', type: 'calc-input', title: 'Umsatz pro Termin', label: 'Umsatz pro Termin', variableName: 'umsatzProTermin', inputType: 'number', defaultValue: 100, min: 0, max: 1000, suffix: '€' },
     { id: 'c3', type: 'calc-input', title: 'Kapazität pro Woche', label: 'Kapazität pro Woche', variableName: 'kapazitaetPerWeek', inputType: 'number', defaultValue: 40, min: 0, max: 200 },
     { id: 'r1', type: 'result-spider', title: 'Ihr Ergebnis', showKalkuChart: true, cliffhanger: '' },
-    { id: 'cta1', type: 'cta-booking', title: 'Termin buchen', body: 'Lass uns reden.', ctaLabel: 'Strategiegespraech buchen', calendarUrl: 'https://cal.com/test-full' },
+    { id: 'cta1', type: 'cta-booking', title: 'Termin buchen', body: 'Lass uns reden.', ctaLabel: 'Strategiegespräch buchen', calendarUrl: 'https://cal.com/test-full' },
   ],
 };
 

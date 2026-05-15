@@ -180,7 +180,7 @@ export function AdminSettings() {
               SMTP-Server
             </h2>
             <p className="text-xs mt-0.5" style={{ color: BRAND.colors.muted }}>
-              Konfigurieren Sie den Mailserver, ueber den BeautyFlow E-Mails versendet.
+              Konfigurieren Sie den Mailserver, über den BeautyFlow E-Mails versendet.
             </p>
           </div>
 
@@ -273,7 +273,7 @@ export function AdminSettings() {
                 onChange={(e) => setField('secure', e.target.checked)}
                 className="rounded"
               />
-              <span className="text-sm">Verschluesselte Verbindung (TLS)</span>
+              <span className="text-sm">Verschlüsselte Verbindung (TLS)</span>
             </label>
 
             <div className="flex items-center gap-3 pt-1">

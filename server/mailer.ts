@@ -17,9 +17,9 @@ function buildHtmlBody(name: string): string {
   <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;padding:32px;">
     <h2 style="color:#0F2F5B;margin-top:0;">Ihre BeautyFlow Potenzialanalyse</h2>
     <p>Hallo ${greeting},</p>
-    <p>vielen Dank fuer Ihre Analyse. Im Anhang finden Sie Ihre vollstaendige Auswertung als PDF.</p>
-    <p>Wenn Sie Ihre Ergebnisse besprechen moechten, vereinbaren Sie ein kostenloses Strategiegespraech.</p>
-    <p style="margin-top:32px;">Beste Gruesse,<br>das BeautyFlow Team</p>
+    <p>vielen Dank für Ihre Analyse. Im Anhang finden Sie Ihre vollständige Auswertung als PDF.</p>
+    <p>Wenn Sie Ihre Ergebnisse besprechen möchten, vereinbaren Sie ein kostenloses Strategiegespräch.</p>
+    <p style="margin-top:32px;">Beste Grüße,<br>das BeautyFlow Team</p>
   </div>
 </body>
 </html>`;
