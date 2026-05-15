@@ -4,6 +4,7 @@ import { useAuth } from '../components/AuthProvider';
 import { AdminHeader } from '../components/AdminHeader';
 import { Avatar } from '../components/Avatar';
 import { BRAND } from '../../branding/tokens';
+import { formatDateTime } from '../lib/dateFormat';
 
 interface UserData {
   id: string;
@@ -110,16 +111,6 @@ export function AdminUsers() {
     } finally {
       setActionLoading(null);
     }
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Intl.DateTimeFormat('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(dateStr));
   };
 
   if (loading) {
@@ -230,7 +221,7 @@ export function AdminUsers() {
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="text-xs" style={{ color: BRAND.colors.muted }}>
-                        {formatDate(u.created_at)}
+                        {formatDateTime(u.created_at)}
                       </span>
                       <div className="flex items-center gap-2">
                         <button
@@ -325,7 +316,7 @@ export function AdminUsers() {
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="text-xs" style={{ color: BRAND.colors.muted }}>
-                        {formatDate(u.created_at)}
+                        {formatDateTime(u.created_at)}
                       </span>
                       {u.role !== 'super_admin' && u.id !== user?.id && (
                         <button

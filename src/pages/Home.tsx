@@ -5,6 +5,7 @@ import { useFunnelStore } from '../store/funnelStore';
 import { useAuth } from '../components/AuthProvider';
 import { AdminHeader } from '../components/AdminHeader';
 import { BRAND } from '../../branding/tokens';
+import { formatDateTime } from '../lib/dateFormat';
 
 interface CustomCalculator {
   id: string;
@@ -191,16 +192,6 @@ export function Home() {
       console.error('Delete error:', err);
       alert(err instanceof Error ? err.message : 'Löschen fehlgeschlagen');
     }
-  };
-
-  const formatDate = (date: Date | string) => {
-    return new Intl.DateTimeFormat('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(date));
   };
 
   const getEmbedCode = (type: 'builder' | 'custom', id: string) => {
@@ -427,7 +418,7 @@ export function Home() {
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          {formatDate(calc.updatedAt)}
+                          {formatDateTime(calc.updatedAt)}
                         </div>
                       </div>
                       {/* Embed button */}
@@ -690,7 +681,7 @@ export function Home() {
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        {formatDate(funnel.updatedAt)}
+                        {formatDateTime(funnel.updatedAt)}
                       </div>
                     </div>
                   </div>
@@ -768,7 +759,7 @@ export function Home() {
                 Rechner löschen?
               </h3>
               <p className="text-center text-sm" style={{ color: BRAND.colors.muted }}>
-                Diese Aktion kann nicht ruckgangig gemacht werden.
+                Diese Aktion kann nicht rückgängig gemacht werden.
               </p>
             </div>
             <div className="flex gap-3 justify-center p-5 border-t" style={{ borderColor: BRAND.colors.border }}>
@@ -783,7 +774,7 @@ export function Home() {
                 onClick={() => handleDelete(deleteConfirm)}
                 className="px-5 py-2 rounded-full bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
               >
-                Loschen
+                Löschen
               </button>
             </div>
           </div>
@@ -833,7 +824,7 @@ export function Home() {
                 <p className="text-xs" style={{ color: BRAND.colors.muted }}>
                   <span className="font-medium" style={{ color: BRAND.colors.accent }}>Tipp:</span>{' '}
                   Der Embed-Code funktioniert mit Framer, Webflow, WordPress und allen anderen Websites,
-                  die iframes unterstutzten.
+                  die iframes unterstützen.
                 </p>
               </div>
             </div>
@@ -844,7 +835,7 @@ export function Home() {
                 className="px-4 py-2.5 rounded-lg transition-colors hover:opacity-70"
                 style={{ color: BRAND.colors.muted }}
               >
-                Schliessen
+                Schließen
               </button>
               <button
                 onClick={copyEmbedCode}
@@ -979,7 +970,7 @@ export function Home() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm mb-2" style={{ color: BRAND.colors.muted }}>Hohe</label>
+                  <label className="block text-sm mb-2" style={{ color: BRAND.colors.muted }}>Höhe</label>
                   <input
                     type="text"
                     value={uploadHeight}
@@ -1078,7 +1069,7 @@ export function Home() {
                 Custom-Rechner löschen?
               </h3>
               <p className="text-center text-sm" style={{ color: BRAND.colors.muted }}>
-                Der Rechner und alle zugehorigen Dateien werden permanent geloscht.
+                Der Rechner und alle zugehörigen Dateien werden permanent gelöscht.
               </p>
             </div>
             <div className="flex gap-3 justify-center p-5 border-t" style={{ borderColor: BRAND.colors.border }}>
@@ -1093,7 +1084,7 @@ export function Home() {
                 onClick={() => handleDeleteCustom(deleteCustomConfirm)}
                 className="px-5 py-2 rounded-full bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
               >
-                Loschen
+                Löschen
               </button>
             </div>
           </div>
@@ -1167,7 +1158,7 @@ export function Home() {
                 Funnel löschen?
               </h3>
               <p className="text-center text-sm" style={{ color: BRAND.colors.muted }}>
-                Funnel und alle eingesammelten Leads werden permanent geloscht.
+                Funnel und alle eingesammelten Leads werden permanent gelöscht.
               </p>
             </div>
             <div className="flex gap-3 justify-center p-5 border-t" style={{ borderColor: BRAND.colors.border }}>
@@ -1182,7 +1173,7 @@ export function Home() {
                 onClick={() => handleDeleteFunnel(deleteFunnelConfirm)}
                 className="px-5 py-2 rounded-full bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
               >
-                Loschen
+                Löschen
               </button>
             </div>
           </div>

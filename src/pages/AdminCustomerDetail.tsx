@@ -4,6 +4,7 @@ import { useAuth } from '../components/AuthProvider';
 import { AdminHeader } from '../components/AdminHeader';
 import { Avatar } from '../components/Avatar';
 import { BRAND } from '../../branding/tokens';
+import { formatDateTime } from '../lib/dateFormat';
 
 interface CustomerDetail {
   id: string;
@@ -29,16 +30,6 @@ interface CustomerDetailResponse {
 }
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : '';
-
-function formatDate(iso: string) {
-  return new Intl.DateTimeFormat('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(iso));
-}
 
 export function AdminCustomerDetail() {
   const { id } = useParams<{ id: string }>();
@@ -148,7 +139,7 @@ export function AdminCustomerDetail() {
                 </span>
               )}
               <span className="text-xs" style={{ color: BRAND.colors.muted }}>
-                Mitglied seit {formatDate(customer.createdAt)}
+                Mitglied seit {formatDateTime(customer.createdAt)}
               </span>
             </div>
           </div>
@@ -157,14 +148,14 @@ export function AdminCustomerDetail() {
         {/* Leads section */}
         <section>
           <h2 className="text-base font-semibold mb-4" style={{ color: BRAND.colors.text }}>
-            Aktivitaet ({leads.length} {leads.length === 1 ? 'Lead' : 'Leads'})
+            Aktivität ({leads.length} {leads.length === 1 ? 'Lead' : 'Leads'})
           </h2>
           {leads.length === 0 ? (
             <div
               className="rounded-2xl border p-10 text-center"
               style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
             >
-              <p style={{ color: BRAND.colors.muted }}>Noch keine Aktivitaet.</p>
+              <p style={{ color: BRAND.colors.muted }}>Noch keine Aktivität.</p>
             </div>
           ) : (
             <div
@@ -191,7 +182,7 @@ export function AdminCustomerDetail() {
                       style={{ borderColor: BRAND.colors.border, color: BRAND.colors.text }}
                     >
                       <td className="py-3 px-4 text-xs" style={{ color: BRAND.colors.muted }}>
-                        {formatDate(l.createdAt)}
+                        {formatDateTime(l.createdAt)}
                       </td>
                       <td className="py-3 px-4 text-xs" style={{ color: BRAND.colors.muted }}>
                         {l.funnelSlug ?? l.funnelId}

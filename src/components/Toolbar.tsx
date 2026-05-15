@@ -321,7 +321,7 @@ export function Toolbar() {
                 className="px-4 py-2.5 rounded-lg transition-colors hover:opacity-70"
                 style={{ color: BRAND.colors.muted }}
               >
-                Schliessen
+                Schließen
               </button>
               <button
                 onClick={copyEmbedCode}

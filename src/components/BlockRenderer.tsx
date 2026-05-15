@@ -190,7 +190,7 @@ export function BlockRenderer({ block }: Props) {
             }}
             className="absolute -right-2 -top-2 bg-red-500 hover:bg-red-600 text-white
                        rounded-full p-1 shadow-lg transition-all z-10"
-            title="Block loeschen"
+            title="Block löschen"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

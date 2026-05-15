@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/AuthProvider';
 import { AdminHeader } from '../components/AdminHeader';
 import { BRAND } from '../../branding/tokens';
+import { formatDate } from '../lib/dateFormat';
 
 interface CustomerRow {
   id: string;
@@ -16,14 +17,6 @@ interface CustomerRow {
 }
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : '';
-
-function formatDate(iso: string) {
-  return new Intl.DateTimeFormat('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(new Date(iso));
-}
 
 export function AdminCustomers() {
   const navigate = useNavigate();

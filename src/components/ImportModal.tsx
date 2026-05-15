@@ -187,7 +187,7 @@ export function ImportModal({ isOpen, onClose }: Props) {
                 Datei hierher ziehen
               </p>
               <p className="text-sm mb-4" style={{ color: BRAND.colors.muted }}>
-                oder klicken zum Auswaehlen
+                oder klicken zum Auswählen
               </p>
               <input
                 type="file"

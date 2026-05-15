@@ -7,6 +7,7 @@ import { getRawClient } from './db.js';
 import { requireRole, type AuthenticatedRequest as SharedAuthRequest } from './middleware.js';
 import { uploadToS3, getFromS3, deletePrefix, isS3Configured } from './s3.js';
 import { Readable } from 'stream';
+import { isValidSlug, sanitizeString } from './utils.js';
 
 const router = Router();
 
@@ -15,15 +16,6 @@ const S3_PREFIX = 'calculators/';
 // ============================================
 // Security: Input Validation
 // ============================================
-
-function isValidSlug(slug: string): boolean {
-  return /^[a-z0-9-]+$/.test(slug) && slug.length > 0 && slug.length <= 100;
-}
-
-function sanitizeString(input: unknown, maxLength = 500): string {
-  if (typeof input !== 'string') return '';
-  return input.slice(0, maxLength).trim();
-}
 
 function isValidDimension(dim: string): boolean {
   return /^(\d+(\.\d+)?(px|%|vh|vw|em|rem)?|auto)$/.test(dim);

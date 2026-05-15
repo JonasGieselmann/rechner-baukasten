@@ -23,6 +23,7 @@ import {
 } from '../engine/score';
 import type { DimScores, RecommendationKey } from '../engine/score';
 import { renderTitleWithItalics } from '../lib/textFormat';
+import { formatCurrency } from '../engine/formula';
 
 type LeadState = Partial<Record<LeadField, string>>;
 type AnswersState = Record<string, string[]>;
@@ -422,16 +423,16 @@ function ResultSpiderStep({
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <p className="text-xs opacity-60">Aktuell / Monat</p>
-              <p className="text-lg font-semibold">{formatEuro(kalku.aktuell)}</p>
+              <p className="text-lg font-semibold">{formatCurrency(kalku.aktuell)}</p>
             </div>
             <div>
               <p className="text-xs opacity-60">Mit Kapazität</p>
-              <p className="text-lg font-semibold">{formatEuro(kalku.potential)}</p>
+              <p className="text-lg font-semibold">{formatCurrency(kalku.potential)}</p>
             </div>
           </div>
           {kalku.delta > 0 && (
             <p className="text-sm font-semibold" style={{ color: theme.accentColor }}>
-              +{formatEuro(kalku.delta)} Mehrumsatz pro Monat möglich
+              +{formatCurrency(kalku.delta)} Mehrumsatz pro Monat möglich
             </p>
           )}
         </div>
@@ -825,6 +826,3 @@ function computeKalkuPotential(vars: CalcVarsState): { aktuell: number; potentia
   return { aktuell, potential, delta: potential - aktuell };
 }
 
-function formatEuro(n: number): string {
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
-}

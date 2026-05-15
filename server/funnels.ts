@@ -6,12 +6,9 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 import { auth } from './auth.js';
 import { db, schema } from './db.js';
 import { requireAuth, type AuthenticatedRequest } from './middleware.js';
+import { isValidSlug, sanitizeString } from './utils.js';
 
 const router = Router();
-
-function isValidSlug(slug: string): boolean {
-  return /^[a-z0-9-]+$/.test(slug) && slug.length > 0 && slug.length <= 100;
-}
 
 function slugify(name: string): string {
   const s = name
@@ -34,11 +31,6 @@ async function ensureUniqueSlug(base: string): Promise<string> {
     slug = `${base}-${counter++}`;
     if (counter > 200) throw new Error('Unable to generate unique slug');
   }
-}
-
-function sanitizeString(input: unknown, max = 500): string {
-  if (typeof input !== 'string') return '';
-  return input.slice(0, max).trim();
 }
 
 function emptyFunnelConfig() {
