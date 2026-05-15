@@ -6,6 +6,8 @@ import { Register } from './pages/Register';
 import { BuilderEmbed } from './pages/BuilderEmbed';
 import { CustomEmbed } from './pages/CustomEmbed';
 import { AdminUsers } from './pages/AdminUsers';
+import { AdminCustomers } from './pages/AdminCustomers';
+import { AdminCustomerDetail } from './pages/AdminCustomerDetail';
 import FunnelRunner from './pages/FunnelRunner';
 import { FunnelEditor } from './pages/FunnelEditor';
 import { FunnelLeads } from './pages/FunnelLeads';
@@ -65,6 +67,22 @@ function App() {
             element={
               <AdminRoute>
                 <AdminUsers />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/customers"
+            element={
+              <AdminRoute>
+                <AdminCustomers />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/customers/:id"
+            element={
+              <AdminRoute>
+                <AdminCustomerDetail />
               </AdminRoute>
             }
           />

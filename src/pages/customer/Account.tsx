@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../../components/AuthProvider';
+import { Avatar } from '../../components/Avatar';
 import { BRAND } from '../../../branding/tokens';
 
 const INPUT_CLS =
@@ -16,6 +17,12 @@ function ProfileCard() {
   const [name, setName] = useState(user?.name ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+
+  const createdAt = (user as (typeof user & { createdAt?: string }) | null)?.createdAt;
+  const memberSince = createdAt
+    ? new Date(createdAt).toLocaleDateString('de-DE', { year: 'numeric', month: 'long' })
+    : null;
 
   const handleSave = async () => {
     setSaving(true);
@@ -41,9 +48,19 @@ function ProfileCard() {
       className="rounded-2xl border p-6 space-y-4"
       style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
     >
-      <h2 className="text-lg font-semibold" style={{ color: BRAND.colors.text }}>
-        Profil
-      </h2>
+      <div className="flex items-center gap-4">
+        <Avatar name={user?.name} email={user?.email} size="lg" />
+        <div>
+          <h2 className="text-lg font-semibold" style={{ color: BRAND.colors.text }}>
+            Profil
+          </h2>
+          {memberSince && (
+            <p className="text-xs" style={{ color: BRAND.colors.muted }}>
+              Mitglied seit {memberSince}
+            </p>
+          )}
+        </div>
+      </div>
       <div className="space-y-3">
         <div>
           <label className="block text-xs font-medium mb-1 opacity-60">Name</label>
@@ -178,11 +195,35 @@ function PasswordCard() {
   );
 }
 
+function DeleteAccountCard() {
+  return (
+    <div
+      className="rounded-2xl border p-6 space-y-3"
+      style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+    >
+      <h2 className="text-lg font-semibold" style={{ color: BRAND.colors.text }}>
+        Konto
+      </h2>
+      <p className="text-sm" style={{ color: BRAND.colors.muted }}>
+        Sie möchten Ihr Konto dauerhaft entfernen?
+      </p>
+      <button
+        className="text-sm transition-opacity hover:opacity-70 underline underline-offset-2"
+        style={{ color: BRAND.colors.muted }}
+        onClick={() => alert('Funktion folgt')}
+      >
+        Konto löschen
+      </button>
+    </div>
+  );
+}
+
 export default function Account() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <ProfileCard />
       <PasswordCard />
+      <DeleteAccountCard />
     </div>
   );
 }

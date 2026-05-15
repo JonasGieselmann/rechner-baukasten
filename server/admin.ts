@@ -1,24 +1,6 @@
 import express from 'express';
-import { fromNodeHeaders } from 'better-auth/node';
-import { auth } from './auth.js';
-import { getAllUsers, approveUser, deleteUser, getUserById } from './db.js';
-
-// ============================================
-// Types
-// ============================================
-
-interface AdminUser {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  approved: boolean;
-  created_at: string;
-}
-
-interface AdminRequest extends express.Request {
-  adminUser?: AdminUser;
-}
+import { getAllUsers, approveUser, deleteUser, getUserById, getRawClient } from './db.js';
+import { requireRole, type AuthenticatedRequest } from './middleware.js';
 
 // ============================================
 // Security Helpers
@@ -37,42 +19,13 @@ function logAdminAction(adminId: string, action: string, targetUserId: string, d
 
 const router = express.Router();
 
-// Middleware to check if user is super_admin
-async function requireSuperAdmin(
-  req: AdminRequest,
-  res: express.Response,
-  next: express.NextFunction
-) {
-  try {
-    const session = await auth.api.getSession({
-      headers: fromNodeHeaders(req.headers),
-    });
-
-    if (!session) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    const user = await getUserById(session.user.id);
-    if (!user || user.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Access denied. Super Admin only.' });
-    }
-
-    // Attach user to request for downstream use
-    req.adminUser = user as AdminUser;
-    next();
-  } catch (error) {
-    console.error('Admin auth error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-}
-
 // Get all users (admin only)
-router.get('/users', requireSuperAdmin, async (req: AdminRequest, res) => {
+router.get('/users', requireRole('super_admin'), async (req: AuthenticatedRequest, res) => {
   try {
     const users = await getAllUsers();
 
     // Audit log for user list access (optional, can be noisy)
-    logAdminAction(req.adminUser!.id, 'LIST_USERS', '-', `Retrieved ${users.length} users`);
+    logAdminAction(req.user!.id, 'LIST_USERS', '-', `Retrieved ${users.length} users`);
 
     res.json(users);
   } catch (error) {
@@ -82,7 +35,7 @@ router.get('/users', requireSuperAdmin, async (req: AdminRequest, res) => {
 });
 
 // Approve a user (admin only)
-router.post('/users/:userId/approve', requireSuperAdmin, async (req: AdminRequest, res) => {
+router.post('/users/:userId/approve', requireRole('super_admin'), async (req: AuthenticatedRequest, res) => {
   try {
     const { userId } = req.params;
 
@@ -106,7 +59,7 @@ router.post('/users/:userId/approve', requireSuperAdmin, async (req: AdminReques
     await approveUser(userId);
 
     // Audit log
-    logAdminAction(req.adminUser!.id, 'APPROVE_USER', userId, `Approved: ${targetUser.email}`);
+    logAdminAction(req.user!.id, 'APPROVE_USER', userId, `Approved: ${targetUser.email}`);
 
     res.json({ success: true, message: 'User approved' });
   } catch (error) {
@@ -116,7 +69,7 @@ router.post('/users/:userId/approve', requireSuperAdmin, async (req: AdminReques
 });
 
 // Delete/reject a user (admin only)
-router.delete('/users/:userId', requireSuperAdmin, async (req: AdminRequest, res) => {
+router.delete('/users/:userId', requireRole('super_admin'), async (req: AuthenticatedRequest, res) => {
   try {
     const { userId } = req.params;
 
@@ -126,7 +79,7 @@ router.delete('/users/:userId', requireSuperAdmin, async (req: AdminRequest, res
     }
 
     // Prevent admin from deleting themselves
-    if (userId === req.adminUser?.id) {
+    if (userId === req.user?.id) {
       return res.status(400).json({ error: 'Cannot delete yourself' });
     }
 
@@ -145,11 +98,98 @@ router.delete('/users/:userId', requireSuperAdmin, async (req: AdminRequest, res
     await deleteUser(userId);
 
     // Audit log
-    logAdminAction(req.adminUser!.id, 'DELETE_USER', userId, `Deleted: ${targetUser.email}`);
+    logAdminAction(req.user!.id, 'DELETE_USER', userId, `Deleted: ${targetUser.email}`);
 
     res.json({ success: true, message: 'User deleted' });
   } catch (error) {
     console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Operation failed' });
+  }
+});
+
+// ============================================
+// Customer overview endpoints (super_admin only)
+// ============================================
+
+interface CustomerRow {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  approved: boolean;
+  createdAt: string;
+  leadsCount: number;
+  lastLeadAt: string | null;
+}
+
+interface LeadRow {
+  id: string;
+  funnelId: string;
+  funnelSlug: string | null;
+  createdAt: string;
+  recommendation: string | null;
+  scrapeStatus: string;
+}
+
+// GET /api/admin/customers
+router.get('/customers', requireRole('super_admin'), async (_req: AuthenticatedRequest, res) => {
+  try {
+    const client = getRawClient();
+    const rows = await client`
+      SELECT
+        u.id,
+        u.name,
+        u.email,
+        u.role,
+        u.approved,
+        u.created_at AS "createdAt",
+        COUNT(l.id)::int AS "leadsCount",
+        MAX(l.created_at) AS "lastLeadAt"
+      FROM "user" u
+      LEFT JOIN lead l ON l.user_id = u.id
+      WHERE u.role IN ('customer', 'user')
+      GROUP BY u.id, u.name, u.email, u.role, u.approved, u.created_at
+      ORDER BY u.created_at DESC
+    `;
+    res.json(rows as unknown as CustomerRow[]);
+  } catch (error) {
+    console.error('Get customers error:', error);
+    res.status(500).json({ error: 'Operation failed' });
+  }
+});
+
+// GET /api/admin/customers/:id
+router.get('/customers/:id', requireRole('super_admin'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const { id } = req.params;
+    if (!isValidUserId(id)) {
+      return res.status(400).json({ error: 'Invalid request' });
+    }
+    const client = getRawClient();
+    const userRows = await client`
+      SELECT id, name, email, role, approved, created_at AS "createdAt"
+      FROM "user"
+      WHERE id = ${id} AND role IN ('customer', 'user')
+    `;
+    if (userRows.length === 0) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+    const leadRows = await client`
+      SELECT
+        l.id,
+        l.funnel_id AS "funnelId",
+        f.slug AS "funnelSlug",
+        l.created_at AS "createdAt",
+        l.recommendation,
+        l.scrape_status AS "scrapeStatus"
+      FROM lead l
+      LEFT JOIN funnel f ON f.id = l.funnel_id
+      WHERE l.user_id = ${id}
+      ORDER BY l.created_at DESC
+    `;
+    res.json({ user: userRows[0], leads: leadRows as unknown as LeadRow[] });
+  } catch (error) {
+    console.error('Get customer detail error:', error);
     res.status(500).json({ error: 'Operation failed' });
   }
 });

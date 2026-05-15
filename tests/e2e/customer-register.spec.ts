@@ -47,7 +47,7 @@ test('registration auto-approves as customer and redirects to /dashboard', async
   await page.getByRole('button', { name: 'Konto erstellen' }).click();
 
   await page.waitForURL(/\/dashboard\/?$/, { timeout: 10000 });
-  await expect(page.getByText('BeautyFlow')).toBeVisible();
+  await expect(page.locator('header').getByText('Beauty').first()).toBeVisible();
 
   const rows = await sql`
     SELECT role, approved FROM "user" WHERE email = ${TEST_EMAIL} LIMIT 1

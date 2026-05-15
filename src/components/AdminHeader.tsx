@@ -1,6 +1,7 @@
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { Wordmark } from './Wordmark';
+import { Avatar } from './Avatar';
 import { BRAND } from '../../branding/tokens';
 
 interface NavItem {
@@ -11,6 +12,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Tools', path: '/admin' },
   { label: 'Funnels', path: '/admin?tab=funnel' },
+  { label: 'Kunden', path: '/admin/customers' },
   { label: 'Benutzer', path: '/admin/users' },
 ];
 
@@ -18,8 +20,6 @@ export function AdminHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-
-  const initial = user?.name?.charAt(0).toUpperCase() ?? '?';
 
   return (
     <header
@@ -39,7 +39,10 @@ export function AdminHeader() {
 
         <nav className="hidden md:flex items-center gap-1">
           {NAV_ITEMS.map((item) => {
-            const active = location.pathname === item.path.split('?')[0];
+            const itemPath = item.path.split('?')[0];
+          const active =
+            location.pathname === itemPath ||
+            (itemPath !== '/admin' && location.pathname.startsWith(itemPath + '/'));
             return (
               <button
                 key={item.path}
@@ -65,13 +68,7 @@ export function AdminHeader() {
           >
             Customer-Ansicht ↗
           </button>
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold"
-            style={{ backgroundColor: BRAND.colors.accent, color: BRAND.colors.background }}
-            title={user?.email}
-          >
-            {initial}
-          </div>
+          <Avatar name={user?.name} email={user?.email} size="sm" />
           <button
             onClick={logout}
             className="text-sm px-3 py-1.5 rounded-full border transition-opacity hover:opacity-70"

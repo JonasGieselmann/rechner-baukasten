@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/AuthProvider';
 import { AdminHeader } from '../components/AdminHeader';
+import { Avatar } from '../components/Avatar';
 import { BRAND } from '../../branding/tokens';
 
 interface UserData {
@@ -299,16 +300,7 @@ export function AdminUsers() {
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     <div className="flex items-center gap-4">
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium"
-                        style={
-                          u.role === 'super_admin'
-                            ? { backgroundColor: BRAND.colors.accent, color: BRAND.colors.background }
-                            : { backgroundColor: BRAND.colors.border, color: BRAND.colors.primary }
-                        }
-                      >
-                        {u.name.charAt(0).toUpperCase()}
-                      </div>
+                      <Avatar name={u.name} email={u.email} size="md" />
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-medium text-sm" style={{ color: BRAND.colors.text }}>

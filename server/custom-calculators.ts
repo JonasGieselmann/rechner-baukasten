@@ -1,52 +1,16 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request } from 'express';
 import multer from 'multer';
 import AdmZip from 'adm-zip';
 import path from 'path';
 import { nanoid } from 'nanoid';
-import { fromNodeHeaders } from 'better-auth/node';
-import { auth } from './auth.js';
-import { getUserById, getRawClient } from './db.js';
+import { getRawClient } from './db.js';
+import { requireRole, type AuthenticatedRequest as SharedAuthRequest } from './middleware.js';
 import { uploadToS3, getFromS3, deletePrefix, isS3Configured } from './s3.js';
 import { Readable } from 'stream';
 
 const router = Router();
 
-// S3 key prefix for all custom calculator files
 const S3_PREFIX = 'calculators/';
-
-// ============================================
-// Security: Authentication & Authorization
-// ============================================
-
-interface AuthenticatedRequest<P = Record<string, string>> extends Request<P> {
-  user?: {
-    id: string;
-    role: string;
-  };
-}
-
-async function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  try {
-    const session = await auth.api.getSession({
-      headers: fromNodeHeaders(req.headers),
-    });
-
-    if (!session) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    const user = await getUserById(session.user.id);
-    if (!user || user.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-
-    req.user = { id: user.id, role: user.role };
-    next();
-  } catch (error) {
-    console.error('Auth error:', error);
-    res.status(500).json({ error: 'Authentication failed' });
-  }
-}
 
 // ============================================
 // Security: Input Validation
@@ -219,7 +183,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/custom-calculators/upload - Upload new calculator (Admin only)
-router.post('/upload', requireAdmin, upload.single('file'), async (req: AuthenticatedRequest, res) => {
+router.post('/upload', requireRole('super_admin'), upload.single('file'), async (req: SharedAuthRequest, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -324,7 +288,7 @@ router.post('/upload', requireAdmin, upload.single('file'), async (req: Authenti
 });
 
 // DELETE /api/custom-calculators/:slug - Delete calculator (Admin only)
-router.delete('/:slug', requireAdmin, async (req: AuthenticatedRequest<{ slug: string }>, res) => {
+router.delete('/:slug', requireRole('super_admin'), async (req: SharedAuthRequest<{ slug: string }>, res) => {
   try {
     const { slug } = req.params;
     if (!isValidSlug(slug)) {
@@ -351,7 +315,7 @@ router.delete('/:slug', requireAdmin, async (req: AuthenticatedRequest<{ slug: s
 });
 
 // PATCH /api/custom-calculators/:slug - Update metadata (Admin only)
-router.patch('/:slug', requireAdmin, async (req: AuthenticatedRequest<{ slug: string }>, res) => {
+router.patch('/:slug', requireRole('super_admin'), async (req: SharedAuthRequest<{ slug: string }>, res) => {
   try {
     const { slug } = req.params;
     if (!isValidSlug(slug)) {

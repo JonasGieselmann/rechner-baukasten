@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../components/AuthProvider';
 import { BRAND } from '../../../branding/tokens';
+import { Wordmark } from '../../components/Wordmark';
 
 interface NavItem {
   label: string;
@@ -14,6 +15,26 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Leitfaden', path: '/dashboard/leitfaden' },
   { label: 'Account', path: '/dashboard/account' },
 ];
+
+function BellIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  );
+}
 
 export default function DashboardLayout() {
   const { logout, isSuperAdmin } = useAuth();
@@ -38,9 +59,7 @@ export default function DashboardLayout() {
             <span className="block w-5 h-0.5 bg-current mb-1" />
             <span className="block w-5 h-0.5 bg-current" />
           </button>
-          <span className="text-lg font-bold tracking-tight">
-            BeautyFlow
-          </span>
+          <Wordmark size="md" />
           <span
             className="w-1.5 h-1.5 rounded-full"
             style={{ backgroundColor: BRAND.colors.accent }}
@@ -48,6 +67,14 @@ export default function DashboardLayout() {
           />
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => alert('Keine neuen Benachrichtigungen')}
+            className="p-2 rounded-full transition-colors hover:opacity-70"
+            style={{ color: BRAND.colors.text }}
+            aria-label="Benachrichtigungen"
+          >
+            <BellIcon />
+          </button>
           {isSuperAdmin && (
             <NavLink
               to="/admin"
@@ -55,7 +82,7 @@ export default function DashboardLayout() {
               style={{ borderColor: BRAND.colors.border, color: BRAND.colors.text }}
               title="Zurück zur Admin-Ansicht"
             >
-              ← Admin
+              &#x2190; Admin
             </NavLink>
           )}
           <button
