@@ -98,7 +98,7 @@ const submitLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// POST /api/funnels/by-slug/:slug/submit — anonymous lead submit
+// POST /api/funnels/by-slug/:slug/submit - anonymous lead submit
 router.post('/by-slug/:slug/submit', submitLimiter, async (req: Request<{ slug: string }>, res) => {
   try {
     const { slug } = req.params;
@@ -198,7 +198,7 @@ router.post('/by-slug/:slug/submit', submitLimiter, async (req: Request<{ slug: 
 // Authenticated CRUD
 // ============================================
 
-// GET /api/funnels — list mine, with on-demand leads count
+// GET /api/funnels - list mine, with on-demand leads count
 router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const rows = await db
@@ -224,7 +224,7 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
   }
 });
 
-// POST /api/funnels — create
+// POST /api/funnels - create
 router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const name = sanitizeString(req.body?.name, 100);
@@ -260,7 +260,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
   }
 });
 
-// GET /api/funnels/:id — one (mine)
+// GET /api/funnels/:id - one (mine)
 router.get('/:id', requireAuth, async (req: AuthenticatedRequest<{ id: string }>, res) => {
   try {
     const [row] = await db
@@ -276,7 +276,7 @@ router.get('/:id', requireAuth, async (req: AuthenticatedRequest<{ id: string }>
   }
 });
 
-// PATCH /api/funnels/:id — update
+// PATCH /api/funnels/:id - update
 router.patch('/:id', requireAuth, async (req: AuthenticatedRequest<{ id: string }>, res) => {
   try {
     const [existing] = await db
@@ -338,7 +338,7 @@ router.delete('/:id', requireAuth, async (req: AuthenticatedRequest<{ id: string
   }
 });
 
-// GET /api/funnels/:id/leads — list leads of one of my funnels
+// GET /api/funnels/:id/leads - list leads of one of my funnels
 router.get('/:id/leads', requireAuth, async (req: AuthenticatedRequest<{ id: string }>, res) => {
   try {
     const [own] = await db

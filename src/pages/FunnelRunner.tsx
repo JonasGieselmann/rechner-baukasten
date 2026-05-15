@@ -467,7 +467,7 @@ function ResultSpiderStep({
       {submitError && (
         <div className="flex flex-col gap-2">
           <p className="text-xs text-red-500">
-            Lead-Speicherung fehlgeschlagen -- wir versuchen es nochmal
+            Lead-Speicherung fehlgeschlagen, wir versuchen es nochmal
           </p>
           <button
             onClick={onRetry}
