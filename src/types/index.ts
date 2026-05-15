@@ -123,3 +123,191 @@ export const DEFAULT_THEME: ThemeConfig = {
   textColor: '#ffffff',
   borderColor: '#1f1f2e',
 };
+
+// ============================================
+// Funnel-Builder Types
+// ============================================
+
+export type FunnelStatus = 'draft' | 'published' | 'archived';
+
+export type FunnelStepType =
+  | 'intro'
+  | 'lead-capture'
+  | 'question'
+  | 'calc-input'
+  | 'result-spider'
+  | 'cta-booking';
+
+export interface BaseStep {
+  id: string;
+  type: FunnelStepType;
+  title?: string;
+  body?: string;
+}
+
+export interface IntroStep extends BaseStep {
+  type: 'intro';
+  ctaLabel?: string;
+}
+
+export type LeadField =
+  | 'name'
+  | 'email'
+  | 'phone'
+  | 'businessName'
+  | 'websiteUrl'
+  | 'instagramHandle'
+  | 'gmbUrl';
+
+export interface LeadCaptureStep extends BaseStep {
+  type: 'lead-capture';
+  fields: { key: LeadField; label: string; required: boolean }[];
+  ctaLabel?: string;
+  privacyNote?: string;
+}
+
+export type SpiderDimension =
+  | 'social-media'
+  | 'website'
+  | 'branding'
+  | 'trust'
+  | 'auffindbarkeit'
+  | 'umsatzpotenzial'
+  | 'mitarbeiter'
+  | 'regional';
+
+export interface AnswerOption {
+  id: string;
+  label: string;
+  score: number; // 0..100
+}
+
+export interface QuestionStep extends BaseStep {
+  type: 'question';
+  question: string;
+  dimension: SpiderDimension; // contributes to this dimension
+  options: AnswerOption[];
+  allowMultiple?: boolean;
+  required?: boolean;
+}
+
+export interface CalcInputStep extends BaseStep {
+  type: 'calc-input';
+  label: string;
+  variableName: string;
+  inputType: 'number' | 'slider';
+  defaultValue: number;
+  min: number;
+  max: number;
+  step?: number;
+  suffix?: string;
+}
+
+export interface ResultSpiderStep extends BaseStep {
+  type: 'result-spider';
+  showKalkuChart?: boolean;
+  cliffhanger?: string;
+}
+
+export interface CtaBookingStep extends BaseStep {
+  type: 'cta-booking';
+  ctaLabel: string;
+  calendarUrl: string;
+  noteUnderButton?: string;
+}
+
+export type FunnelStep =
+  | IntroStep
+  | LeadCaptureStep
+  | QuestionStep
+  | CalcInputStep
+  | ResultSpiderStep
+  | CtaBookingStep;
+
+export interface FunnelTheme {
+  mode: 'light' | 'dark';
+  primaryColor: string;
+  accentColor: string;
+  backgroundColor: string;
+  cardColor: string;
+  textColor: string;
+  borderColor: string;
+}
+
+export interface FunnelSettings {
+  progressBar: boolean;
+  ctaCalendarUrl: string;
+}
+
+export interface FunnelConfig {
+  theme: FunnelTheme;
+  settings: FunnelSettings;
+  steps: FunnelStep[];
+}
+
+export interface Funnel {
+  id: string;
+  ownerId: string;
+  name: string;
+  slug: string;
+  description: string;
+  status: FunnelStatus;
+  config: FunnelConfig;
+  leadsCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Lead {
+  id: string;
+  funnelId: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  businessName: string | null;
+  websiteUrl: string | null;
+  instagramHandle: string | null;
+  gmbUrl: string | null;
+  answers: Record<string, string[]>;
+  scores: Partial<Record<SpiderDimension, number>>;
+  recommendation: string | null;
+  kalkuPotential: Record<string, number> | null;
+  scrapeData: Record<string, unknown> | null;
+  scrapeStatus: 'pending' | 'queued' | 'running' | 'done' | 'error' | 'skipped';
+  pdfUrl: string | null;
+  source: string | null;
+  status: string;
+  utm: Record<string, string> | null;
+  createdAt: string;
+}
+
+export const DEFAULT_FUNNEL_THEME: FunnelTheme = {
+  mode: 'light',
+  primaryColor: '#0a0a0a',
+  accentColor: '#7EC8F3',
+  backgroundColor: '#ffffff',
+  cardColor: '#f7f7f8',
+  textColor: '#0a0a0a',
+  borderColor: '#e6e8eb',
+};
+
+export const SPIDER_DIMENSIONS: { key: SpiderDimension; label: string }[] = [
+  { key: 'social-media', label: 'Social Media' },
+  { key: 'website', label: 'Website' },
+  { key: 'branding', label: 'Branding' },
+  { key: 'trust', label: 'Trust' },
+  { key: 'auffindbarkeit', label: 'Auffindbarkeit' },
+  { key: 'umsatzpotenzial', label: 'Umsatzpotenzial' },
+  { key: 'mitarbeiter', label: 'Mitarbeiter' },
+  { key: 'regional', label: 'Regionales Potenzial' },
+];
+
+export const DEFAULT_LEAD_FIELDS: { key: LeadField; label: string; required: boolean }[] = [
+  { key: 'name', label: 'Dein Name', required: true },
+  { key: 'email', label: 'E-Mail', required: true },
+  { key: 'phone', label: 'Telefon', required: false },
+  { key: 'businessName', label: 'Praxisname', required: true },
+  { key: 'websiteUrl', label: 'Website-URL', required: true },
+  { key: 'instagramHandle', label: 'Instagram-Handle', required: false },
+  { key: 'gmbUrl', label: 'Google-My-Business / Praxis + Stadt', required: false },
+];

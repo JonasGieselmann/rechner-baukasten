@@ -47,3 +47,13 @@ public/custom-calculators/*
 *.njsproj
 *.sln
 *.sw?
+
+# Ruflo workspace artifacts (do not commit)
+agentdb.rvf
+agentdb.rvf.lock
+ruvector.db
+
+# Playwright
+test-results/
+playwright-report/
+.playwright/

@@ -13,7 +13,11 @@
     "db:generate": "npx @better-auth/cli generate",
     "db:migrate": "npx @better-auth/cli migrate",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "seed:potenzialanalyse": "tsx scripts/seed-potenzialanalyse.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -43,6 +47,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/vite": "^4.1.18",
     "@types/adm-zip": "^0.5.7",
     "@types/better-sqlite3": "^7.6.13",
@@ -63,6 +68,7 @@
     "tsx": "^4.21.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vitest": "^4.1.6"
   }
 }
