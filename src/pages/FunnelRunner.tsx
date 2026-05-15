@@ -547,8 +547,13 @@ export default function FunnelRunner() {
     if (!slug) { setNotFound(true); setLoading(false); return; }
     getFunnelBySlug(slug)
       .then((f) => {
-        if (f.status === 'archived') { setNotFound(true); }
-        else { setFunnel(f); }
+        if (f.status === 'archived') { setNotFound(true); return; }
+        setFunnel(f);
+        const defaults: CalcVarsState = {};
+        for (const s of f.config.steps) {
+          if (s.type === 'calc-input') defaults[s.variableName] = s.defaultValue;
+        }
+        setCalcVars(defaults);
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));

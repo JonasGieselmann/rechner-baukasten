@@ -154,8 +154,7 @@ test.afterAll(async () => {
   if (!sql) return;
   await sql`DELETE FROM lead WHERE funnel_id = ${funnelId}`;
   await sql`DELETE FROM funnel WHERE id = ${funnelId}`;
-  await sql`DELETE FROM "user" WHERE id = ${USER_ID}`;
-  await sql.end();
+  // user and sql connection cleaned up in the second afterAll
 });
 
 test('should complete funnel flow and persist lead in database', async ({ page }: { page: Page }) => {
@@ -189,4 +188,95 @@ test('should complete funnel flow and persist lead in database', async ({ page }
   expect(leads).toHaveLength(1);
   expect(leads[0].name).toBe('Max Mustermann');
   expect(leads[0].email).toBe('max@example.com');
+});
+
+// Second slug + funnel for the full path: hero with italic accent, calc-input,
+// Kalku block in result-spider, CTA-booking step. Verifies the brand hero markup,
+// that calc-input data lands in kalkuPotential, and the CTA appears at the end.
+const FULL_SLUG = 'e2e-funnel-full';
+let fullFunnelId: string;
+
+const FULL_CONFIG = {
+  theme: {
+    mode: 'light',
+    primaryColor: '#0a0a0a',
+    accentColor: '#7EC8F3',
+    backgroundColor: '#ffffff',
+    cardColor: '#f7f7f8',
+    textColor: '#0a0a0a',
+    borderColor: '#e6e8eb',
+  },
+  settings: { progressBar: true, ctaCalendarUrl: 'https://cal.com/test-full' },
+  steps: [
+    { id: 'i1', type: 'intro', title: 'Sieh dein Profil in 8 *Dimensionen*', body: 'Mini analyse.', ctaLabel: 'Jetzt Potenzial erkunden' },
+    { id: 'l1', type: 'lead-capture', title: 'Daten', fields: [{ key: 'name', label: 'Name', required: true }, { key: 'email', label: 'Mail', required: true }], ctaLabel: 'Weiter' },
+    { id: 'q1', type: 'question', question: 'Wie viele Bewertungen?', dimension: 'trust', options: [{ id: 't0', label: 'Keine', score: 0 }, { id: 't1', label: 'Viele', score: 100 }], required: true },
+    { id: 'c1', type: 'calc-input', title: 'Termine pro Woche', label: 'Termine pro Woche', variableName: 'terminePerWeek', inputType: 'number', defaultValue: 20, min: 0, max: 200 },
+    { id: 'c2', type: 'calc-input', title: 'Umsatz pro Termin', label: 'Umsatz pro Termin', variableName: 'umsatzProTermin', inputType: 'number', defaultValue: 100, min: 0, max: 1000, suffix: '€' },
+    { id: 'c3', type: 'calc-input', title: 'Kapazität pro Woche', label: 'Kapazität pro Woche', variableName: 'kapazitaetPerWeek', inputType: 'number', defaultValue: 40, min: 0, max: 200 },
+    { id: 'r1', type: 'result-spider', title: 'Dein Ergebnis', showKalkuChart: true, cliffhanger: '' },
+    { id: 'cta1', type: 'cta-booking', title: 'Termin buchen', body: 'Lass uns reden.', ctaLabel: 'Strategiegespraech buchen', calendarUrl: 'https://cal.com/test-full' },
+  ],
+};
+
+test.beforeAll(async () => {
+  await sql`DELETE FROM funnel WHERE slug = ${FULL_SLUG}`;
+  const rows = await sql`
+    INSERT INTO funnel (id, owner_id, name, slug, description, status, config)
+    VALUES (gen_random_uuid()::text, ${USER_ID}, 'E2E Full', ${FULL_SLUG}, '', 'published', ${sql.json(FULL_CONFIG)})
+    RETURNING id
+  `;
+  if (!rows[0]) throw new Error('Full funnel insert returned no rows');
+  fullFunnelId = rows[0].id as string;
+});
+
+test.afterAll(async () => {
+  if (!sql) return;
+  await sql`DELETE FROM lead WHERE funnel_id = ${fullFunnelId}`;
+  await sql`DELETE FROM funnel WHERE id = ${fullFunnelId}`;
+  await sql`DELETE FROM "user" WHERE id = ${USER_ID}`;
+  await sql.end();
+});
+
+test('full path: hero with italic accent, calc-input, Kalku block, CTA, kalkuPotential in DB', async ({ page }: { page: Page }) => {
+  await page.goto(`/funnel/${FULL_SLUG}`);
+
+  // Hero renders the italicized accent word
+  const italicAccent = page.locator('em', { hasText: 'Dimensionen' });
+  await expect(italicAccent).toBeVisible();
+
+  // CTA on the hero is the black pill with the brand label
+  await page.getByRole('button', { name: 'Jetzt Potenzial erkunden' }).click();
+
+  // Lead-capture
+  await page.getByTestId('lead-field-name').fill('Anna Test');
+  await page.getByTestId('lead-field-email').fill('anna@example.com');
+  await page.getByRole('button', { name: 'Weiter' }).click();
+
+  // Question (single-select, auto-advances)
+  await page.getByRole('button', { name: 'Viele' }).click();
+
+  // Three calc-inputs
+  for (let i = 0; i < 3; i++) {
+    await page.getByRole('button', { name: 'Weiter' }).click();
+  }
+
+  // Result step: Kalku block and recommendation present
+  await expect(page.getByText('Dein Umsatz-Potential')).toBeVisible();
+  await expect(page.getByText('Mehrumsatz pro Monat')).toBeVisible();
+  await expect(page.getByText(/Skalierungsliga|Fundament|automatische Buchungen|qualifizierte Leads/)).toBeVisible();
+
+  // Submit fired, lead in DB with kalkuPotential
+  await page.waitForTimeout(1500);
+  const leads = await sql`
+    SELECT name, email, recommendation, kalku_potential FROM lead
+    WHERE funnel_id = ${fullFunnelId}
+    LIMIT 10
+  `;
+  expect(leads).toHaveLength(1);
+  expect(leads[0].name).toBe('Anna Test');
+  expect(leads[0].email).toBe('anna@example.com');
+  expect(leads[0].kalku_potential).not.toBeNull();
+  expect((leads[0].kalku_potential as { delta: number }).delta).toBeGreaterThan(0);
+  expect(leads[0].recommendation).toBeTruthy();
 });
