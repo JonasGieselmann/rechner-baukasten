@@ -2,6 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCalculatorStore } from '../store/calculatorStore';
 import { EditorLayout } from '../components/EditorLayout';
+import { BRAND } from '../../branding/tokens';
 
 export function Editor() {
   const { id } = useParams<{ id: string }>();
@@ -60,8 +61,11 @@ export function Editor() {
   // Show loading while calculator loads
   if (!calculator) {
     return (
-      <div className="h-screen bg-[#04070d] flex items-center justify-center">
-        <div className="text-[#6b7a90]">Laden...</div>
+      <div
+        className="h-screen flex items-center justify-center"
+        style={{ backgroundColor: BRAND.colors.background }}
+      >
+        <div style={{ color: BRAND.colors.muted }}>Laden...</div>
       </div>
     );
   }

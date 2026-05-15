@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid';
 import { useCalculatorStore } from '../store/calculatorStore';
+import { BRAND } from '../../branding/tokens';
 import type {
   Block,
   TextBlock,
@@ -18,18 +19,26 @@ export function PropertiesPanel() {
   // Get list of available variables for dropdowns
   const availableVariables = Object.keys(variables);
 
+  const panelStyle = {
+    backgroundColor: BRAND.colors.card,
+    borderLeft: `1px solid ${BRAND.colors.border}`,
+  };
+
   if (isPreviewMode) {
     return (
-      <div className="w-80 bg-[#0d0d14] border-l border-[#1f1f2e] p-4">
-        <div className="text-center text-gray-500 py-8">
-          <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-500/10 flex items-center justify-center">
-            <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-80 p-4" style={panelStyle}>
+        <div className="text-center py-8">
+          <div
+            className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: `${BRAND.colors.accent}15` }}
+          >
+            <svg className="w-6 h-6" style={{ color: BRAND.colors.accent }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
           </div>
-          <p className="text-sm font-medium text-white">Vorschau-Modus</p>
-          <p className="text-xs mt-1">Teste deinen Rechner live</p>
+          <p className="text-sm font-medium" style={{ color: BRAND.colors.text }}>Vorschau-Modus</p>
+          <p className="text-xs mt-1" style={{ color: BRAND.colors.muted }}>Teste deinen Rechner live</p>
         </div>
       </div>
     );
@@ -37,15 +46,18 @@ export function PropertiesPanel() {
 
   if (!calculator || !selectedBlockId) {
     return (
-      <div className="w-80 bg-[#0d0d14] border-l border-[#1f1f2e] p-4">
-        <div className="text-center text-gray-500 py-8">
-          <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-[#1a1a24] flex items-center justify-center">
-            <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-80 p-4" style={panelStyle}>
+        <div className="text-center py-8">
+          <div
+            className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: BRAND.colors.background }}
+          >
+            <svg className="w-6 h-6" style={{ color: BRAND.colors.muted }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
             </svg>
           </div>
-          <p className="text-sm font-medium text-white">Kein Block ausgewählt</p>
-          <p className="text-xs mt-1">Klicke auf einen Block zum Bearbeiten</p>
+          <p className="text-sm font-medium" style={{ color: BRAND.colors.text }}>Kein Block ausgewählt</p>
+          <p className="text-xs mt-1" style={{ color: BRAND.colors.muted }}>Klicke auf einen Block zum Bearbeiten</p>
         </div>
       </div>
     );
@@ -65,13 +77,13 @@ export function PropertiesPanel() {
   };
 
   return (
-    <div className="w-80 bg-[#0d0d14] border-l border-[#1f1f2e] overflow-auto">
-      <div className="p-4 border-b border-[#1f1f2e]">
+    <div className="w-80 overflow-auto" style={panelStyle}>
+      <div className="p-4" style={{ borderBottom: `1px solid ${BRAND.colors.border}` }}>
         <div className="flex items-center gap-2 mb-1">
-          <div className="w-2 h-2 rounded-full bg-[#7EC8F3]" />
-          <h2 className="text-sm font-semibold text-white">Eigenschaften</h2>
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: BRAND.colors.accent }} />
+          <h2 className="text-sm font-semibold" style={{ color: BRAND.colors.text }}>Eigenschaften</h2>
         </div>
-        <p className="text-xs text-gray-500 ml-4">
+        <p className="text-xs ml-4" style={{ color: BRAND.colors.muted }}>
           {blockTypeLabels[block.type] || block.type}
         </p>
       </div>
@@ -80,16 +92,19 @@ export function PropertiesPanel() {
         {renderBlockProperties(block, updateBlock, availableVariables)}
       </div>
 
-      {/* Variable reference help */}
       {availableVariables.length > 0 && (
-        <div className="p-4 border-t border-[#1f1f2e]">
-          <p className="text-xs text-gray-500 mb-2">Verfügbare Variablen:</p>
+        <div className="p-4" style={{ borderTop: `1px solid ${BRAND.colors.border}` }}>
+          <p className="text-xs mb-2" style={{ color: BRAND.colors.muted }}>Verfügbare Variablen:</p>
           <div className="flex flex-wrap gap-1">
             {availableVariables.map((v) => (
               <code
                 key={v}
-                className="text-xs bg-[#1a1a24] text-[#7EC8F3] px-2 py-0.5 rounded cursor-pointer
-                           hover:bg-[#2a2a3a] transition-colors"
+                className="text-xs px-2 py-0.5 rounded cursor-pointer transition-opacity hover:opacity-70"
+                style={{
+                  backgroundColor: BRAND.colors.background,
+                  color: BRAND.colors.accent,
+                  border: `1px solid ${BRAND.colors.border}`,
+                }}
                 onClick={() => navigator.clipboard.writeText(`{${v}}`)}
                 title="Klicken zum Kopieren"
               >
@@ -127,6 +142,13 @@ function renderBlockProperties(
 }
 
 // Property Input Components
+const inputClass = 'w-full rounded-lg px-3 py-2.5 text-sm outline-none transition-all';
+const inputStyle = {
+  backgroundColor: BRAND.colors.background,
+  border: `1px solid ${BRAND.colors.border}`,
+  color: BRAND.colors.text,
+};
+
 function PropertyInput({
   label,
   value,
@@ -144,17 +166,16 @@ function PropertyInput({
 }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-400 mb-1.5">{label}</label>
+      <label className="block text-xs font-medium mb-1.5" style={{ color: BRAND.colors.muted }}>{label}</label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-3 py-2.5
-                   text-white text-sm focus:border-[#7EC8F3] focus:ring-1
-                   focus:ring-[#7EC8F3]/30 outline-none transition-all"
+        className={inputClass}
+        style={inputStyle}
       />
-      {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
+      {hint && <p className="text-xs mt-1" style={{ color: BRAND.colors.muted }}>{hint}</p>}
     </div>
   );
 }
@@ -172,13 +193,12 @@ function PropertySelect({
 }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-400 mb-1.5">{label}</label>
+      <label className="block text-xs font-medium mb-1.5" style={{ color: BRAND.colors.muted }}>{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-3 py-2.5
-                   text-white text-sm focus:border-[#7EC8F3] focus:ring-1
-                   focus:ring-[#7EC8F3]/30 outline-none transition-all cursor-pointer"
+        className={`${inputClass} cursor-pointer`}
+        style={inputStyle}
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -190,7 +210,6 @@ function PropertySelect({
   );
 }
 
-// Variable selector with quick insert
 function VariableSelector({
   label,
   value,
@@ -210,15 +229,14 @@ function VariableSelector({
 
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-400 mb-1.5">{label}</label>
+      <label className="block text-xs font-medium mb-1.5" style={{ color: BRAND.colors.muted }}>{label}</label>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={2}
-        className="w-full bg-[#1a1a24] border border-[#2a2a3a] rounded-lg px-3 py-2.5
-                   text-white text-sm font-mono focus:border-[#7EC8F3] focus:ring-1
-                   focus:ring-[#7EC8F3]/30 outline-none transition-all resize-none"
+        className="w-full rounded-lg px-3 py-2.5 text-sm font-mono outline-none transition-all resize-none"
+        style={inputStyle}
       />
       {availableVariables.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2">
@@ -226,8 +244,12 @@ function VariableSelector({
             <button
               key={v}
               onClick={() => insertVariable(v)}
-              className="text-xs bg-[#1a1a24] text-[#7EC8F3] px-2 py-1 rounded
-                         hover:bg-[#2a2a3a] border border-[#2a2a3a] transition-colors"
+              className="text-xs px-2 py-1 rounded transition-opacity hover:opacity-70"
+              style={{
+                backgroundColor: BRAND.colors.background,
+                color: BRAND.colors.accent,
+                border: `1px solid ${BRAND.colors.border}`,
+              }}
             >
               + {v}
             </button>
@@ -464,12 +486,14 @@ function ChartProperties({
         placeholder="z.B. Umsatzentwicklung"
       />
 
-      <div className="bg-[#1a1a24] rounded-lg p-3 border border-[#2a2a3a] space-y-3">
-        <p className="text-xs font-medium text-gray-400">Datenquellen</p>
+      <div
+        className="rounded-lg p-3 space-y-3"
+        style={{ backgroundColor: BRAND.colors.background, border: `1px solid ${BRAND.colors.border}` }}
+      >
+        <p className="text-xs font-medium" style={{ color: BRAND.colors.muted }}>Datenquellen</p>
 
-        {/* Before value selector */}
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Vorher-Wert (Basis)</label>
+          <label className="block text-xs mb-1" style={{ color: BRAND.colors.muted }}>Vorher-Wert (Basis)</label>
           <div className="flex gap-2">
             <select
               value={availableVariables.includes(beforeFormula.replace(/[{}]/g, '')) ? beforeFormula : '_custom'}
@@ -478,8 +502,8 @@ function ChartProperties({
                   updateFormulas(`{${e.target.value}}`, afterFormula);
                 }
               }}
-              className="flex-1 bg-[#12121a] border border-[#2a2a3a] rounded px-2 py-1.5
-                         text-white text-xs outline-none focus:border-[#7EC8F3]"
+              className="flex-1 rounded px-2 py-1.5 text-xs outline-none"
+              style={inputStyle}
             >
               <option value="_custom">Formel eingeben...</option>
               {availableVariables.map((v) => (
@@ -491,14 +515,13 @@ function ChartProperties({
             value={beforeFormula}
             onChange={(e) => updateFormulas(e.target.value, afterFormula)}
             placeholder="z.B. {umsatz_alt} oder 1000"
-            className="w-full mt-1 bg-[#12121a] border border-[#2a2a3a] rounded px-2 py-1.5
-                       text-white text-xs font-mono outline-none focus:border-[#7EC8F3]"
+            className="w-full mt-1 rounded px-2 py-1.5 text-xs font-mono outline-none"
+            style={inputStyle}
           />
         </div>
 
-        {/* After value selector */}
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Nachher-Wert (Ergebnis)</label>
+          <label className="block text-xs mb-1" style={{ color: BRAND.colors.muted }}>Nachher-Wert (Ergebnis)</label>
           <div className="flex gap-2">
             <select
               value={availableVariables.includes(afterFormula.replace(/[{}]/g, '')) ? afterFormula : '_custom'}
@@ -507,8 +530,8 @@ function ChartProperties({
                   updateFormulas(beforeFormula, `{${e.target.value}}`);
                 }
               }}
-              className="flex-1 bg-[#12121a] border border-[#2a2a3a] rounded px-2 py-1.5
-                         text-white text-xs outline-none focus:border-[#7EC8F3]"
+              className="flex-1 rounded px-2 py-1.5 text-xs outline-none"
+              style={inputStyle}
             >
               <option value="_custom">Formel eingeben...</option>
               {availableVariables.map((v) => (
@@ -520,8 +543,8 @@ function ChartProperties({
             value={afterFormula}
             onChange={(e) => updateFormulas(beforeFormula, e.target.value)}
             placeholder="z.B. {umsatz_neu} oder {leads}*100"
-            className="w-full mt-1 bg-[#12121a] border border-[#2a2a3a] rounded px-2 py-1.5
-                       text-white text-xs font-mono outline-none focus:border-[#7EC8F3]"
+            className="w-full mt-1 rounded px-2 py-1.5 text-xs font-mono outline-none"
+            style={inputStyle}
           />
         </div>
       </div>
@@ -541,18 +564,20 @@ function ChartProperties({
         />
       </div>
 
-      {/* Format Options */}
-      <div className="bg-[#1a1a24] rounded-lg p-3 border border-[#2a2a3a] space-y-3">
-        <p className="text-xs font-medium text-gray-400">Formatierung</p>
+      <div
+        className="rounded-lg p-3 space-y-3"
+        style={{ backgroundColor: BRAND.colors.background, border: `1px solid ${BRAND.colors.border}` }}
+      >
+        <p className="text-xs font-medium" style={{ color: BRAND.colors.muted }}>Formatierung</p>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Y-Achse Format</label>
+            <label className="block text-xs mb-1" style={{ color: BRAND.colors.muted }}>Y-Achse Format</label>
             <select
               value={block.yAxisFormat || 'number'}
               onChange={(e) => updateBlock(block.id, { yAxisFormat: e.target.value as ChartBlock['yAxisFormat'] })}
-              className="w-full bg-[#12121a] border border-[#2a2a3a] rounded px-2 py-1.5
-                         text-white text-xs outline-none focus:border-[#7EC8F3]"
+              className="w-full rounded px-2 py-1.5 text-xs outline-none"
+              style={inputStyle}
             >
               <option value="number">Zahl (1k, 10k)</option>
               <option value="currency">Währung (€)</option>
@@ -561,12 +586,12 @@ function ChartProperties({
           </div>
 
           <div>
-            <label className="block text-xs text-gray-500 mb-1">X-Achse Typ</label>
+            <label className="block text-xs mb-1" style={{ color: BRAND.colors.muted }}>X-Achse Typ</label>
             <select
               value={block.xAxisType || 'months'}
               onChange={(e) => updateBlock(block.id, { xAxisType: e.target.value as ChartBlock['xAxisType'] })}
-              className="w-full bg-[#12121a] border border-[#2a2a3a] rounded px-2 py-1.5
-                         text-white text-xs outline-none focus:border-[#7EC8F3]"
+              className="w-full rounded px-2 py-1.5 text-xs outline-none"
+              style={inputStyle}
             >
               <option value="months">Monate (Jan-Dez)</option>
               <option value="numbers">Zahlen (1, 2, 3...)</option>
@@ -576,26 +601,31 @@ function ChartProperties({
         </div>
 
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Anzahl Datenpunkte</label>
+          <label className="block text-xs mb-1" style={{ color: BRAND.colors.muted }}>Anzahl Datenpunkte</label>
           <input
             type="number"
             min={2}
             max={36}
             value={block.xAxisCount || 12}
             onChange={(e) => updateBlock(block.id, { xAxisCount: parseInt(e.target.value) || 12 })}
-            className="w-full bg-[#12121a] border border-[#2a2a3a] rounded px-2 py-1.5
-                       text-white text-xs outline-none focus:border-[#7EC8F3]"
+            className="w-full rounded px-2 py-1.5 text-xs outline-none"
+            style={inputStyle}
           />
         </div>
       </div>
 
-      {/* Available Variables hint */}
       {availableVariables.length > 0 && (
-        <div className="text-xs text-gray-500">
+        <div className="text-xs" style={{ color: BRAND.colors.muted }}>
           <p className="mb-1">Verfügbare Variablen:</p>
           <div className="flex flex-wrap gap-1">
             {availableVariables.map((v) => (
-              <code key={v} className="text-[#7EC8F3] bg-[#12121a] px-1.5 py-0.5 rounded">{`{${v}}`}</code>
+              <code
+                key={v}
+                className="px-1.5 py-0.5 rounded"
+                style={{ color: BRAND.colors.accent, backgroundColor: BRAND.colors.background }}
+              >
+                {`{${v}}`}
+              </code>
             ))}
           </div>
         </div>
@@ -646,10 +676,11 @@ function ComparisonProperties({
 
       <div>
         <div className="flex justify-between items-center mb-2">
-          <label className="text-xs font-medium text-gray-400">Vergleichszeilen</label>
+          <label className="text-xs font-medium" style={{ color: BRAND.colors.muted }}>Vergleichszeilen</label>
           <button
             onClick={addRow}
-            className="text-xs text-[#7EC8F3] hover:text-white transition-colors flex items-center gap-1"
+            className="text-xs flex items-center gap-1 transition-opacity hover:opacity-70"
+            style={{ color: BRAND.colors.accent }}
           >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -662,13 +693,14 @@ function ComparisonProperties({
           {block.rows.map((row, index) => (
             <div
               key={row.id}
-              className="bg-[#1a1a24] rounded-lg p-3 border border-[#2a2a3a]"
+              className="rounded-lg p-3"
+              style={{ backgroundColor: BRAND.colors.background, border: `1px solid ${BRAND.colors.border}` }}
             >
               <div className="flex justify-between items-center mb-2">
-                <span className="text-xs text-gray-500 font-medium">#{index + 1}</span>
+                <span className="text-xs font-medium" style={{ color: BRAND.colors.muted }}>#{index + 1}</span>
                 <button
                   onClick={() => deleteRow(row.id)}
-                  className="text-red-400 hover:text-red-300 p-1 hover:bg-red-500/10 rounded transition-colors"
+                  className="p-1 rounded transition-colors hover:opacity-70 text-red-500"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -680,29 +712,29 @@ function ComparisonProperties({
                 value={row.label}
                 onChange={(e) => updateRow(row.id, { label: e.target.value })}
                 placeholder="Bezeichnung"
-                className="w-full bg-[#12121a] border border-[#2a2a3a] rounded px-2 py-1.5
-                           text-white text-sm mb-2 outline-none focus:border-[#7EC8F3]"
+                className="w-full rounded px-2 py-1.5 text-sm mb-2 outline-none"
+                style={inputStyle}
               />
 
               <div className="grid grid-cols-2 gap-2 mb-2">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Vorher</label>
+                  <label className="block text-xs mb-1" style={{ color: BRAND.colors.muted }}>Vorher</label>
                   <input
                     value={row.beforeFormula}
                     onChange={(e) => updateRow(row.id, { beforeFormula: e.target.value })}
                     placeholder="{var} oder Zahl"
-                    className="w-full bg-[#12121a] border border-[#2a2a3a] rounded px-2 py-1.5
-                               text-white text-xs font-mono outline-none focus:border-[#7EC8F3]"
+                    className="w-full rounded px-2 py-1.5 text-xs font-mono outline-none"
+                    style={inputStyle}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Nachher</label>
+                  <label className="block text-xs mb-1" style={{ color: BRAND.colors.muted }}>Nachher</label>
                   <input
                     value={row.afterFormula}
                     onChange={(e) => updateRow(row.id, { afterFormula: e.target.value })}
                     placeholder="{var} oder Formel"
-                    className="w-full bg-[#12121a] border border-[#2a2a3a] rounded px-2 py-1.5
-                               text-white text-xs font-mono outline-none focus:border-[#7EC8F3]"
+                    className="w-full rounded px-2 py-1.5 text-xs font-mono outline-none"
+                    style={inputStyle}
                   />
                 </div>
               </div>
@@ -710,8 +742,8 @@ function ComparisonProperties({
               <select
                 value={row.format}
                 onChange={(e) => updateRow(row.id, { format: e.target.value as ComparisonRow['format'] })}
-                className="w-full bg-[#12121a] border border-[#2a2a3a] rounded px-2 py-1.5
-                           text-white text-xs outline-none focus:border-[#7EC8F3]"
+                className="w-full rounded px-2 py-1.5 text-xs outline-none"
+                style={inputStyle}
               >
                 <option value="number">Zahl</option>
                 <option value="currency">Währung (€)</option>
@@ -719,15 +751,21 @@ function ComparisonProperties({
                 <option value="text">Text</option>
               </select>
 
-              {/* Quick variable insert for this row */}
               {availableVariables.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2 pt-2 border-t border-[#2a2a3a]">
+                <div
+                  className="flex flex-wrap gap-1 mt-2 pt-2"
+                  style={{ borderTop: `1px solid ${BRAND.colors.border}` }}
+                >
                   {availableVariables.slice(0, 4).map((v) => (
                     <button
                       key={v}
                       onClick={() => updateRow(row.id, { afterFormula: row.afterFormula + `{${v}}` })}
-                      className="text-xs bg-[#12121a] text-[#7EC8F3] px-1.5 py-0.5 rounded
-                                 hover:bg-[#2a2a3a] transition-colors"
+                      className="text-xs px-1.5 py-0.5 rounded transition-opacity hover:opacity-70"
+                      style={{
+                        backgroundColor: BRAND.colors.card,
+                        color: BRAND.colors.accent,
+                        border: `1px solid ${BRAND.colors.border}`,
+                      }}
                     >
                       +{v}
                     </button>

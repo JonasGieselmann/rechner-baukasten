@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useCalculatorStore } from '../store/calculatorStore';
 import { useFunnelStore } from '../store/funnelStore';
 import { useAuth } from '../components/AuthProvider';
+import { AdminHeader } from '../components/AdminHeader';
+import { BRAND } from '../../branding/tokens';
 
 interface CustomCalculator {
   id: string;
@@ -20,9 +22,14 @@ type TabType = 'builder' | 'custom' | 'funnel';
 // API base URL - different in dev vs production
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : '';
 
+// Shared overlay style for all modals
+const OVERLAY_STYLE: React.CSSProperties = {
+  backgroundColor: 'rgba(15, 47, 91, 0.5)',
+};
+
 export function Home() {
   const navigate = useNavigate();
-  const { isSuperAdmin, user, logout } = useAuth();
+  const { isSuperAdmin } = useAuth();
   const { savedCalculators, loadSavedCalculators, createNewCalculator, deleteCalculator } =
     useCalculatorStore();
   const {
@@ -186,7 +193,7 @@ export function Home() {
     }
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
     return new Intl.DateTimeFormat('de-DE', {
       day: '2-digit',
       month: '2-digit',
@@ -211,190 +218,149 @@ export function Home() {
     setTimeout(() => setEmbedCopied(false), 2000);
   };
 
+  // Shared tab button classes/styles
+  const tabStyle = (tab: TabType): React.CSSProperties => ({
+    borderBottomColor: activeTab === tab ? BRAND.colors.accent : 'transparent',
+    color: activeTab === tab ? BRAND.colors.text : BRAND.colors.muted,
+    fontWeight: activeTab === tab ? 700 : 500,
+  });
+
   return (
-    <div className="min-h-screen bg-[#04070d]">
-      {/* Header */}
-      <header className="border-b border-[#1a1f2e] bg-[#0a0d12]">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7EC8F3] to-[#5BA3D9] flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-white">Kalku</h1>
-                <p className="text-xs text-[#6b7a90]">Interaktive Rechner erstellen</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {/* View customer dashboard (super_admin only) */}
-              {isSuperAdmin && (
-                <button
-                  onClick={() => navigate('/dashboard')}
-                  className="flex items-center gap-2 px-3 py-2 text-[#6b7a90] hover:text-white
-                             hover:bg-[#1a1f2e] rounded-lg transition-colors"
-                  title="Kunden-Ansicht öffnen"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  <span className="hidden sm:inline">Kunden-Ansicht</span>
-                </button>
-              )}
+    <div
+      className="min-h-screen"
+      style={{ backgroundColor: BRAND.colors.background, color: BRAND.colors.text }}
+    >
+      <AdminHeader />
 
-              {/* Admin link for super admin */}
-              {isSuperAdmin && (
-                <button
-                  onClick={() => navigate('/admin/users')}
-                  className="flex items-center gap-2 px-3 py-2 text-[#6b7a90] hover:text-white
-                             hover:bg-[#1a1f2e] rounded-lg transition-colors"
-                  title="Benutzerverwaltung"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                  <span className="hidden sm:inline">Benutzer</span>
-                </button>
-              )}
-
-              {/* Action buttons based on tab */}
-              {activeTab === 'builder' && (
-                <button
-                  onClick={() => setShowNewModal(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-[#7EC8F3] text-[#0a0a0f] rounded-lg
-                             font-medium hover:bg-[#a6daff] transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Neuer Rechner
-                </button>
-              )}
-              {activeTab === 'custom' && (
-                <button
-                  onClick={() => setShowUploadModal(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-[#7EC8F3] text-[#0a0a0f] rounded-lg
-                             font-medium hover:bg-[#a6daff] transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
-                  Hochladen
-                </button>
-              )}
-              {activeTab === 'funnel' && (
-                <button
-                  onClick={() => setShowNewFunnelModal(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-[#7EC8F3] text-[#0a0a0f] rounded-lg
-                             font-medium hover:bg-[#a6daff] transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Neuer Funnel
-                </button>
-              )}
-
-              {/* User menu */}
-              <div className="flex items-center gap-2 pl-3 border-l border-[#1a1f2e]">
-                <div className="w-8 h-8 rounded-full bg-[#1a1f2e] flex items-center justify-center">
-                  <span className="text-sm font-medium text-[#7EC8F3]">
-                    {user?.name?.charAt(0).toUpperCase() || '?'}
-                  </span>
-                </div>
-                <button
-                  onClick={logout}
-                  className="p-2 text-[#6b7a90] hover:text-white hover:bg-[#1a1f2e] rounded-lg transition-colors"
-                  title="Abmelden"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
+      {/* Tab strip */}
+      <div
+        className="border-b"
+        style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+      >
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex gap-1 -mb-px">
-            <button
-              onClick={() => setActiveTab('builder')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'builder'
-                  ? 'text-[#7EC8F3] border-[#7EC8F3]'
-                  : 'text-[#6b7a90] border-transparent hover:text-white'
-              }`}
-            >
-              Builder-Rechner
-              {savedCalculators.length > 0 && (
-                <span className="ml-2 px-1.5 py-0.5 rounded-full text-xs bg-[#1a1f2e]">
-                  {savedCalculators.length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('custom')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'custom'
-                  ? 'text-[#7EC8F3] border-[#7EC8F3]'
-                  : 'text-[#6b7a90] border-transparent hover:text-white'
-              }`}
-            >
-              Custom-Rechner
-              {customCalculators.length > 0 && (
-                <span className="ml-2 px-1.5 py-0.5 rounded-full text-xs bg-[#1a1f2e]">
-                  {customCalculators.length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('funnel')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'funnel'
-                  ? 'text-[#7EC8F3] border-[#7EC8F3]'
-                  : 'text-[#6b7a90] border-transparent hover:text-white'
-              }`}
-            >
-              Custom Funnels
-              {funnels.length > 0 && (
-                <span className="ml-2 px-1.5 py-0.5 rounded-full text-xs bg-[#1a1f2e]">
-                  {funnels.length}
-                </span>
-              )}
-            </button>
+            {(
+              [
+                { key: 'builder', label: 'Builder-Rechner', count: savedCalculators.length },
+                { key: 'custom', label: 'Custom-Rechner', count: customCalculators.length },
+                { key: 'funnel', label: 'Custom Funnels', count: funnels.length },
+              ] as const
+            ).map(({ key, label, count }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className="px-4 py-3 text-sm border-b-2 transition-colors"
+                style={tabStyle(key)}
+              >
+                {label}
+                {count > 0 && (
+                  <span
+                    className="ml-2 px-1.5 py-0.5 rounded-full text-xs"
+                    style={{ backgroundColor: BRAND.colors.border, color: BRAND.colors.muted }}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Content */}
       <main className="max-w-6xl mx-auto px-6 py-8">
+
+        {/* Sub-toolbar: tab-specific primary action */}
+        <div className="flex items-center justify-between mb-6">
+          <h2
+            className="text-lg font-semibold"
+            style={{ color: BRAND.colors.text }}
+          >
+            {activeTab === 'builder' && `Builder-Rechner (${savedCalculators.length})`}
+            {activeTab === 'custom' && `Custom-Rechner (${customCalculators.length})`}
+            {activeTab === 'funnel' && `Custom Funnels (${funnels.length})`}
+          </h2>
+          <div className="flex items-center gap-2">
+            {isSuperAdmin && (
+              <button
+                onClick={() => navigate('/admin/users')}
+                className="text-sm px-4 py-2 rounded-full border transition-opacity hover:opacity-70"
+                style={{ borderColor: BRAND.colors.border, color: BRAND.colors.muted }}
+              >
+                Benutzer
+              </button>
+            )}
+            {activeTab === 'builder' && (
+              <button
+                onClick={() => setShowNewModal(true)}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full font-medium text-sm transition-opacity hover:opacity-90"
+                style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Neuer Rechner
+              </button>
+            )}
+            {activeTab === 'custom' && (
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full font-medium text-sm transition-opacity hover:opacity-90"
+                style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Hochladen
+              </button>
+            )}
+            {activeTab === 'funnel' && (
+              <button
+                onClick={() => setShowNewFunnelModal(true)}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full font-medium text-sm transition-opacity hover:opacity-90"
+                style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Neuer Funnel
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Builder-Rechner tab */}
         {activeTab === 'builder' && (
           <>
             {savedCalculators.length === 0 ? (
-              // Empty state
               <div className="flex flex-col items-center justify-center py-20">
-                <div className="w-24 h-24 rounded-2xl bg-[#10131c] border border-[#1a1f2e] flex items-center justify-center mb-6">
-                  <svg className="w-12 h-12 text-[#3a4555]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div
+                  className="w-24 h-24 rounded-2xl border flex items-center justify-center mb-6"
+                  style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+                >
+                  <svg
+                    className="w-12 h-12"
+                    style={{ color: BRAND.colors.border }}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <h2 className="text-xl font-semibold text-white mb-2">Noch keine Rechner</h2>
-                <p className="text-[#6b7a90] mb-6 text-center max-w-md">
+                <h2
+                  className="text-xl font-semibold mb-2"
+                  style={{ color: BRAND.colors.text }}
+                >
+                  Noch keine Rechner
+                </h2>
+                <p className="mb-6 text-center max-w-md" style={{ color: BRAND.colors.muted }}>
                   Erstelle deinen ersten interaktiven Rechner mit dem Baukasten-Editor.
                 </p>
                 <button
                   onClick={() => setShowNewModal(true)}
-                  className="flex items-center gap-2 px-5 py-3 bg-[#7EC8F3] text-[#0a0a0f] rounded-xl
-                             font-medium hover:bg-[#a6daff] transition-colors"
+                  className="flex items-center gap-2 px-5 py-3 rounded-full font-medium transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -403,179 +369,81 @@ export function Home() {
                 </button>
               </div>
             ) : (
-              // Calculator grid
-              <div>
-                <h2 className="text-lg font-semibold text-white mb-4">
-                  Deine Rechner ({savedCalculators.length})
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {savedCalculators
-                    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-                    .map((calc) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {savedCalculators
+                  .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                  .map((calc) => (
+                    <div
+                      key={calc.id}
+                      className="rounded-2xl border transition-all group"
+                      style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+                    >
                       <div
-                        key={calc.id}
-                        className="bg-[#10131c] rounded-2xl border border-[#1a1f2e] hover:border-[#2a3142]
-                                   transition-all group"
+                        className="p-5 cursor-pointer"
+                        onClick={() => navigate(`/editor/${calc.id}`)}
                       >
-                        <div
-                          className="p-5 cursor-pointer"
-                          onClick={() => navigate(`/editor/${calc.id}`)}
-                        >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="w-10 h-10 rounded-lg bg-[#1a1f2e] flex items-center justify-center">
-                              <svg className="w-5 h-5 text-[#7EC8F3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                              </svg>
-                            </div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteConfirm(calc.id);
-                              }}
-                              className="p-2 text-[#6b7a90] hover:text-red-400 hover:bg-[#1a1f2e]
-                                         rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                        <div className="flex items-start justify-between mb-3">
+                          <div
+                            className="w-10 h-10 rounded-lg flex items-center justify-center"
+                            style={{ backgroundColor: BRAND.colors.background }}
+                          >
+                            <svg
+                              className="w-5 h-5"
+                              style={{ color: BRAND.colors.accent }}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </div>
-                          <h3 className="font-semibold text-white mb-1 group-hover:text-[#7EC8F3] transition-colors">
-                            {calc.name}
-                          </h3>
-                          <p className="text-sm text-[#6b7a90] mb-3">
-                            {calc.blocks.length} Block{calc.blocks.length !== 1 ? 's' : ''}
-                          </p>
-                          <div className="flex items-center gap-2 text-xs text-[#4a5565]">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                             </svg>
-                            {formatDate(calc.updatedAt)}
                           </div>
-                        </div>
-                        {/* Embed button */}
-                        <div className="px-5 pb-4 pt-0">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setShowEmbedModal({ type: 'builder', id: calc.id, name: calc.name });
+                              setDeleteConfirm(calc.id);
                             }}
-                            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg
-                                       bg-[#1a1f2e] text-[#6b7a90] hover:text-[#7EC8F3] hover:bg-[#2a3142]
-                                       text-sm transition-colors"
+                            className="p-2 rounded-lg transition-colors opacity-0 group-hover:opacity-100
+                                       hover:bg-red-50 hover:text-red-600"
+                            style={{ color: BRAND.colors.muted }}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
-                            Embed-Code
                           </button>
                         </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {activeTab === 'custom' && (
-          <>
-            {customCalculators.length === 0 ? (
-              // Empty state for custom calculators
-              <div className="flex flex-col items-center justify-center py-20">
-                <div className="w-24 h-24 rounded-2xl bg-[#10131c] border border-[#1a1f2e] flex items-center justify-center mb-6">
-                  <svg className="w-12 h-12 text-[#3a4555]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-                  </svg>
-                </div>
-                <h2 className="text-xl font-semibold text-white mb-2">Keine Custom-Rechner</h2>
-                <p className="text-[#6b7a90] mb-6 text-center max-w-md">
-                  Lade deinen fertigen Rechner als ZIP-Datei hoch und hoste ihn hier.
-                </p>
-                <button
-                  onClick={() => setShowUploadModal(true)}
-                  className="flex items-center gap-2 px-5 py-3 bg-[#7EC8F3] text-[#0a0a0f] rounded-xl
-                             font-medium hover:bg-[#a6daff] transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
-                  Rechner hochladen
-                </button>
-              </div>
-            ) : (
-              // Custom calculator grid
-              <div>
-                <h2 className="text-lg font-semibold text-white mb-4">
-                  Custom-Rechner ({customCalculators.length})
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {customCalculators.map((calc) => (
-                    <div
-                      key={calc.id}
-                      className="bg-[#10131c] rounded-2xl border border-[#1a1f2e] hover:border-[#2a3142]
-                                 transition-all group"
-                    >
-                      <div className="p-5">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
-                            <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
-                            </svg>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              calc.active
-                                ? 'bg-green-500/10 text-green-400'
-                                : 'bg-red-500/10 text-red-400'
-                            }`}>
-                              {calc.active ? 'Aktiv' : 'Inaktiv'}
-                            </span>
-                            <button
-                              onClick={() => setDeleteCustomConfirm(calc.slug)}
-                              className="p-1.5 text-[#6b7a90] hover:text-red-400 hover:bg-[#1a1f2e]
-                                         rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                        <h3 className="font-semibold text-white mb-1 group-hover:text-[#7EC8F3] transition-colors">
+                        <h3
+                          className="font-semibold mb-1 group-hover:opacity-80 transition-opacity"
+                          style={{ color: BRAND.colors.text }}
+                        >
                           {calc.name}
                         </h3>
-                        <p className="text-sm text-[#6b7a90] mb-3 line-clamp-2">
-                          {calc.description}
+                        <p className="text-sm mb-3" style={{ color: BRAND.colors.muted }}>
+                          {calc.blocks.length} Block{calc.blocks.length !== 1 ? 's' : ''}
                         </p>
-                        <div className="flex items-center gap-2 text-xs text-[#4a5565]">
+                        <div
+                          className="flex items-center gap-2 text-xs"
+                          style={{ color: BRAND.colors.muted }}
+                        >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          /embed/custom/{calc.slug}
+                          {formatDate(calc.updatedAt)}
                         </div>
                       </div>
-                      {/* Actions */}
-                      <div className="px-5 pb-4 pt-0 flex gap-2">
-                        <a
-                          href={calc.path}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg
-                                     bg-[#1a1f2e] text-[#6b7a90] hover:text-white hover:bg-[#2a3142]
-                                     text-sm transition-colors"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                          Vorschau
-                        </a>
+                      {/* Embed button */}
+                      <div className="px-5 pb-4 pt-0">
                         <button
-                          onClick={() => setShowEmbedModal({ type: 'custom', id: calc.slug, name: calc.name })}
-                          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg
-                                     bg-[#7EC8F3]/10 text-[#7EC8F3] hover:bg-[#7EC8F3]/20
-                                     text-sm transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowEmbedModal({ type: 'builder', id: calc.id, name: calc.name });
+                          }}
+                          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg
+                                     text-sm transition-colors border hover:border-transparent"
+                          style={{
+                            backgroundColor: BRAND.colors.background,
+                            borderColor: BRAND.colors.border,
+                            color: BRAND.colors.muted,
+                          }}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
@@ -585,7 +453,248 @@ export function Home() {
                       </div>
                     </div>
                   ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Custom-Rechner tab */}
+        {activeTab === 'custom' && (
+          <>
+            {customCalculators.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <div
+                  className="w-24 h-24 rounded-2xl border flex items-center justify-center mb-6"
+                  style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+                >
+                  <svg
+                    className="w-12 h-12"
+                    style={{ color: BRAND.colors.border }}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                  </svg>
                 </div>
+                <h2 className="text-xl font-semibold mb-2" style={{ color: BRAND.colors.text }}>
+                  Keine Custom-Rechner
+                </h2>
+                <p className="mb-6 text-center max-w-md" style={{ color: BRAND.colors.muted }}>
+                  Lade deinen fertigen Rechner als ZIP-Datei hoch und hoste ihn hier.
+                </p>
+                <button
+                  onClick={() => setShowUploadModal(true)}
+                  className="flex items-center gap-2 px-5 py-3 rounded-full font-medium transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Rechner hochladen
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {customCalculators.map((calc) => (
+                  <div
+                    key={calc.id}
+                    className="rounded-2xl border transition-all group"
+                    style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+                  >
+                    <div className="p-5">
+                      <div className="flex items-start justify-between mb-3">
+                        <div
+                          className="w-10 h-10 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: 'rgba(126,200,243,0.12)' }}
+                        >
+                          <svg className="w-5 h-5" style={{ color: BRAND.colors.accent }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                          </svg>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              calc.active
+                                ? 'bg-green-50 text-green-700'
+                                : 'bg-red-50 text-red-600'
+                            }`}
+                          >
+                            {calc.active ? 'Aktiv' : 'Inaktiv'}
+                          </span>
+                          <button
+                            onClick={() => setDeleteCustomConfirm(calc.slug)}
+                            className="p-1.5 rounded-lg transition-colors opacity-0 group-hover:opacity-100
+                                       hover:bg-red-50 hover:text-red-600"
+                            style={{ color: BRAND.colors.muted }}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                      <h3
+                        className="font-semibold mb-1 group-hover:opacity-80 transition-opacity"
+                        style={{ color: BRAND.colors.text }}
+                      >
+                        {calc.name}
+                      </h3>
+                      <p className="text-sm mb-3 line-clamp-2" style={{ color: BRAND.colors.muted }}>
+                        {calc.description}
+                      </p>
+                      <div className="flex items-center gap-2 text-xs" style={{ color: BRAND.colors.muted }}>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        /embed/custom/{calc.slug}
+                      </div>
+                    </div>
+                    {/* Actions */}
+                    <div className="px-5 pb-4 pt-0 flex gap-2">
+                      <a
+                        href={calc.path}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg
+                                   text-sm transition-colors border hover:border-transparent hover:bg-slate-50"
+                        style={{
+                          backgroundColor: BRAND.colors.background,
+                          borderColor: BRAND.colors.border,
+                          color: BRAND.colors.muted,
+                        }}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        Vorschau
+                      </a>
+                      <button
+                        onClick={() => setShowEmbedModal({ type: 'custom', id: calc.slug, name: calc.name })}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg
+                                   text-sm transition-colors"
+                        style={{
+                          backgroundColor: 'rgba(126,200,243,0.12)',
+                          color: BRAND.colors.accent,
+                        }}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                        </svg>
+                        Embed-Code
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Custom Funnels tab */}
+        {activeTab === 'funnel' && (
+          <>
+            {funnels.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <div
+                  className="w-24 h-24 rounded-2xl border flex items-center justify-center mb-6"
+                  style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+                >
+                  <svg
+                    className="w-12 h-12"
+                    style={{ color: BRAND.colors.border }}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+                  </svg>
+                </div>
+                <h2 className="text-xl font-semibold mb-2" style={{ color: BRAND.colors.text }}>
+                  Noch keine Funnels
+                </h2>
+                <p className="mb-6 text-center max-w-md" style={{ color: BRAND.colors.muted }}>
+                  Erstelle deinen ersten Funnel, um Leads mit mehrstufigen Formularen einzusammeln.
+                </p>
+                <button
+                  onClick={() => setShowNewFunnelModal(true)}
+                  className="flex items-center gap-2 px-5 py-3 rounded-full font-medium transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Ersten Funnel erstellen
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {funnels.map((funnel) => (
+                  <div
+                    key={funnel.id}
+                    className="rounded-2xl border transition-all group"
+                    style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+                  >
+                    <div
+                      className="p-5 cursor-pointer"
+                      onClick={() => navigate(`/funnels/${funnel.id}`)}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div
+                          className="w-10 h-10 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: BRAND.colors.background }}
+                        >
+                          <svg
+                            className="w-5 h-5"
+                            style={{ color: BRAND.colors.accent }}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+                          </svg>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              funnel.status === 'published'
+                                ? 'bg-green-50 text-green-700'
+                                : 'bg-amber-50 text-amber-700'
+                            }`}
+                          >
+                            {funnel.status === 'published' ? 'Aktiv' : 'Entwurf'}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteFunnelConfirm(funnel.id);
+                            }}
+                            className="p-1.5 rounded-lg transition-colors opacity-0 group-hover:opacity-100
+                                       hover:bg-red-50 hover:text-red-600"
+                            style={{ color: BRAND.colors.muted }}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                      <h3
+                        className="font-semibold mb-1 group-hover:opacity-80 transition-opacity"
+                        style={{ color: BRAND.colors.text }}
+                      >
+                        {funnel.name}
+                      </h3>
+                      <div className="flex items-center gap-2 text-xs mt-3" style={{ color: BRAND.colors.muted }}>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {formatDate(funnel.updatedAt)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </>
@@ -594,38 +703,46 @@ export function Home() {
 
       {/* New Calculator Modal */}
       {showNewModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#12121a] rounded-2xl w-full max-w-md border border-[#1f1f2e] shadow-2xl">
-            <div className="p-5 border-b border-[#1f1f2e]">
-              <h2 className="text-lg font-semibold text-white">Neuen Rechner erstellen</h2>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={OVERLAY_STYLE}>
+          <div
+            className="rounded-2xl w-full max-w-md border shadow-xl"
+            style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+          >
+            <div className="p-5 border-b" style={{ borderColor: BRAND.colors.border }}>
+              <h2 className="text-lg font-semibold" style={{ color: BRAND.colors.text }}>
+                Neuen Rechner erstellen
+              </h2>
             </div>
             <div className="p-5">
-              <label className="block text-sm text-[#b8c7d9] mb-2">Name</label>
+              <label className="block text-sm mb-2" style={{ color: BRAND.colors.muted }}>Name</label>
               <input
                 type="text"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                 placeholder="z.B. ROI Rechner"
-                className="w-full bg-[#1a1f2e] rounded-lg py-3 px-4 text-white
-                           border border-[#2a3142] focus:border-[#7EC8F3] focus:ring-1
-                           focus:ring-[#7EC8F3]/30 outline-none transition-all"
+                className="w-full rounded-lg py-3 px-4 border outline-none transition-all"
+                style={{
+                  backgroundColor: BRAND.colors.background,
+                  color: BRAND.colors.text,
+                  borderColor: BRAND.colors.border,
+                }}
                 autoFocus
               />
             </div>
-            <div className="flex gap-3 justify-end p-5 border-t border-[#1f1f2e]">
+            <div className="flex gap-3 justify-end p-5 border-t" style={{ borderColor: BRAND.colors.border }}>
               <button
                 onClick={() => { setShowNewModal(false); setNewName(''); }}
-                className="px-4 py-2 rounded-lg text-[#b8c7d9] hover:text-white transition-colors"
+                className="px-4 py-2 rounded-lg transition-colors hover:opacity-70"
+                style={{ color: BRAND.colors.muted }}
               >
                 Abbrechen
               </button>
               <button
                 onClick={handleCreate}
                 disabled={!newName.trim()}
-                className="px-5 py-2 rounded-lg bg-[#7EC8F3] text-[#0a0a0f] font-medium
-                           hover:bg-[#a6daff] transition-colors disabled:opacity-50
-                           disabled:cursor-not-allowed"
+                className="px-5 py-2 rounded-full font-medium transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
               >
                 Erstellen
               </button>
@@ -636,34 +753,37 @@ export function Home() {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#12121a] rounded-2xl w-full max-w-sm border border-[#1f1f2e] shadow-2xl">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={OVERLAY_STYLE}>
+          <div
+            className="rounded-2xl w-full max-w-sm border shadow-xl"
+            style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+          >
             <div className="p-5">
-              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-white text-center mb-2">
+              <h3 className="text-lg font-semibold text-center mb-2" style={{ color: BRAND.colors.text }}>
                 Rechner löschen?
               </h3>
-              <p className="text-[#6b7a90] text-center text-sm">
-                Diese Aktion kann nicht rückgängig gemacht werden.
+              <p className="text-center text-sm" style={{ color: BRAND.colors.muted }}>
+                Diese Aktion kann nicht ruckgangig gemacht werden.
               </p>
             </div>
-            <div className="flex gap-3 justify-center p-5 border-t border-[#1f1f2e]">
+            <div className="flex gap-3 justify-center p-5 border-t" style={{ borderColor: BRAND.colors.border }}>
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="px-4 py-2 rounded-lg text-[#b8c7d9] hover:text-white transition-colors"
+                className="px-4 py-2 rounded-lg transition-colors hover:opacity-70"
+                style={{ color: BRAND.colors.muted }}
               >
                 Abbrechen
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
-                className="px-5 py-2 rounded-lg bg-red-500 text-white font-medium
-                           hover:bg-red-600 transition-colors"
+                className="px-5 py-2 rounded-full bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
               >
-                Löschen
+                Loschen
               </button>
             </div>
           </div>
@@ -672,51 +792,68 @@ export function Home() {
 
       {/* Embed Code Modal */}
       {showEmbedModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#12121a] rounded-2xl w-full max-w-lg border border-[#1f1f2e] shadow-2xl overflow-hidden">
-            <div className="p-5 border-b border-[#1f1f2e]">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={OVERLAY_STYLE}>
+          <div
+            className="rounded-2xl w-full max-w-lg border shadow-xl overflow-hidden"
+            style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+          >
+            <div className="p-5 border-b" style={{ borderColor: BRAND.colors.border }}>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#7EC8F3]/10 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-[#7EC8F3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center"
+                  style={{ backgroundColor: 'rgba(126,200,243,0.12)' }}
+                >
+                  <svg className="w-5 h-5" style={{ color: BRAND.colors.accent }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Embed-Code</h2>
-                  <p className="text-xs text-gray-500">{showEmbedModal.name}</p>
+                  <h2 className="text-lg font-semibold" style={{ color: BRAND.colors.text }}>Embed-Code</h2>
+                  <p className="text-xs" style={{ color: BRAND.colors.muted }}>{showEmbedModal.name}</p>
                 </div>
               </div>
             </div>
 
             <div className="p-5">
-              <pre className="bg-[#0a0a0f] border border-[#2a2a3a] rounded-xl p-4
-                            text-sm text-gray-300 font-mono overflow-auto max-h-48">
+              <pre
+                className="rounded-xl p-4 text-sm font-mono overflow-auto max-h-48 border"
+                style={{
+                  backgroundColor: BRAND.colors.background,
+                  borderColor: BRAND.colors.border,
+                  color: BRAND.colors.text,
+                }}
+              >
                 {getEmbedCode(showEmbedModal.type, showEmbedModal.id)}
               </pre>
 
-              <div className="mt-4 p-3 bg-[#1a1a24] rounded-lg border border-[#2a2a3a]">
-                <p className="text-xs text-gray-400">
-                  <span className="text-[#7EC8F3] font-medium">Tipp:</span> Der Embed-Code funktioniert mit
-                  Framer, Webflow, WordPress und allen anderen Websites, die iframes unterstützen.
+              <div
+                className="mt-4 p-3 rounded-lg border"
+                style={{ backgroundColor: BRAND.colors.background, borderColor: BRAND.colors.border }}
+              >
+                <p className="text-xs" style={{ color: BRAND.colors.muted }}>
+                  <span className="font-medium" style={{ color: BRAND.colors.accent }}>Tipp:</span>{' '}
+                  Der Embed-Code funktioniert mit Framer, Webflow, WordPress und allen anderen Websites,
+                  die iframes unterstutzten.
                 </p>
               </div>
             </div>
 
-            <div className="flex gap-3 justify-end p-5 border-t border-[#1f1f2e]">
+            <div className="flex gap-3 justify-end p-5 border-t" style={{ borderColor: BRAND.colors.border }}>
               <button
                 onClick={() => { setShowEmbedModal(null); setEmbedCopied(false); }}
-                className="px-4 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#1a1a24] transition-colors"
+                className="px-4 py-2.5 rounded-lg transition-colors hover:opacity-70"
+                style={{ color: BRAND.colors.muted }}
               >
-                Schließen
+                Schliessen
               </button>
               <button
                 onClick={copyEmbedCode}
-                className={`px-5 py-2.5 rounded-lg font-medium transition-all ${
+                className="px-5 py-2.5 rounded-full font-medium transition-all"
+                style={
                   embedCopied
-                    ? 'bg-green-500 text-white'
-                    : 'bg-[#7EC8F3] text-[#0a0a0f] hover:bg-[#a6daff]'
-                }`}
+                    ? { backgroundColor: '#22c55e', color: '#fff' }
+                    : { backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }
+                }
               >
                 {embedCopied ? (
                   <span className="inline-flex items-center gap-2">
@@ -736,18 +873,26 @@ export function Home() {
 
       {/* Upload Custom Calculator Modal */}
       {showUploadModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#12121a] rounded-2xl w-full max-w-lg border border-[#1f1f2e] shadow-2xl overflow-hidden">
-            <div className="p-5 border-b border-[#1f1f2e]">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={OVERLAY_STYLE}>
+          <div
+            className="rounded-2xl w-full max-w-lg border shadow-xl overflow-hidden"
+            style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+          >
+            <div className="p-5 border-b" style={{ borderColor: BRAND.colors.border }}>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#7EC8F3]/10 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-[#7EC8F3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center"
+                  style={{ backgroundColor: 'rgba(126,200,243,0.12)' }}
+                >
+                  <svg className="w-5 h-5" style={{ color: BRAND.colors.accent }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Custom-Rechner hochladen</h2>
-                  <p className="text-xs text-gray-500">ZIP-Datei mit index.html</p>
+                  <h2 className="text-lg font-semibold" style={{ color: BRAND.colors.text }}>
+                    Custom-Rechner hochladen
+                  </h2>
+                  <p className="text-xs" style={{ color: BRAND.colors.muted }}>ZIP-Datei mit index.html</p>
                 </div>
               </div>
             </div>
@@ -755,7 +900,7 @@ export function Home() {
             <div className="p-5 space-y-4">
               {/* File Input */}
               <div>
-                <label className="block text-sm text-[#b8c7d9] mb-2">ZIP-Datei *</label>
+                <label className="block text-sm mb-2" style={{ color: BRAND.colors.muted }}>ZIP-Datei *</label>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -764,97 +909,119 @@ export function Home() {
                     const file = e.target.files?.[0];
                     setUploadFile(file || null);
                     if (file && !uploadName) {
-                      // Auto-fill name from filename
                       const name = file.name.replace(/\.zip$/i, '').replace(/[-_]/g, ' ');
                       setUploadName(name.charAt(0).toUpperCase() + name.slice(1));
                     }
                   }}
-                  className="w-full bg-[#1a1f2e] rounded-lg py-3 px-4 text-white
-                             border border-[#2a3142] focus:border-[#7EC8F3] focus:ring-1
-                             focus:ring-[#7EC8F3]/30 outline-none transition-all
+                  className="w-full rounded-lg py-3 px-4 border outline-none transition-all
                              file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0
-                             file:bg-[#7EC8F3]/20 file:text-[#7EC8F3] file:font-medium
-                             file:cursor-pointer hover:file:bg-[#7EC8F3]/30"
+                             file:font-medium file:cursor-pointer"
+                  style={{
+                    backgroundColor: BRAND.colors.background,
+                    color: BRAND.colors.text,
+                    borderColor: BRAND.colors.border,
+                  }}
                 />
-                <p className="text-xs text-[#6b7a90] mt-1">
+                <p className="text-xs mt-1" style={{ color: BRAND.colors.muted }}>
                   Die ZIP-Datei muss eine index.html enthalten (max. 50MB)
                 </p>
               </div>
 
               {/* Name Input */}
               <div>
-                <label className="block text-sm text-[#b8c7d9] mb-2">Name *</label>
+                <label className="block text-sm mb-2" style={{ color: BRAND.colors.muted }}>Name *</label>
                 <input
                   type="text"
                   value={uploadName}
                   onChange={(e) => setUploadName(e.target.value)}
                   placeholder="z.B. ROI Rechner"
-                  className="w-full bg-[#1a1f2e] rounded-lg py-3 px-4 text-white
-                             border border-[#2a3142] focus:border-[#7EC8F3] focus:ring-1
-                             focus:ring-[#7EC8F3]/30 outline-none transition-all"
+                  className="w-full rounded-lg py-3 px-4 border outline-none transition-all"
+                  style={{
+                    backgroundColor: BRAND.colors.background,
+                    color: BRAND.colors.text,
+                    borderColor: BRAND.colors.border,
+                  }}
                 />
               </div>
 
               {/* Description Input */}
               <div>
-                <label className="block text-sm text-[#b8c7d9] mb-2">Beschreibung</label>
+                <label className="block text-sm mb-2" style={{ color: BRAND.colors.muted }}>Beschreibung</label>
                 <textarea
                   value={uploadDescription}
                   onChange={(e) => setUploadDescription(e.target.value)}
                   placeholder="Kurze Beschreibung des Rechners..."
                   rows={2}
-                  className="w-full bg-[#1a1f2e] rounded-lg py-3 px-4 text-white
-                             border border-[#2a3142] focus:border-[#7EC8F3] focus:ring-1
-                             focus:ring-[#7EC8F3]/30 outline-none transition-all resize-none"
+                  className="w-full rounded-lg py-3 px-4 border outline-none transition-all resize-none"
+                  style={{
+                    backgroundColor: BRAND.colors.background,
+                    color: BRAND.colors.text,
+                    borderColor: BRAND.colors.border,
+                  }}
                 />
               </div>
 
               {/* Dimensions */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-[#b8c7d9] mb-2">Breite</label>
+                  <label className="block text-sm mb-2" style={{ color: BRAND.colors.muted }}>Breite</label>
                   <input
                     type="text"
                     value={uploadWidth}
                     onChange={(e) => setUploadWidth(e.target.value)}
                     placeholder="100%"
-                    className="w-full bg-[#1a1f2e] rounded-lg py-3 px-4 text-white
-                               border border-[#2a3142] focus:border-[#7EC8F3] focus:ring-1
-                               focus:ring-[#7EC8F3]/30 outline-none transition-all"
+                    className="w-full rounded-lg py-3 px-4 border outline-none transition-all"
+                    style={{
+                      backgroundColor: BRAND.colors.background,
+                      color: BRAND.colors.text,
+                      borderColor: BRAND.colors.border,
+                    }}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-[#b8c7d9] mb-2">Höhe</label>
+                  <label className="block text-sm mb-2" style={{ color: BRAND.colors.muted }}>Hohe</label>
                   <input
                     type="text"
                     value={uploadHeight}
                     onChange={(e) => setUploadHeight(e.target.value)}
                     placeholder="800px"
-                    className="w-full bg-[#1a1f2e] rounded-lg py-3 px-4 text-white
-                               border border-[#2a3142] focus:border-[#7EC8F3] focus:ring-1
-                               focus:ring-[#7EC8F3]/30 outline-none transition-all"
+                    className="w-full rounded-lg py-3 px-4 border outline-none transition-all"
+                    style={{
+                      backgroundColor: BRAND.colors.background,
+                      color: BRAND.colors.text,
+                      borderColor: BRAND.colors.border,
+                    }}
                   />
                 </div>
               </div>
 
               {/* Info Box */}
-              <div className="p-3 bg-[#1a1a24] rounded-lg border border-[#2a2a3a]">
-                <p className="text-xs text-gray-400">
-                  <span className="text-[#7EC8F3] font-medium">So funktioniert's:</span> Baue deinen Rechner
-                  mit npm run build (Vite: <code className="bg-[#2a2a3a] px-1 rounded">base: './'</code>
-                  für relative Pfade). Zippe den dist-Ordner und lade ihn hier hoch.
+              <div
+                className="p-3 rounded-lg border"
+                style={{ backgroundColor: BRAND.colors.background, borderColor: BRAND.colors.border }}
+              >
+                <p className="text-xs" style={{ color: BRAND.colors.muted }}>
+                  <span className="font-medium" style={{ color: BRAND.colors.accent }}>So funktioniert's:</span>{' '}
+                  Baue deinen Rechner mit npm run build (Vite:{' '}
+                  <code
+                    className="px-1 rounded text-xs"
+                    style={{ backgroundColor: BRAND.colors.border }}
+                  >
+                    base: './'
+                  </code>
+                  {' '}für relative Pfade). Zippe den dist-Ordner und lade ihn hier hoch.
                 </p>
               </div>
 
               {/* Error Message */}
               {uploadError && (
-                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                  <p className="text-sm text-red-400">{uploadError}</p>
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-600">{uploadError}</p>
                 </div>
               )}
             </div>
 
-            <div className="flex gap-3 justify-end p-5 border-t border-[#1f1f2e]">
+            <div className="flex gap-3 justify-end p-5 border-t" style={{ borderColor: BRAND.colors.border }}>
               <button
                 onClick={() => {
                   setShowUploadModal(false);
@@ -865,20 +1032,24 @@ export function Home() {
                   if (fileInputRef.current) fileInputRef.current.value = '';
                 }}
                 disabled={uploading}
-                className="px-4 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#1a1a24] transition-colors disabled:opacity-50"
+                className="px-4 py-2.5 rounded-lg transition-colors hover:opacity-70 disabled:opacity-50"
+                style={{ color: BRAND.colors.muted }}
               >
                 Abbrechen
               </button>
               <button
                 onClick={handleUpload}
                 disabled={!uploadFile || !uploadName.trim() || uploading}
-                className="px-5 py-2.5 rounded-lg bg-[#7EC8F3] text-[#0a0a0f] font-medium
-                           hover:bg-[#a6daff] transition-colors disabled:opacity-50
-                           disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-5 py-2.5 rounded-full font-medium transition-opacity hover:opacity-90
+                           disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
               >
                 {uploading ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#0a0a0f] border-t-transparent" />
+                    <div
+                      className="animate-spin rounded-full h-4 w-4 border-2 border-t-transparent"
+                      style={{ borderColor: BRAND.colors.background }}
+                    />
                     Wird hochgeladen...
                   </>
                 ) : (
@@ -892,66 +1063,85 @@ export function Home() {
 
       {/* Delete Custom Calculator Confirmation Modal */}
       {deleteCustomConfirm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#12121a] rounded-2xl w-full max-w-sm border border-[#1f1f2e] shadow-2xl">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={OVERLAY_STYLE}>
+          <div
+            className="rounded-2xl w-full max-w-sm border shadow-xl"
+            style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+          >
             <div className="p-5">
-              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-white text-center mb-2">
+              <h3 className="text-lg font-semibold text-center mb-2" style={{ color: BRAND.colors.text }}>
                 Custom-Rechner löschen?
               </h3>
-              <p className="text-[#6b7a90] text-center text-sm">
-                Der Rechner und alle zugehörigen Dateien werden permanent gelöscht.
+              <p className="text-center text-sm" style={{ color: BRAND.colors.muted }}>
+                Der Rechner und alle zugehorigen Dateien werden permanent geloscht.
               </p>
             </div>
-            <div className="flex gap-3 justify-center p-5 border-t border-[#1f1f2e]">
+            <div className="flex gap-3 justify-center p-5 border-t" style={{ borderColor: BRAND.colors.border }}>
               <button
                 onClick={() => setDeleteCustomConfirm(null)}
-                className="px-4 py-2 rounded-lg text-[#b8c7d9] hover:text-white transition-colors"
+                className="px-4 py-2 rounded-lg transition-colors hover:opacity-70"
+                style={{ color: BRAND.colors.muted }}
               >
                 Abbrechen
               </button>
               <button
                 onClick={() => handleDeleteCustom(deleteCustomConfirm)}
-                className="px-5 py-2 rounded-lg bg-red-500 text-white font-medium
-                           hover:bg-red-600 transition-colors"
+                className="px-5 py-2 rounded-full bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
               >
-                Löschen
+                Loschen
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* New Funnel Modal */}
       {showNewFunnelModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#12121a] rounded-2xl w-full max-w-md border border-[#1f1f2e] shadow-2xl">
-            <div className="p-5 border-b border-[#1f1f2e]">
-              <h2 className="text-lg font-semibold text-white">Neuen Funnel erstellen</h2>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={OVERLAY_STYLE}>
+          <div
+            className="rounded-2xl w-full max-w-md border shadow-xl"
+            style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+          >
+            <div className="p-5 border-b" style={{ borderColor: BRAND.colors.border }}>
+              <h2 className="text-lg font-semibold" style={{ color: BRAND.colors.text }}>
+                Neuen Funnel erstellen
+              </h2>
             </div>
             <div className="p-5">
-              <label className="block text-sm text-[#b8c7d9] mb-2">Name</label>
+              <label className="block text-sm mb-2" style={{ color: BRAND.colors.muted }}>Name</label>
               <input
                 type="text"
                 value={newFunnelName}
                 onChange={(e) => setNewFunnelName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreateFunnel()}
                 placeholder="z.B. Potenzialanalyse"
-                className="w-full bg-[#1a1f2e] rounded-lg py-3 px-4 text-white border border-[#2a3142] focus:border-[#7EC8F3] focus:ring-1 focus:ring-[#7EC8F3]/30 outline-none transition-all"
+                className="w-full rounded-lg py-3 px-4 border outline-none transition-all"
+                style={{
+                  backgroundColor: BRAND.colors.background,
+                  color: BRAND.colors.text,
+                  borderColor: BRAND.colors.border,
+                }}
                 autoFocus
               />
             </div>
-            <div className="flex gap-3 justify-end p-5 border-t border-[#1f1f2e]">
-              <button onClick={() => { setShowNewFunnelModal(false); setNewFunnelName(''); }} className="px-4 py-2 rounded-lg text-[#b8c7d9] hover:text-white transition-colors">
+            <div className="flex gap-3 justify-end p-5 border-t" style={{ borderColor: BRAND.colors.border }}>
+              <button
+                onClick={() => { setShowNewFunnelModal(false); setNewFunnelName(''); }}
+                className="px-4 py-2 rounded-lg transition-colors hover:opacity-70"
+                style={{ color: BRAND.colors.muted }}
+              >
                 Abbrechen
               </button>
               <button
                 onClick={handleCreateFunnel}
                 disabled={!newFunnelName.trim()}
-                className="px-5 py-2 rounded-lg bg-[#7EC8F3] text-[#0a0a0f] font-medium hover:bg-[#a6daff] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-5 py-2 rounded-full font-medium transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
               >
                 Erstellen
               </button>
@@ -960,29 +1150,39 @@ export function Home() {
         </div>
       )}
 
+      {/* Delete Funnel Confirmation Modal */}
       {deleteFunnelConfirm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#12121a] rounded-2xl w-full max-w-sm border border-[#1f1f2e] shadow-2xl">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={OVERLAY_STYLE}>
+          <div
+            className="rounded-2xl w-full max-w-sm border shadow-xl"
+            style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+          >
             <div className="p-5">
-              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-white text-center mb-2">Funnel löschen?</h3>
-              <p className="text-[#6b7a90] text-center text-sm">
-                Funnel und alle eingesammelten Leads werden permanent gelöscht.
+              <h3 className="text-lg font-semibold text-center mb-2" style={{ color: BRAND.colors.text }}>
+                Funnel löschen?
+              </h3>
+              <p className="text-center text-sm" style={{ color: BRAND.colors.muted }}>
+                Funnel und alle eingesammelten Leads werden permanent geloscht.
               </p>
             </div>
-            <div className="flex gap-3 justify-center p-5 border-t border-[#1f1f2e]">
-              <button onClick={() => setDeleteFunnelConfirm(null)} className="px-4 py-2 rounded-lg text-[#b8c7d9] hover:text-white transition-colors">
+            <div className="flex gap-3 justify-center p-5 border-t" style={{ borderColor: BRAND.colors.border }}>
+              <button
+                onClick={() => setDeleteFunnelConfirm(null)}
+                className="px-4 py-2 rounded-lg transition-colors hover:opacity-70"
+                style={{ color: BRAND.colors.muted }}
+              >
                 Abbrechen
               </button>
               <button
                 onClick={() => handleDeleteFunnel(deleteFunnelConfirm)}
-                className="px-5 py-2 rounded-lg bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
+                className="px-5 py-2 rounded-full bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
               >
-                Löschen
+                Loschen
               </button>
             </div>
           </div>

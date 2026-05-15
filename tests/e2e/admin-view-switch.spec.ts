@@ -40,23 +40,23 @@ test('super_admin can toggle between /admin and /dashboard via header buttons', 
   await page.goto('/');
   await page.waitForURL(/\/admin\/?$/, { timeout: 10000 });
 
-  // Step 1: admin landing
-  await expect(page.getByText('Kalku')).toBeVisible();
+  // Step 1: admin landing shows BeautyFlow brand
+  await expect(page.locator('header').getByText('Beauty').first()).toBeVisible();
   await page.screenshot({ path: `${SCREENSHOTS}/1-admin.png`, fullPage: true });
 
-  // Step 2: click Kunden-Ansicht in header
-  const customerViewBtn = page.getByRole('button', { name: /Kunden-Ansicht/i });
+  // Step 2: click Customer-Ansicht in header
+  const customerViewBtn = page.getByRole('button', { name: /Customer-Ansicht/i });
   await expect(customerViewBtn).toBeVisible();
   await customerViewBtn.click();
   await page.waitForURL(/\/dashboard\/?$/, { timeout: 5000 });
-  await expect(page.getByText('BeautyFlow')).toBeVisible();
+  await expect(page.locator('header').getByText('BeautyFlow').first()).toBeVisible();
   await page.screenshot({ path: `${SCREENSHOTS}/2-customer.png`, fullPage: true });
 
-  // Step 3: click ← Admin in customer header (only visible for super_admin)
+  // Step 3: click ← Admin in customer header
   const adminBackLink = page.getByRole('link', { name: /Admin/ });
   await expect(adminBackLink).toBeVisible();
   await adminBackLink.click();
   await page.waitForURL(/\/admin\/?$/, { timeout: 5000 });
-  await expect(page.getByText('Kalku')).toBeVisible();
+  await expect(page.locator('header').getByText('Beauty').first()).toBeVisible();
   await page.screenshot({ path: `${SCREENSHOTS}/3-back-to-admin.png`, fullPage: true });
 });

@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useFunnelStore } from '../store/funnelStore';
 import type { FunnelStep, FunnelStepType, LeadCaptureStep, QuestionStep, IntroStep, CalcInputStep, ResultSpiderStep, CtaBookingStep, SpiderDimension } from '../types';
 import { SPIDER_DIMENSIONS, DEFAULT_LEAD_FIELDS } from '../types';
+import { AdminHeader } from '../components/AdminHeader';
+import { BRAND } from '../../branding/tokens';
 
 const STEP_TYPES: { type: FunnelStepType; label: string }[] = [
   { type: 'intro', label: 'Intro' },
@@ -47,83 +49,171 @@ export function FunnelEditor() {
   }, [isDirty, current, saveCurrent]);
 
   if (loadError) {
-    return <div className="p-10 text-red-400">Fehler: {loadError}</div>;
+    return <div className="p-10 text-red-600">Fehler: {loadError}</div>;
   }
   if (!current) {
-    return <div className="p-10 text-[#6b7a90]">Lädt...</div>;
+    return (
+      <div className="p-10" style={{ color: BRAND.colors.muted }}>
+        Lädt deinen Funnel...
+      </div>
+    );
   }
 
   const steps = current.config.steps;
   const selected = steps.find((s) => s.id === selectedStepId) ?? null;
   const publicUrl = `${window.location.origin}/funnel/${current.slug}`;
 
+  const statusPill =
+    current.status === 'published'
+      ? 'bg-green-50 text-green-700'
+      : current.status === 'archived'
+      ? 'bg-neutral-100 text-neutral-600'
+      : 'bg-amber-50 text-amber-700';
+
   return (
-    <div className="min-h-screen bg-[#04070d] text-white">
-      <header className="border-b border-[#1a1f2e] bg-[#0a0d12] px-6 py-3 flex items-center gap-4">
-        <button onClick={() => navigate('/')} className="text-[#6b7a90] hover:text-white">
-          ← Funnels
+    <div className="min-h-screen" style={{ backgroundColor: BRAND.colors.background }}>
+      <AdminHeader />
+
+      {/* Sub-toolbar */}
+      <div
+        className="border-b px-6 py-2 flex items-center gap-4"
+        style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+      >
+        <button
+          onClick={() => navigate('/')}
+          className="text-sm transition-opacity hover:opacity-70"
+          style={{ color: BRAND.colors.muted }}
+        >
+          &larr; Funnels
         </button>
         <input
           value={current.name}
           onChange={(e) => updateCurrentMeta({ name: e.target.value })}
-          className="bg-transparent text-lg font-semibold outline-none border-b border-transparent hover:border-[#1a1f2e] focus:border-[#7EC8F3] px-1"
+          className="text-base font-semibold outline-none border-b border-transparent px-1 bg-transparent"
+          style={{
+            color: BRAND.colors.text,
+            borderColor: 'transparent',
+          }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = BRAND.colors.accent)}
+          onBlur={(e) => (e.currentTarget.style.borderColor = 'transparent')}
         />
-        <span className={`text-xs px-2 py-1 rounded-full ${current.status === 'published' ? 'bg-green-500/10 text-green-400' : 'bg-[#1a1f2e] text-[#6b7a90]'}`}>
-          {current.status}
+        <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusPill}`}>
+          {current.status === 'published' ? 'Veröffentlicht' : current.status === 'archived' ? 'Archiviert' : 'Entwurf'}
         </span>
         <div className="ml-auto flex items-center gap-3">
-          <span className="text-xs text-[#6b7a90]">{isSaving ? 'Speichert...' : isDirty ? 'Ungespeichert' : 'Gespeichert'}</span>
-          <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[#7EC8F3] hover:underline">
-            Vorschau ↗
+          <span className="text-xs" style={{ color: BRAND.colors.muted }}>
+            {isSaving ? 'Speichert...' : isDirty ? 'Ungespeichert' : 'Gespeichert'}
+          </span>
+          <a
+            href={publicUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs hover:underline"
+            style={{ color: BRAND.colors.accent }}
+          >
+            Vorschau &uarr;&nearrow;
           </a>
           <select
             value={current.status}
             onChange={(e) => updateCurrentMeta({ status: e.target.value as 'draft' | 'published' | 'archived' })}
-            className="bg-[#1a1f2e] border border-[#2a3142] rounded px-2 py-1 text-sm"
+            className="border rounded px-2 py-1 text-sm"
+            style={{
+              backgroundColor: BRAND.colors.background,
+              borderColor: BRAND.colors.border,
+              color: BRAND.colors.text,
+            }}
           >
             <option value="draft">Entwurf</option>
             <option value="published">Veröffentlicht</option>
             <option value="archived">Archiviert</option>
           </select>
         </div>
-      </header>
+      </div>
 
-      <div className="grid grid-cols-[280px_1fr_360px] min-h-[calc(100vh-49px)]">
+      <div className="grid grid-cols-[280px_1fr_360px] min-h-[calc(100vh-97px)]">
         {/* Left: steps list + palette */}
-        <aside className="border-r border-[#1a1f2e] p-4 overflow-y-auto">
-          <h3 className="text-xs uppercase tracking-wider text-[#6b7a90] mb-2">Schritte</h3>
+        <aside
+          className="border-r p-4 overflow-y-auto"
+          style={{
+            backgroundColor: BRAND.colors.background,
+            borderColor: BRAND.colors.border,
+          }}
+        >
+          <h3
+            className="text-xs uppercase tracking-wider mb-2 font-medium"
+            style={{ color: BRAND.colors.muted }}
+          >
+            Schritte
+          </h3>
           <ol className="space-y-1 mb-6">
             {steps.map((s, i) => (
               <li key={s.id}>
                 <button
                   onClick={() => selectStep(s.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
-                    selected?.id === s.id ? 'bg-[#7EC8F3]/10 text-[#7EC8F3]' : 'hover:bg-[#1a1f2e] text-[#b8c7d9]'
-                  }`}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors"
+                  style={{
+                    backgroundColor: selected?.id === s.id ? `${BRAND.colors.accent}1A` : 'transparent',
+                    color: selected?.id === s.id ? BRAND.colors.primary : BRAND.colors.text,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (selected?.id !== s.id) {
+                      e.currentTarget.style.backgroundColor = BRAND.colors.border;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (selected?.id !== s.id) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
+                  }}
                 >
-                  <span className="text-[#6b7a90] mr-2">{i + 1}.</span>
+                  <span style={{ color: BRAND.colors.muted }} className="mr-2">{i + 1}.</span>
                   {labelForStep(s)}
                 </button>
               </li>
             ))}
-            {steps.length === 0 && <li className="text-xs text-[#6b7a90]">Noch keine Schritte. Unten hinzufügen.</li>}
+            {steps.length === 0 && (
+              <li className="text-xs" style={{ color: BRAND.colors.muted }}>
+                Noch keine Schritte. Unten hinzufügen.
+              </li>
+            )}
           </ol>
 
-          <h3 className="text-xs uppercase tracking-wider text-[#6b7a90] mb-2">Hinzufügen</h3>
+          <h3
+            className="text-xs uppercase tracking-wider mb-2 font-medium"
+            style={{ color: BRAND.colors.muted }}
+          >
+            Hinzufügen
+          </h3>
           <div className="grid grid-cols-1 gap-1">
             {STEP_TYPES.map((t) => (
               <button
                 key={t.type}
                 onClick={() => addStep(t.type)}
-                className="text-left px-3 py-2 rounded-lg bg-[#10131c] hover:bg-[#1a1f2e] text-sm text-[#b8c7d9]"
+                className="text-left px-3 py-2 rounded-lg text-sm border transition-colors"
+                style={{
+                  backgroundColor: BRAND.colors.card,
+                  borderColor: BRAND.colors.border,
+                  color: BRAND.colors.text,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = BRAND.colors.border;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = BRAND.colors.card;
+                }}
               >
                 + {t.label}
               </button>
             ))}
           </div>
 
-          <h3 className="text-xs uppercase tracking-wider text-[#6b7a90] mb-2 mt-6">Einstellungen</h3>
-          <label className="flex items-center gap-2 text-sm text-[#b8c7d9] mb-2">
+          <h3
+            className="text-xs uppercase tracking-wider mb-2 mt-6 font-medium"
+            style={{ color: BRAND.colors.muted }}
+          >
+            Einstellungen
+          </h3>
+          <label className="flex items-center gap-2 text-sm mb-2" style={{ color: BRAND.colors.text }}>
             <input
               type="checkbox"
               checked={current.config.settings.progressBar}
@@ -131,32 +221,53 @@ export function FunnelEditor() {
             />
             Progressbar anzeigen
           </label>
-          <label className="block text-xs text-[#6b7a90] mb-1">Cal.com URL</label>
+          <label className="block text-xs mb-1" style={{ color: BRAND.colors.muted }}>
+            Cal.com URL
+          </label>
           <input
             value={current.config.settings.ctaCalendarUrl}
             onChange={(e) => updateSettings({ ctaCalendarUrl: e.target.value })}
             placeholder="https://cal.com/..."
-            className="w-full bg-[#1a1f2e] border border-[#2a3142] rounded px-3 py-2 text-sm"
+            className="w-full border rounded px-3 py-2 text-sm"
+            style={{
+              backgroundColor: BRAND.colors.card,
+              borderColor: BRAND.colors.border,
+              color: BRAND.colors.text,
+            }}
           />
         </aside>
 
-        {/* Center: preview of selected step */}
-        <section className="p-10 overflow-y-auto bg-[#070a11]">
+        {/* Center: preview of selected step - customer-facing brand, kept as-is */}
+        <section className="p-10 overflow-y-auto" style={{ backgroundColor: BRAND.colors.background }}>
           {selected ? (
             <div className="max-w-xl mx-auto bg-white text-[#0a0a0a] rounded-2xl p-8 shadow-sm">
               <StepPreview step={selected} />
             </div>
           ) : (
-            <div className="text-[#6b7a90] text-center mt-20">Wähle links einen Schritt zum Bearbeiten.</div>
+            <div className="text-center mt-20" style={{ color: BRAND.colors.muted }}>
+              Wähle links einen Schritt zum Bearbeiten.
+            </div>
           )}
         </section>
 
         {/* Right: properties */}
-        <aside className="border-l border-[#1a1f2e] p-4 overflow-y-auto">
+        <aside
+          className="border-l p-4 overflow-y-auto"
+          style={{
+            backgroundColor: BRAND.colors.background,
+            borderColor: BRAND.colors.border,
+          }}
+        >
           {selected ? (
-            <StepProperties step={selected} onChange={(u) => updateStep(selected.id, u)} onDelete={() => deleteStep(selected.id)} />
+            <StepProperties
+              step={selected}
+              onChange={(u) => updateStep(selected.id, u)}
+              onDelete={() => deleteStep(selected.id)}
+            />
           ) : (
-            <div className="text-[#6b7a90] text-sm">Kein Schritt ausgewählt.</div>
+            <div className="text-sm" style={{ color: BRAND.colors.muted }}>
+              Kein Schritt ausgewählt.
+            </div>
           )}
         </aside>
       </div>
@@ -240,15 +351,32 @@ function StepPreview({ step }: { step: FunnelStep }) {
   return null;
 }
 
-function StepProperties({ step, onChange, onDelete }: { step: FunnelStep; onChange: (u: Partial<FunnelStep>) => void; onDelete: () => void }) {
+function StepProperties({
+  step,
+  onChange,
+  onDelete,
+}: {
+  step: FunnelStep;
+  onChange: (u: Partial<FunnelStep>) => void;
+  onDelete: () => void;
+}) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-white">Eigenschaften</h3>
-        <button onClick={onDelete} className="text-xs text-red-400 hover:text-red-300">Löschen</button>
+        <h3 className="text-sm font-semibold" style={{ color: BRAND.colors.text }}>
+          Eigenschaften
+        </h3>
+        <button onClick={onDelete} className="text-xs text-red-600 hover:text-red-700">
+          Löschen
+        </button>
       </div>
       <Field label="Typ">
-        <div className="text-xs px-2 py-1 rounded bg-[#1a1f2e] inline-block">{step.type}</div>
+        <div
+          className="text-xs px-2 py-1 rounded inline-block"
+          style={{ backgroundColor: BRAND.colors.border, color: BRAND.colors.muted }}
+        >
+          {step.type}
+        </div>
       </Field>
       {(step.type === 'intro' || step.type === 'lead-capture' || step.type === 'result-spider' || step.type === 'cta-booking') && (
         <>
@@ -272,7 +400,7 @@ function StepProperties({ step, onChange, onDelete }: { step: FunnelStep; onChan
               const lc = step as LeadCaptureStep;
               const enabled = lc.fields.some((f) => f.key === df.key);
               return (
-                <label key={df.key} className="flex items-center gap-2 text-xs text-[#b8c7d9]">
+                <label key={df.key} className="flex items-center gap-2 text-xs" style={{ color: BRAND.colors.text }}>
                   <input
                     type="checkbox"
                     checked={enabled}
@@ -299,7 +427,12 @@ function StepProperties({ step, onChange, onDelete }: { step: FunnelStep; onChan
             <select
               value={(step as QuestionStep).dimension}
               onChange={(e) => onChange({ dimension: e.target.value as SpiderDimension } as Partial<QuestionStep>)}
-              className="w-full bg-[#1a1f2e] border border-[#2a3142] rounded px-3 py-2 text-sm"
+              className="w-full border rounded px-3 py-2 text-sm"
+              style={{
+                backgroundColor: BRAND.colors.card,
+                borderColor: BRAND.colors.border,
+                color: BRAND.colors.text,
+              }}
             >
               {SPIDER_DIMENSIONS.map((d) => (
                 <option key={d.key} value={d.key}>{d.label}</option>
@@ -317,7 +450,12 @@ function StepProperties({ step, onChange, onDelete }: { step: FunnelStep; onChan
                       next[idx] = { ...opt, label: e.target.value };
                       onChange({ options: next } as Partial<QuestionStep>);
                     }}
-                    className="flex-1 bg-[#1a1f2e] border border-[#2a3142] rounded px-2 py-1 text-xs"
+                    className="flex-1 border rounded px-2 py-1 text-xs"
+                    style={{
+                      backgroundColor: BRAND.colors.card,
+                      borderColor: BRAND.colors.border,
+                      color: BRAND.colors.text,
+                    }}
                   />
                   <input
                     type="number"
@@ -329,25 +467,42 @@ function StepProperties({ step, onChange, onDelete }: { step: FunnelStep; onChan
                       next[idx] = { ...opt, score: Math.max(0, Math.min(100, Number(e.target.value) || 0)) };
                       onChange({ options: next } as Partial<QuestionStep>);
                     }}
-                    className="w-16 bg-[#1a1f2e] border border-[#2a3142] rounded px-2 py-1 text-xs"
+                    className="w-16 border rounded px-2 py-1 text-xs"
+                    style={{
+                      backgroundColor: BRAND.colors.card,
+                      borderColor: BRAND.colors.border,
+                      color: BRAND.colors.text,
+                    }}
                   />
                   <button
                     onClick={() => {
                       const next = (step as QuestionStep).options.filter((_, i) => i !== idx);
                       onChange({ options: next } as Partial<QuestionStep>);
                     }}
-                    className="text-red-400 text-xs px-2"
-                  >×</button>
+                    className="text-red-500 text-xs px-2"
+                  >
+                    &times;
+                  </button>
                 </div>
               ))}
               <button
                 onClick={() => {
                   const opts = (step as QuestionStep).options;
-                  const next = [...opts, { id: `o${opts.length + 1}-${Math.random().toString(36).slice(2, 6)}`, label: `Antwort ${opts.length + 1}`, score: 50 }];
+                  const next = [
+                    ...opts,
+                    {
+                      id: `o${opts.length + 1}-${Math.random().toString(36).slice(2, 6)}`,
+                      label: `Antwort ${opts.length + 1}`,
+                      score: 50,
+                    },
+                  ];
                   onChange({ options: next } as Partial<QuestionStep>);
                 }}
-                className="text-xs text-[#7EC8F3] hover:underline"
-              >+ Option hinzufügen</button>
+                className="text-xs hover:underline"
+                style={{ color: BRAND.colors.accent }}
+              >
+                + Option hinzufügen
+              </button>
             </div>
           </Field>
         </>
@@ -358,21 +513,32 @@ function StepProperties({ step, onChange, onDelete }: { step: FunnelStep; onChan
             <TextInput value={(step as CalcInputStep).label} onChange={(v) => onChange({ label: v } as Partial<CalcInputStep>)} />
           </Field>
           <Field label="Variable">
-            <TextInput value={(step as CalcInputStep).variableName} onChange={(v) => onChange({ variableName: v.replace(/[^a-zA-Z0-9_]/g, '') } as Partial<CalcInputStep>)} />
+            <TextInput
+              value={(step as CalcInputStep).variableName}
+              onChange={(v) => onChange({ variableName: v.replace(/[^a-zA-Z0-9_]/g, '') } as Partial<CalcInputStep>)}
+            />
           </Field>
           <Field label="Default">
             <input
               type="number"
               value={(step as CalcInputStep).defaultValue}
               onChange={(e) => onChange({ defaultValue: Number(e.target.value) } as Partial<CalcInputStep>)}
-              className="w-full bg-[#1a1f2e] border border-[#2a3142] rounded px-3 py-2 text-sm"
+              className="w-full border rounded px-3 py-2 text-sm"
+              style={{
+                backgroundColor: BRAND.colors.card,
+                borderColor: BRAND.colors.border,
+                color: BRAND.colors.text,
+              }}
             />
           </Field>
         </>
       )}
       {step.type === 'result-spider' && (
         <Field label="Cliffhanger">
-          <TextArea value={(step as ResultSpiderStep).cliffhanger ?? ''} onChange={(v) => onChange({ cliffhanger: v } as Partial<ResultSpiderStep>)} />
+          <TextArea
+            value={(step as ResultSpiderStep).cliffhanger ?? ''}
+            onChange={(v) => onChange({ cliffhanger: v } as Partial<ResultSpiderStep>)}
+          />
         </Field>
       )}
       {step.type === 'cta-booking' && (
@@ -392,7 +558,9 @@ function StepProperties({ step, onChange, onDelete }: { step: FunnelStep; onChan
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs text-[#6b7a90] mb-1">{label}</label>
+      <label className="block text-xs mb-1" style={{ color: BRAND.colors.muted }}>
+        {label}
+      </label>
       {children}
     </div>
   );
@@ -403,7 +571,12 @@ function TextInput({ value, onChange }: { value: string; onChange: (v: string) =
     <input
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-[#1a1f2e] border border-[#2a3142] rounded px-3 py-2 text-sm text-white"
+      className="w-full border rounded px-3 py-2 text-sm"
+      style={{
+        backgroundColor: BRAND.colors.card,
+        borderColor: BRAND.colors.border,
+        color: BRAND.colors.text,
+      }}
     />
   );
 }
@@ -414,7 +587,12 @@ function TextArea({ value, onChange }: { value: string; onChange: (v: string) =>
       value={value}
       onChange={(e) => onChange(e.target.value)}
       rows={3}
-      className="w-full bg-[#1a1f2e] border border-[#2a3142] rounded px-3 py-2 text-sm text-white resize-none"
+      className="w-full border rounded px-3 py-2 text-sm resize-none"
+      style={{
+        backgroundColor: BRAND.colors.card,
+        borderColor: BRAND.colors.border,
+        color: BRAND.colors.text,
+      }}
     />
   );
 }

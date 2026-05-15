@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/AuthProvider';
+import { AdminHeader } from '../components/AdminHeader';
+import { BRAND } from '../../branding/tokens';
 
 interface UserData {
   id: string;
@@ -75,7 +77,6 @@ export function AdminUsers() {
         throw new Error(data.error || 'Fehler beim Genehmigen');
       }
 
-      // Reload users
       await loadUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fehler beim Genehmigen');
@@ -102,7 +103,6 @@ export function AdminUsers() {
         throw new Error(data.error || 'Fehler beim Löschen');
       }
 
-      // Reload users
       await loadUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fehler beim Löschen');
@@ -123,8 +123,14 @@ export function AdminUsers() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#04070d] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#7EC8F3] border-t-transparent" />
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: BRAND.colors.background }}
+      >
+        <div
+          className="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent"
+          style={{ borderColor: BRAND.colors.accent }}
+        />
       </div>
     );
   }
@@ -133,96 +139,108 @@ export function AdminUsers() {
   const approvedUsers = users.filter((u) => u.approved || u.role === 'super_admin');
 
   return (
-    <div className="min-h-screen bg-[#04070d]">
-      {/* Header */}
-      <header className="border-b border-[#1a1f2e] bg-[#0a0d12]">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate('/')}
-                className="p-2 rounded-lg text-[#6b7a90] hover:text-white hover:bg-[#1a1f2e] transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <div>
-                <h1 className="text-xl font-bold text-white">Benutzerverwaltung</h1>
-                <p className="text-xs text-[#6b7a90]">Super Admin</p>
-              </div>
-            </div>
-            <button
-              onClick={loadUsers}
-              disabled={loadingUsers}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#1a1f2e] text-[#b8c7d9] rounded-lg
-                         hover:bg-[#2a3142] transition-colors disabled:opacity-50"
-            >
-              <svg
-                className={`w-4 h-4 ${loadingUsers ? 'animate-spin' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              Aktualisieren
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen" style={{ backgroundColor: BRAND.colors.background }}>
+      <AdminHeader />
+
+      {/* Sub-toolbar */}
+      <div
+        className="border-b px-6 py-2 flex items-center gap-4"
+        style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+      >
+        <button
+          onClick={() => navigate('/')}
+          className="text-sm transition-opacity hover:opacity-70"
+          style={{ color: BRAND.colors.muted }}
+        >
+          &larr; Zurück
+        </button>
+        <h1 className="text-base font-semibold" style={{ color: BRAND.colors.text }}>
+          Benutzerverwaltung
+        </h1>
+        <button
+          onClick={loadUsers}
+          disabled={loadingUsers}
+          className="ml-auto flex items-center gap-2 px-4 py-1.5 rounded-lg border text-sm font-medium transition-opacity disabled:opacity-50 hover:opacity-70"
+          style={{
+            borderColor: BRAND.colors.border,
+            color: BRAND.colors.text,
+            backgroundColor: BRAND.colors.card,
+          }}
+        >
+          <svg
+            className={`w-4 h-4 ${loadingUsers ? 'animate-spin' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+          Aktualisieren
+        </button>
+      </div>
 
       {/* Content */}
       <main className="max-w-6xl mx-auto px-6 py-8">
         {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
-            <p className="text-sm text-red-400">{error}</p>
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
 
         {/* Pending Users Section */}
         {pendingUsers.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+            <h2 className="text-base font-semibold mb-4 flex items-center gap-2" style={{ color: BRAND.colors.text }}>
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
               Ausstehende Genehmigungen ({pendingUsers.length})
             </h2>
-            <div className="bg-[#10131c] rounded-2xl border border-[#1a1f2e] overflow-hidden">
-              <div className="divide-y divide-[#1a1f2e]">
+            <div
+              className="rounded-2xl border overflow-hidden"
+              style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+            >
+              <div className="divide-y" style={{ borderColor: BRAND.colors.border }}>
                 {pendingUsers.map((u) => (
                   <div
                     key={u.id}
-                    className="p-4 flex items-center justify-between hover:bg-[#1a1f2e]/30 transition-colors"
+                    className="p-4 flex items-center justify-between transition-colors"
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(15,47,91,0.04)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center">
-                        <span className="text-yellow-400 font-medium">
+                      <div className="w-10 h-10 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center">
+                        <span className="text-amber-700 font-medium text-sm">
                           {u.name.charAt(0).toUpperCase()}
                         </span>
                       </div>
                       <div>
-                        <p className="font-medium text-white">{u.name}</p>
-                        <p className="text-sm text-[#6b7a90]">{u.email}</p>
+                        <p className="font-medium text-sm" style={{ color: BRAND.colors.text }}>
+                          {u.name}
+                        </p>
+                        <p className="text-xs" style={{ color: BRAND.colors.muted }}>
+                          {u.email}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="text-xs text-[#4a5565]">{formatDate(u.created_at)}</span>
+                      <span className="text-xs" style={{ color: BRAND.colors.muted }}>
+                        {formatDate(u.created_at)}
+                      </span>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleApprove(u.id)}
                           disabled={actionLoading === u.id}
-                          className="px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 text-sm font-medium
-                                     hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                          className="px-3 py-1.5 rounded-lg bg-green-50 text-green-700 text-sm font-medium
+                                     hover:bg-green-100 transition-colors disabled:opacity-50"
                         >
                           {actionLoading === u.id ? (
                             <span className="inline-flex items-center gap-1">
-                              <div className="animate-spin rounded-full h-3 w-3 border border-green-400 border-t-transparent" />
+                              <div className="animate-spin rounded-full h-3 w-3 border border-green-600 border-t-transparent" />
                             </span>
                           ) : (
                             'Genehmigen'
@@ -231,8 +249,8 @@ export function AdminUsers() {
                         <button
                           onClick={() => handleDelete(u.id)}
                           disabled={actionLoading === u.id}
-                          className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 text-sm font-medium
-                                     hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                          className="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-sm font-medium
+                                     hover:bg-red-100 transition-colors disabled:opacity-50"
                         >
                           Ablehnen
                         </button>
@@ -247,60 +265,85 @@ export function AdminUsers() {
 
         {/* Approved Users Section */}
         <section>
-          <h2 className="text-lg font-semibold text-white mb-4">
+          <h2 className="text-base font-semibold mb-4" style={{ color: BRAND.colors.text }}>
             Alle Benutzer ({approvedUsers.length})
           </h2>
           {loadingUsers ? (
-            <div className="bg-[#10131c] rounded-2xl border border-[#1a1f2e] p-8 flex justify-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-2 border-[#7EC8F3] border-t-transparent" />
+            <div
+              className="rounded-2xl border p-8 flex justify-center"
+              style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+            >
+              <div
+                className="animate-spin rounded-full h-6 w-6 border-2 border-t-transparent"
+                style={{ borderColor: BRAND.colors.accent }}
+              />
             </div>
           ) : approvedUsers.length === 0 ? (
-            <div className="bg-[#10131c] rounded-2xl border border-[#1a1f2e] p-8 text-center">
-              <p className="text-[#6b7a90]">Keine Benutzer vorhanden</p>
+            <div
+              className="rounded-2xl border p-8 text-center"
+              style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+            >
+              <p style={{ color: BRAND.colors.muted }}>Keine Benutzer vorhanden</p>
             </div>
           ) : (
-            <div className="bg-[#10131c] rounded-2xl border border-[#1a1f2e] overflow-hidden">
-              <div className="divide-y divide-[#1a1f2e]">
+            <div
+              className="rounded-2xl border overflow-hidden"
+              style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+            >
+              <div className="divide-y" style={{ borderColor: BRAND.colors.border }}>
                 {approvedUsers.map((u) => (
                   <div
                     key={u.id}
-                    className="p-4 flex items-center justify-between hover:bg-[#1a1f2e]/30 transition-colors"
+                    className="p-4 flex items-center justify-between transition-colors"
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(15,47,91,0.04)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     <div className="flex items-center gap-4">
                       <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium"
+                        style={
                           u.role === 'super_admin'
-                            ? 'bg-gradient-to-br from-[#7EC8F3] to-[#5BA3D9]'
-                            : 'bg-[#1a1f2e]'
-                        }`}
+                            ? { backgroundColor: BRAND.colors.accent, color: BRAND.colors.background }
+                            : { backgroundColor: BRAND.colors.border, color: BRAND.colors.primary }
+                        }
                       >
-                        <span
-                          className={`font-medium ${
-                            u.role === 'super_admin' ? 'text-white' : 'text-[#7EC8F3]'
-                          }`}
-                        >
-                          {u.name.charAt(0).toUpperCase()}
-                        </span>
+                        {u.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="font-medium text-white">{u.name}</p>
+                          <p className="font-medium text-sm" style={{ color: BRAND.colors.text }}>
+                            {u.name}
+                          </p>
                           {u.role === 'super_admin' && (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#7EC8F3]/10 text-[#7EC8F3]">
+                            <span
+                              className="px-2 py-0.5 rounded-full text-xs font-medium"
+                              style={{
+                                backgroundColor: `${BRAND.colors.accent}1A`,
+                                color: BRAND.colors.primary,
+                              }}
+                            >
                               Super Admin
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-[#6b7a90]">{u.email}</p>
+                        <p className="text-xs" style={{ color: BRAND.colors.muted }}>
+                          {u.email}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="text-xs text-[#4a5565]">{formatDate(u.created_at)}</span>
+                      <span className="text-xs" style={{ color: BRAND.colors.muted }}>
+                        {formatDate(u.created_at)}
+                      </span>
                       {u.role !== 'super_admin' && u.id !== user?.id && (
                         <button
                           onClick={() => handleDelete(u.id)}
                           disabled={actionLoading === u.id}
-                          className="p-2 rounded-lg text-[#6b7a90] hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                          className="p-2 rounded-lg transition-colors disabled:opacity-50 hover:bg-red-50"
+                          style={{ color: BRAND.colors.muted }}
+                          onMouseEnter={(e) => (e.currentTarget.style.color = '#dc2626')}
+                          onMouseLeave={(e) => (e.currentTarget.style.color = BRAND.colors.muted)}
+                          title="Benutzer löschen"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path

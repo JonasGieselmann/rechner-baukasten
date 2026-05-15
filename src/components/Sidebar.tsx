@@ -1,5 +1,6 @@
 import { useDraggable } from '@dnd-kit/core';
 import { useCalculatorStore } from '../store/calculatorStore';
+import { BRAND } from '../../branding/tokens';
 import type { Block } from '../types';
 
 const BLOCK_TYPES: Array<{
@@ -70,7 +71,6 @@ const BLOCK_TYPES: Array<{
   },
 ];
 
-// Draggable block item component
 function DraggableBlockItem({
   blockType,
   disabled,
@@ -93,24 +93,45 @@ function DraggableBlockItem({
       onClick={() => !disabled && addBlock(blockType.type)}
       disabled={disabled}
       className={`w-full flex items-center gap-3 p-2.5 rounded-xl
-                 bg-[#10131c] border border-[#1a1f2e]
-                 hover:bg-[#1a1f2e] hover:border-[#2a3142]
                  active:scale-[0.98] cursor-grab active:cursor-grabbing
                  transition-all text-left group
                  disabled:opacity-40 disabled:cursor-not-allowed
-                 disabled:hover:bg-[#10131c] disabled:hover:border-[#1a1f2e]
                  ${isDragging ? 'opacity-50' : ''}`}
+      style={{
+        backgroundColor: BRAND.colors.background,
+        border: `1px solid ${BRAND.colors.border}`,
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          (e.currentTarget as HTMLButtonElement).style.borderColor = BRAND.colors.accent;
+          (e.currentTarget as HTMLButtonElement).style.borderLeftWidth = '3px';
+        }
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.borderColor = BRAND.colors.border;
+        (e.currentTarget as HTMLButtonElement).style.borderLeftWidth = '1px';
+      }}
     >
-      <div className="w-8 h-8 rounded-lg bg-[#1a1f2e] group-hover:bg-[#2a3142]
-                      flex items-center justify-center text-[#6b7a90]
-                      group-hover:text-[#7EC8F3] transition-all">
+      <div
+        className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+        style={{
+          backgroundColor: BRAND.colors.card,
+          color: BRAND.colors.muted,
+        }}
+      >
         {blockType.icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-white text-sm">{blockType.label}</p>
-        <p className="text-xs text-[#6b7a90] truncate">{blockType.description}</p>
+        <p className="font-medium text-sm" style={{ color: BRAND.colors.text }}>{blockType.label}</p>
+        <p className="text-xs truncate" style={{ color: BRAND.colors.muted }}>{blockType.description}</p>
       </div>
-      <svg className="w-4 h-4 text-[#3a4555] group-hover:text-[#6b7a90] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        className="w-4 h-4 opacity-40"
+        style={{ color: BRAND.colors.muted }}
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
       </svg>
     </button>
@@ -123,16 +144,22 @@ export function Sidebar() {
   const isDisabled = isPreviewMode || !calculator;
 
   return (
-    <div className="w-64 bg-[#0a0d12] border-r border-[#1a1f2e] flex flex-col">
+    <div
+      className="w-64 flex flex-col"
+      style={{
+        backgroundColor: BRAND.colors.card,
+        borderRight: `1px solid ${BRAND.colors.border}`,
+      }}
+    >
       {/* Header */}
-      <div className="p-4 border-b border-[#1a1f2e]">
-        <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-          <svg className="w-4 h-4 text-[#7EC8F3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="p-4" style={{ borderBottom: `1px solid ${BRAND.colors.border}` }}>
+        <h2 className="text-sm font-semibold flex items-center gap-2" style={{ color: BRAND.colors.text }}>
+          <svg className="w-4 h-4" style={{ color: BRAND.colors.accent }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
           </svg>
           Bausteine
         </h2>
-        <p className="text-xs text-[#6b7a90] mt-1 ml-6">
+        <p className="text-xs mt-1 ml-6" style={{ color: BRAND.colors.muted }}>
           {calculator ? 'Klicken oder ziehen' : 'Erstelle zuerst einen Rechner'}
         </p>
       </div>
@@ -152,27 +179,31 @@ export function Sidebar() {
 
       {/* Variables Info */}
       {calculator && Object.keys(variables).length > 0 && (
-        <div className="p-4 border-t border-[#1a1f2e]">
+        <div className="p-4" style={{ borderTop: `1px solid ${BRAND.colors.border}` }}>
           <div className="flex items-center gap-2 mb-2">
-            <svg className="w-3.5 h-3.5 text-[#7EC8F3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5" style={{ color: BRAND.colors.accent }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
             </svg>
-            <h3 className="text-xs font-semibold text-[#b8c7d9]">Variablen</h3>
-            <span className="text-xs text-[#6b7a90] ml-auto">{Object.keys(variables).length}</span>
+            <h3 className="text-xs font-semibold" style={{ color: BRAND.colors.text }}>Variablen</h3>
+            <span className="text-xs ml-auto" style={{ color: BRAND.colors.muted }}>{Object.keys(variables).length}</span>
           </div>
           <div className="space-y-1 max-h-28 overflow-auto">
             {Object.entries(variables).map(([name, value]) => (
               <div
                 key={name}
-                className="flex justify-between items-center text-xs bg-[#10131c] rounded-lg px-2.5 py-1.5
-                           cursor-pointer hover:bg-[#1a1f2e] transition-colors group"
+                className="flex justify-between items-center text-xs rounded-lg px-2.5 py-1.5
+                           cursor-pointer transition-colors hover:opacity-80"
+                style={{
+                  backgroundColor: BRAND.colors.background,
+                  border: `1px solid ${BRAND.colors.border}`,
+                }}
                 onClick={() => navigator.clipboard.writeText(`{${name}}`)}
                 title="Klicken zum Kopieren"
               >
-                <code className="text-[#7EC8F3] font-mono group-hover:text-white transition-colors">
+                <code className="font-mono" style={{ color: BRAND.colors.accent }}>
                   {`{${name}}`}
                 </code>
-                <span className="text-[#6b7a90]">{value}</span>
+                <span style={{ color: BRAND.colors.muted }}>{value}</span>
               </div>
             ))}
           </div>
