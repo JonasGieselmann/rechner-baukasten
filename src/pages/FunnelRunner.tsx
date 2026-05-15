@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { getFunnelBySlug, submitFunnelLead } from '../lib/funnelApi';
 import type { LeadSubmission } from '../lib/funnelApi';
+import { useAuth } from '../components/AuthProvider';
 import type {
   Funnel,
   FunnelStep,
@@ -535,6 +536,7 @@ function CtaBookingStep({
 
 export default function FunnelRunner() {
   const { slug } = useParams<{ slug: string }>();
+  const { user } = useAuth();
 
   const [funnel, setFunnel] = useState<Funnel | null>(null);
   const [loading, setLoading] = useState(true);
@@ -549,6 +551,24 @@ export default function FunnelRunner() {
 
   const submitAttempted = useRef(false);
   const utm = useRef<Record<string, string>>(readUtm());
+  const prefilled = useRef(false);
+
+  // Pre-fill lead fields from logged-in user profile (runs once when user resolves)
+  useEffect(() => {
+    if (!user || prefilled.current) return;
+    prefilled.current = true;
+    setLead((prev) => {
+      const fill: LeadState = { ...prev };
+      if (user.name) fill.name = prev.name || user.name;
+      if (user.email) fill.email = prev.email || user.email;
+      if (user.phone) fill.phone = prev.phone || user.phone;
+      if (user.businessName) fill.businessName = prev.businessName || user.businessName;
+      if (user.websiteUrl) fill.websiteUrl = prev.websiteUrl || user.websiteUrl;
+      if (user.instagramHandle) fill.instagramHandle = prev.instagramHandle || user.instagramHandle;
+      if (user.gmbUrl) fill.gmbUrl = prev.gmbUrl || user.gmbUrl;
+      return fill;
+    });
+  }, [user]);
 
   useEffect(() => {
     if (!slug) { setNotFound(true); setLoading(false); return; }

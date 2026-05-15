@@ -10,6 +10,11 @@ export type UserRole = 'super_admin' | 'user' | 'customer';
 export interface ExtendedUser extends User {
   role: UserRole;
   approved: boolean;
+  phone: string | null;
+  businessName: string | null;
+  websiteUrl: string | null;
+  instagramHandle: string | null;
+  gmbUrl: string | null;
 }
 
 interface AuthContextType {

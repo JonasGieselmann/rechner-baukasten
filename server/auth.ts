@@ -94,6 +94,31 @@ export const auth = betterAuth({
         defaultValue: false,
         input: false,
       },
+      phone: {
+        type: 'string',
+        required: false,
+        input: true,
+      },
+      businessName: {
+        type: 'string',
+        required: false,
+        input: true,
+      },
+      websiteUrl: {
+        type: 'string',
+        required: false,
+        input: true,
+      },
+      instagramHandle: {
+        type: 'string',
+        required: false,
+        input: true,
+      },
+      gmbUrl: {
+        type: 'string',
+        required: false,
+        input: true,
+      },
     },
   },
 });

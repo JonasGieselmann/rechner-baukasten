@@ -66,6 +66,13 @@ export async function initAuthSchema() {
     END $$
   `;
 
+  // Add practice profile columns (idempotent, safe on existing databases)
+  await client`ALTER TABLE "user" ADD COLUMN IF NOT EXISTS phone TEXT`;
+  await client`ALTER TABLE "user" ADD COLUMN IF NOT EXISTS business_name TEXT`;
+  await client`ALTER TABLE "user" ADD COLUMN IF NOT EXISTS website_url TEXT`;
+  await client`ALTER TABLE "user" ADD COLUMN IF NOT EXISTS instagram_handle TEXT`;
+  await client`ALTER TABLE "user" ADD COLUMN IF NOT EXISTS gmb_url TEXT`;
+
   // Create session table
   await client`
     CREATE TABLE IF NOT EXISTS session (
@@ -284,7 +291,8 @@ export async function getAllUsers(limit = 1000) {
 export async function getUserById(userId: string) {
   const validatedId = validateUserId(userId);
   const result = await client`
-    SELECT id, name, email, role, approved, created_at
+    SELECT id, name, email, role, approved, created_at,
+           phone, business_name, website_url, instagram_handle, gmb_url
     FROM "user"
     WHERE id = ${validatedId}
   `;

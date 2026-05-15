@@ -21,6 +21,11 @@ router.get('/', async (req, res) => {
         image: session.user.image,
         role: extendedUser?.role || 'user',
         approved: extendedUser?.approved ?? false,
+        phone: extendedUser?.phone ?? null,
+        businessName: extendedUser?.business_name ?? null,
+        websiteUrl: extendedUser?.website_url ?? null,
+        instagramHandle: extendedUser?.instagram_handle ?? null,
+        gmbUrl: extendedUser?.gmb_url ?? null,
       },
     });
   } catch (err) {
@@ -44,15 +49,36 @@ router.get('/leads', requireAuth, async (req: AuthenticatedRequest, res) => {
   }
 });
 
+function parseOptionalString(val: unknown): string | undefined {
+  if (val === undefined) return undefined;
+  if (typeof val !== 'string') return undefined;
+  return val.slice(0, 200).trim();
+}
+
 router.patch('/', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const name = typeof req.body?.name === 'string' ? req.body.name.slice(0, 200).trim() : undefined;
-    if (name === undefined) return res.status(400).json({ error: 'name is required' });
-    if (name.length === 0) return res.status(400).json({ error: 'name cannot be empty' });
+    if (name !== undefined && name.length === 0) {
+      return res.status(400).json({ error: 'name cannot be empty' });
+    }
+
+    const phone = parseOptionalString(req.body?.phone);
+    const businessName = parseOptionalString(req.body?.businessName);
+    const websiteUrl = parseOptionalString(req.body?.websiteUrl);
+    const instagramHandle = parseOptionalString(req.body?.instagramHandle);
+    const gmbUrl = parseOptionalString(req.body?.gmbUrl);
+
+    const patch: Record<string, unknown> = { updatedAt: new Date() };
+    if (name !== undefined) patch.name = name;
+    if (phone !== undefined) patch.phone = phone;
+    if (businessName !== undefined) patch.businessName = businessName;
+    if (websiteUrl !== undefined) patch.websiteUrl = websiteUrl;
+    if (instagramHandle !== undefined) patch.instagramHandle = instagramHandle;
+    if (gmbUrl !== undefined) patch.gmbUrl = gmbUrl;
 
     const [updated] = await db
       .update(schema.user)
-      .set({ name, updatedAt: new Date() })
+      .set(patch)
       .where(eq(schema.user.id, req.user!.id))
       .returning({
         id: schema.user.id,
@@ -60,6 +86,11 @@ router.patch('/', requireAuth, async (req: AuthenticatedRequest, res) => {
         email: schema.user.email,
         role: schema.user.role,
         approved: schema.user.approved,
+        phone: schema.user.phone,
+        businessName: schema.user.businessName,
+        websiteUrl: schema.user.websiteUrl,
+        instagramHandle: schema.user.instagramHandle,
+        gmbUrl: schema.user.gmbUrl,
       });
     res.json(updated);
   } catch (err) {

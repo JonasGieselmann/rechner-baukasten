@@ -96,6 +96,121 @@ function ProfileCard() {
   );
 }
 
+function PraxisCard() {
+  const { user, refreshUser } = useAuth();
+  const [phone, setPhone] = useState(user?.phone ?? '');
+  const [businessName, setBusinessName] = useState(user?.businessName ?? '');
+  const [websiteUrl, setWebsiteUrl] = useState(user?.websiteUrl ?? '');
+  const [instagramHandle, setInstagramHandle] = useState(user?.instagramHandle ?? '');
+  const [gmbUrl, setGmbUrl] = useState(user?.gmbUrl ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError('');
+    setSuccess(false);
+    try {
+      const res = await fetch('/api/me', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, businessName, websiteUrl, instagramHandle, gmbUrl }),
+      });
+      if (!res.ok) throw new Error('Speichern fehlgeschlagen.');
+      await refreshUser();
+      setSuccess(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unbekannter Fehler.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="rounded-2xl border p-6 space-y-4"
+      style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+    >
+      <h2 className="text-lg font-semibold" style={{ color: BRAND.colors.text }}>
+        Praxis-Angaben
+      </h2>
+      <div className="space-y-3">
+        <div>
+          <label className="block text-xs font-medium mb-1 opacity-60">Telefon</label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className={INPUT_CLS}
+            style={INPUT_STYLE}
+            placeholder="+49 123 456789"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium mb-1 opacity-60">Praxisname</label>
+          <input
+            type="text"
+            value={businessName}
+            onChange={(e) => setBusinessName(e.target.value)}
+            className={INPUT_CLS}
+            style={INPUT_STYLE}
+            placeholder="Ihr Praxisname"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium mb-1 opacity-60">Website-URL</label>
+          <input
+            type="url"
+            value={websiteUrl}
+            onChange={(e) => setWebsiteUrl(e.target.value)}
+            className={INPUT_CLS}
+            style={INPUT_STYLE}
+            placeholder="https://ihre-praxis.de"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium mb-1 opacity-60">Instagram-Handle</label>
+          <input
+            type="text"
+            value={instagramHandle}
+            onChange={(e) => setInstagramHandle(e.target.value)}
+            className={INPUT_CLS}
+            style={INPUT_STYLE}
+            placeholder="@ihre_praxis"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium mb-1 opacity-60">Google My Business oder Praxis + Stadt</label>
+          <input
+            type="text"
+            value={gmbUrl}
+            onChange={(e) => setGmbUrl(e.target.value)}
+            className={INPUT_CLS}
+            style={INPUT_STYLE}
+            placeholder="z.B. Ihre Praxis Berlin Mitte"
+          />
+        </div>
+      </div>
+      {error && <p className="text-sm text-red-500">{error}</p>}
+      {success && (
+        <p className="text-sm" style={{ color: BRAND.colors.accent }}>
+          Praxis-Angaben gespeichert.
+        </p>
+      )}
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="inline-flex items-center px-5 py-2 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
+        style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
+      >
+        {saving ? 'Speichern...' : 'Speichern'}
+      </button>
+    </div>
+  );
+}
+
 function PasswordCard() {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -222,6 +337,7 @@ export default function Account() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <ProfileCard />
+      <PraxisCard />
       <PasswordCard />
       <DeleteAccountCard />
     </div>

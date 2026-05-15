@@ -13,6 +13,12 @@ export function Register() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [practiceOpen, setPracticeOpen] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [instagramHandle, setInstagramHandle] = useState('');
+  const [gmbUrl, setGmbUrl] = useState('');
 
   const inputStyle = {
     backgroundColor: BRAND.colors.card,
@@ -36,8 +42,15 @@ export function Register() {
 
     setLoading(true);
 
+    const practiceFields: Record<string, string> = {};
+    if (phone.trim()) practiceFields.phone = phone.trim();
+    if (businessName.trim()) practiceFields.businessName = businessName.trim();
+    if (websiteUrl.trim()) practiceFields.websiteUrl = websiteUrl.trim();
+    if (instagramHandle.trim()) practiceFields.instagramHandle = instagramHandle.trim();
+    if (gmbUrl.trim()) practiceFields.gmbUrl = gmbUrl.trim();
+
     try {
-      const result = await signUp.email({ email, password, name });
+      const result = await signUp.email({ email, password, name, ...practiceFields });
 
       if (result.error) {
         setError(result.error.message || 'Registrierung fehlgeschlagen.');
@@ -125,6 +138,83 @@ export function Register() {
                 style={inputStyle}
                 placeholder="Passwort wiederholen"
               />
+            </div>
+
+            <div
+              className="rounded-xl border overflow-hidden"
+              style={{ borderColor: BRAND.colors.border }}
+            >
+              <button
+                type="button"
+                onClick={() => setPracticeOpen((o) => !o)}
+                className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-left transition-colors hover:opacity-80"
+                style={{ backgroundColor: BRAND.colors.background, color: BRAND.colors.muted }}
+              >
+                <span>Praxis-Angaben (optional)</span>
+                <span aria-hidden="true" className="text-xs">{practiceOpen ? '▲' : '▼'}</span>
+              </button>
+              {practiceOpen && (
+                <div
+                  className="px-4 pb-4 pt-2 space-y-3"
+                  style={{ backgroundColor: BRAND.colors.card }}
+                >
+                  <div>
+                    <label className="block text-sm font-medium mb-2 opacity-80">Telefon</label>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className={INPUT_CLS}
+                      style={inputStyle}
+                      placeholder="+49 123 456789"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 opacity-80">Praxisname</label>
+                    <input
+                      type="text"
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)}
+                      className={INPUT_CLS}
+                      style={inputStyle}
+                      placeholder="Ihr Praxisname"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 opacity-80">Website-URL</label>
+                    <input
+                      type="url"
+                      value={websiteUrl}
+                      onChange={(e) => setWebsiteUrl(e.target.value)}
+                      className={INPUT_CLS}
+                      style={inputStyle}
+                      placeholder="https://ihre-praxis.de"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 opacity-80">Instagram-Handle</label>
+                    <input
+                      type="text"
+                      value={instagramHandle}
+                      onChange={(e) => setInstagramHandle(e.target.value)}
+                      className={INPUT_CLS}
+                      style={inputStyle}
+                      placeholder="@ihre_praxis"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 opacity-80">Google My Business oder Praxis + Stadt</label>
+                    <input
+                      type="text"
+                      value={gmbUrl}
+                      onChange={(e) => setGmbUrl(e.target.value)}
+                      className={INPUT_CLS}
+                      style={inputStyle}
+                      placeholder="z.B. Ihre Praxis Berlin Mitte"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <button

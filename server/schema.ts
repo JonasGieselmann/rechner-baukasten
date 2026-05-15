@@ -15,6 +15,11 @@ export const user = pgTable('user', {
   image: text('image'),
   role: text('role').notNull().default('user'),
   approved: boolean('approved').notNull().default(false),
+  phone: text('phone'),
+  businessName: text('business_name'),
+  websiteUrl: text('website_url'),
+  instagramHandle: text('instagram_handle'),
+  gmbUrl: text('gmb_url'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
