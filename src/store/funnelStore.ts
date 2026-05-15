@@ -162,9 +162,14 @@ export const useFunnelStore = create<FunnelState>((set, get) => ({
   updateStep: (id: string, updates: Partial<FunnelStep>) => {
     const { current } = get();
     if (!current) return;
-    const steps = current.config.steps.map(s =>
-      s.id === id ? ({ ...s, ...updates } as FunnelStep) : s,
-    );
+    const steps = current.config.steps.map(s => {
+      if (s.id !== id) return s;
+      // Updates may carry a `type` field only when caller is replacing the
+      // step. Drop it to keep the tagged-union discriminant stable.
+      const { type: _t, ...safe } = updates as { type?: FunnelStep['type'] } & Partial<FunnelStep>;
+      void _t;
+      return { ...s, ...safe } as FunnelStep;
+    });
     set({ current: { ...current, config: { ...current.config, steps } }, isDirty: true });
   },
 

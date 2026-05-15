@@ -206,7 +206,6 @@ export interface CalcInputStep extends BaseStep {
 export interface ResultSpiderStep extends BaseStep {
   type: 'result-spider';
   showKalkuChart?: boolean;
-  kalkuFormula?: string; // optional formula referencing calc-input vars
   cliffhanger?: string;
 }
 
@@ -238,7 +237,6 @@ export interface FunnelTheme {
 export interface FunnelSettings {
   progressBar: boolean;
   ctaCalendarUrl: string;
-  submitWebhookUrl: string;
 }
 
 export interface FunnelConfig {

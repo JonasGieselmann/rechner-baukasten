@@ -73,7 +73,6 @@ function emptyFunnelConfig() {
     settings: {
       progressBar: true,
       ctaCalendarUrl: '',
-      submitWebhookUrl: '',
     },
     steps: [
       {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   RadarChart,
@@ -14,35 +14,18 @@ import type {
   FunnelStep,
   FunnelTheme,
   LeadField,
-  SpiderDimension,
 } from '../types';
 import { SPIDER_DIMENSIONS, DEFAULT_FUNNEL_THEME } from '../types';
-
-// ---- types local to this module ----
+import {
+  computeScores,
+  computeRecommendation,
+  RECOMMENDATION_TEXTS,
+} from '../engine/score';
+import type { DimScores, RecommendationKey } from '../engine/score';
 
 type LeadState = Partial<Record<LeadField, string>>;
 type AnswersState = Record<string, string[]>;
 type CalcVarsState = Record<string, number>;
-type DimScores = Partial<Record<SpiderDimension, number>>;
-
-type RecommendationKey =
-  | 'fundament-aufbauen'
-  | 'stufe-1'
-  | 'stufe-2'
-  | 'stufe-3';
-
-const RECOMMENDATION_TEXTS: Record<RecommendationKey, string> = {
-  'fundament-aufbauen':
-    'Marketing ohne Fundament verbrennt Geld. Erst Social Media, Website und Branding sauber aufbauen, dann skalieren.',
-  'stufe-1':
-    'Dein Fundament steht. Du bekommst qualifizierte Leads und schließt selbst ab -- maximale Transparenz.',
-  'stufe-2':
-    'Du bist bereit fuer automatische Buchungen. Wir leiten Interessenten direkt in deinen Kalender.',
-  'stufe-3':
-    'Du spielst in der Skalierungsliga. Wir uebernehmen alles, du behandelst.',
-};
-
-// ---- helpers ----
 
 function readUtm(): Record<string, string> {
   const params = new URLSearchParams(window.location.search);
@@ -52,67 +35,6 @@ function readUtm(): Record<string, string> {
     if (v) utm[key] = v;
   }
   return utm;
-}
-
-function computeScores(
-  steps: FunnelStep[],
-  answers: AnswersState,
-): DimScores {
-  const buckets: Partial<Record<SpiderDimension, number[]>> = {};
-
-  for (const step of steps) {
-    if (step.type !== 'question') continue;
-    const selected = answers[step.id] ?? [];
-    if (selected.length === 0) continue;
-    const scores = step.options
-      .filter((o) => selected.includes(o.id))
-      .map((o) => o.score);
-    if (scores.length === 0) continue;
-    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-    if (!buckets[step.dimension]) buckets[step.dimension] = [];
-    buckets[step.dimension]!.push(avg);
-  }
-
-  const result: DimScores = {};
-  for (const dim of SPIDER_DIMENSIONS) {
-    const vals = buckets[dim.key];
-    result[dim.key] = vals
-      ? vals.reduce((a, b) => a + b, 0) / vals.length
-      : 0;
-  }
-  return result;
-}
-
-function computeRecommendation(
-  scores: DimScores,
-): RecommendationKey {
-  const fundament =
-    (
-      [
-        'social-media',
-        'website',
-        'branding',
-        'trust',
-        'auffindbarkeit',
-      ] as SpiderDimension[]
-    )
-      .map((d) => scores[d] ?? 0)
-      .reduce((a, b) => a + b, 0) / 5;
-
-  let stage: RecommendationKey;
-  if (fundament < 40) stage = 'fundament-aufbauen';
-  else if (fundament < 60) stage = 'stufe-1';
-  else if (fundament < 80) stage = 'stufe-2';
-  else stage = 'stufe-3';
-
-  const umsatz = scores['umsatzpotenzial'] ?? 0;
-  const mitarbeiter = scores['mitarbeiter'] ?? 0;
-  if (umsatz > 70 && mitarbeiter >= 80) {
-    if (stage === 'fundament-aufbauen') stage = 'stufe-1';
-    else if (stage === 'stufe-1') stage = 'stufe-2';
-    else if (stage === 'stufe-2') stage = 'stufe-3';
-  }
-  return stage;
 }
 
 // ---- styled primitives ----
@@ -186,18 +108,68 @@ function IntroStep({
   theme: FunnelTheme;
   onNext: () => void;
 }) {
+  // Demo profile that hints at the result without revealing scores.
+  // Wave shape per brand reference, not a flat circle.
+  const demoData = SPIDER_DIMENSIONS.map((d, i) => ({
+    subject: d.label,
+    score: [55, 70, 65, 50, 48, 80, 60, 75][i] ?? 60,
+  }));
+
+  const rendered = renderTitleWithItalics(step.title);
+
   return (
-    <div className="flex flex-col gap-4">
-      {step.title && (
-        <h1 className="text-3xl font-bold leading-tight">{step.title}</h1>
-      )}
-      {step.body && <p className="text-base opacity-80">{step.body}</p>}
-      <PrimaryButton
-        label={step.ctaLabel ?? 'Los geht es'}
-        onClick={onNext}
-        theme={theme}
-      />
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
+      <div className="flex flex-col gap-4 order-2 md:order-1">
+        {rendered && (
+          <h1 className="text-4xl sm:text-5xl font-bold leading-[1.1] tracking-tight">
+            {rendered}
+          </h1>
+        )}
+        <p className="text-sm opacity-60 -mt-1">kostenlos in 2 Minuten</p>
+        {step.body && <p className="text-base opacity-70 leading-relaxed mt-2">{step.body}</p>}
+        <div className="mt-2">
+          <button
+            onClick={onNext}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-black text-white text-sm font-semibold hover:bg-neutral-800 transition-colors"
+          >
+            {step.ctaLabel ?? 'Jetzt Potenzial erkunden'}
+            <span aria-hidden="true">↪</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="order-1 md:order-2 w-full" style={{ height: 320 }} aria-hidden="true">
+        <ResponsiveContainer width="100%" height="100%">
+          <RadarChart data={demoData} margin={{ top: 8, right: 24, bottom: 8, left: 24 }}>
+            <PolarGrid stroke={theme.borderColor} />
+            <PolarAngleAxis
+              dataKey="subject"
+              tick={{ fill: theme.textColor, fontSize: 11, opacity: 0.7 }}
+            />
+            <Radar
+              name="Demo"
+              dataKey="score"
+              stroke={theme.accentColor}
+              fill={theme.accentColor}
+              fillOpacity={0.35}
+            />
+          </RadarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
+  );
+}
+
+// Renders text with *asterisks* converted to <em> for italic accent words.
+function renderTitleWithItalics(title?: string): React.ReactNode {
+  if (!title) return null;
+  const parts = title.split(/(\*[^*]+\*)/g).filter(Boolean);
+  return parts.map((p, i) =>
+    p.startsWith('*') && p.endsWith('*') ? (
+      <em key={i} className="italic font-medium">{p.slice(1, -1)}</em>
+    ) : (
+      <span key={i}>{p}</span>
+    ),
   );
 }
 
@@ -346,8 +318,7 @@ function CalcInputStep({
   onNext: () => void;
   theme: FunnelTheme;
 }) {
-  const current = value !== undefined ? value : step.defaultValue;
-  const isValid = current >= step.min && current <= step.max;
+  const isValid = value >= step.min && value <= step.max;
 
   return (
     <div className="flex flex-col gap-4">
@@ -365,13 +336,13 @@ function CalcInputStep({
             min={step.min}
             max={step.max}
             step={step.step ?? 1}
-            value={current}
+            value={value}
             onChange={(e) => onChange(Number(e.target.value))}
             className="w-full accent-current"
             style={{ accentColor: theme.accentColor }}
           />
           <span className="text-sm text-center font-semibold">
-            {current}
+            {value}
             {step.suffix ? ` ${step.suffix}` : ''}
           </span>
         </div>
@@ -380,7 +351,7 @@ function CalcInputStep({
           type="number"
           min={step.min}
           max={step.max}
-          value={current}
+          value={value}
           onChange={(e) => onChange(Number(e.target.value))}
           className="rounded-lg px-3 py-2 text-sm border outline-none"
           style={{
@@ -409,6 +380,7 @@ function ResultSpiderStep({
   onRetry,
   theme,
   ctaUrl,
+  calcVars,
 }: {
   step: Extract<FunnelStep, { type: 'result-spider' }>;
   scores: DimScores;
@@ -418,11 +390,14 @@ function ResultSpiderStep({
   onRetry: () => void;
   theme: FunnelTheme;
   ctaUrl: string;
+  calcVars: CalcVarsState;
 }) {
   const chartData = SPIDER_DIMENSIONS.map((d) => ({
     subject: d.label,
     score: scores[d.key] ?? 0,
   }));
+
+  const kalku = step.showKalkuChart ? computeKalkuPotential(calcVars) : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -447,6 +422,30 @@ function ResultSpiderStep({
           </RadarChart>
         </ResponsiveContainer>
       </div>
+
+      {kalku && (
+        <div
+          className="rounded-xl border p-4"
+          style={{ borderColor: theme.borderColor, backgroundColor: theme.backgroundColor }}
+        >
+          <p className="text-sm font-medium opacity-60 mb-2">Dein Umsatz-Potential</p>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <p className="text-xs opacity-60">Aktuell / Monat</p>
+              <p className="text-lg font-semibold">{formatEuro(kalku.aktuell)}</p>
+            </div>
+            <div>
+              <p className="text-xs opacity-60">Mit Kapazität</p>
+              <p className="text-lg font-semibold">{formatEuro(kalku.potential)}</p>
+            </div>
+          </div>
+          {kalku.delta > 0 && (
+            <p className="text-sm font-semibold" style={{ color: theme.accentColor }}>
+              +{formatEuro(kalku.delta)} Mehrumsatz pro Monat möglich
+            </p>
+          )}
+        </div>
+      )}
 
       <div
         className="rounded-xl border p-4"
@@ -561,35 +560,35 @@ export default function FunnelRunner() {
   const scores = funnel ? computeScores(steps, answers) : ({} as DimScores);
   const recommendation = computeRecommendation(scores);
 
-  function buildSubmitPayload(): LeadSubmission {
+  const doSubmit = useCallback(() => {
+    if (!slug) return;
     const numericScores: Record<string, number> = {};
     for (const d of SPIDER_DIMENSIONS) {
       numericScores[d.key] = scores[d.key] ?? 0;
     }
-    return {
+    const hasKalku = Object.keys(calcVars).length > 0;
+    const payload: LeadSubmission = {
       ...(lead as Partial<Record<LeadField, string>>),
       answers,
       scores: numericScores,
       recommendation,
+      kalkuPotential: hasKalku ? computeKalkuPotential(calcVars) : undefined,
+      source: 'funnel',
       utm: utm.current,
     };
-  }
-
-  function doSubmit() {
-    if (!slug) return;
-    submitFunnelLead(slug, buildSubmitPayload())
+    submitFunnelLead(slug, payload)
       .then(() => { setSubmitted(true); setSubmitError(null); })
       .catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : 'Unbekannter Fehler';
         setSubmitError(msg);
       });
-  }
+  }, [slug, lead, answers, scores, recommendation, calcVars]);
 
-  function handleResultMount() {
+  const handleResultMount = useCallback(() => {
     if (submitAttempted.current) return;
     submitAttempted.current = true;
     doSubmit();
-  }
+  }, [doSubmit]);
 
   function advance() {
     setCurrentStepIndex((i) => i + 1);
@@ -651,7 +650,6 @@ export default function FunnelRunner() {
   }
 
   const step = steps[currentStepIndex];
-  const isLast = currentStepIndex >= steps.length - 1;
   const showProgress = funnel.config.settings.progressBar;
   const progressPct = ((currentStepIndex + 1) / steps.length) * 100;
 
@@ -711,6 +709,7 @@ export default function FunnelRunner() {
             onRetry={doSubmit}
             theme={theme}
             ctaUrl={ctaUrl}
+            calcVars={calcVars}
             onMount={handleResultMount}
           />
         );
@@ -762,10 +761,12 @@ export default function FunnelRunner() {
       )}
 
       <div className="flex-1 flex flex-col justify-center">
-        <Card theme={theme}>{renderStep(step)}</Card>
-        {isLast && step.type !== 'result-spider' && step.type !== 'cta-booking' && (
-          <div className="w-full max-w-xl mx-auto mt-4">
+        {step.type === 'intro' ? (
+          <div className="w-full max-w-4xl mx-auto px-2 sm:px-6" style={{ color: theme.textColor }}>
+            {renderStep(step)}
           </div>
+        ) : (
+          <Card theme={theme}>{renderStep(step)}</Card>
         )}
       </div>
     </div>
@@ -783,6 +784,7 @@ function ResultSpiderStepWrapper({
   onRetry,
   theme,
   ctaUrl,
+  calcVars,
   onMount,
 }: {
   step: Extract<FunnelStep, { type: 'result-spider' }>;
@@ -793,6 +795,7 @@ function ResultSpiderStepWrapper({
   onRetry: () => void;
   theme: FunnelTheme;
   ctaUrl: string;
+  calcVars: CalcVarsState;
   onMount: () => void;
 }) {
   const fired = useRef(false);
@@ -812,6 +815,21 @@ function ResultSpiderStepWrapper({
       onRetry={onRetry}
       theme={theme}
       ctaUrl={ctaUrl}
+      calcVars={calcVars}
     />
   );
+}
+
+function computeKalkuPotential(vars: CalcVarsState): { aktuell: number; potential: number; delta: number } {
+  const terminePerWeek = vars['terminePerWeek'] ?? 0;
+  const umsatzProTermin = vars['umsatzProTermin'] ?? 0;
+  const kapazitaetPerWeek = vars['kapazitaetPerWeek'] ?? terminePerWeek;
+  const weeksPerMonth = 4;
+  const aktuell = terminePerWeek * umsatzProTermin * weeksPerMonth;
+  const potential = Math.max(kapazitaetPerWeek, terminePerWeek) * umsatzProTermin * weeksPerMonth;
+  return { aktuell, potential, delta: potential - aktuell };
+}
+
+function formatEuro(n: number): string {
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 }
