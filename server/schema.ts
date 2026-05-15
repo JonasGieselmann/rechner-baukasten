@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, jsonb, integer } from 'drizzle-orm/pg-core';
 
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
@@ -6,8 +6,8 @@ export const user = pgTable('user', {
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').notNull().default(false),
   image: text('image'),
-  role: text('role').notNull().default('user'), // 'super_admin' or 'user'
-  approved: boolean('approved').notNull().default(false), // Must be approved by admin
+  role: text('role').notNull().default('user'),
+  approved: boolean('approved').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
@@ -50,6 +50,21 @@ export const verification = pgTable('verification', {
   expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at'),
   updatedAt: timestamp('updated_at'),
+});
+
+// Custom calculator metadata (files stored in S3)
+export const customCalculator = pgTable('custom_calculator', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description').notNull().default(''),
+  slug: text('slug').notNull().unique(),
+  s3Prefix: text('s3_prefix').notNull(),
+  width: text('width').notNull().default('100%'),
+  height: text('height').notNull().default('800px'),
+  active: boolean('active').notNull().default(true),
+  fileCount: integer('file_count').notNull().default(0),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
 export const funnel = pgTable('funnel', {
