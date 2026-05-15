@@ -1,5 +1,17 @@
 # React + TypeScript + Vite
 
+## End-to-End Tests
+
+The e2e suite runs Playwright against a real local stack (Postgres + Express + Vite). Make sure `DATABASE_URL` is set in `.env` (see `.env.example`), then run:
+
+```bash
+npm run test:e2e
+```
+
+Playwright spins up `npm run dev:all` automatically, inserts a test funnel into your local database, navigates the full funnel flow in a real browser, and asserts that the lead row was written. The fixture rows are deleted after each run so the test is idempotent.
+
+
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

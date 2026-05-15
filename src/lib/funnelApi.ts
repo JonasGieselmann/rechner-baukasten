@@ -1,6 +1,6 @@
 import type { Funnel, Lead } from '../types';
 
-const API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : '';
+const API_BASE = '';
 
 export interface LeadSubmission {
   name?: string;

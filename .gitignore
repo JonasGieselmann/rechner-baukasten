@@ -52,3 +52,8 @@ public/custom-calculators/*
 agentdb.rvf
 agentdb.rvf.lock
 ruvector.db
+
+# Playwright
+test-results/
+playwright-report/
+.playwright/

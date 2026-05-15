@@ -246,6 +246,7 @@ function LeadCaptureStep({
               type={inputType(f.key)}
               value={lead[f.key] ?? ''}
               onChange={(e) => onChange(f.key, e.target.value)}
+              data-testid={`lead-field-${f.key}`}
               className="rounded-lg px-3 py-2 text-sm border outline-none"
               style={{
                 backgroundColor: theme.backgroundColor,
