@@ -63,6 +63,14 @@ export function Spinnennetz({
   const revealStartRef = useRef<number | null>(null);
   const revealDoneRef = useRef(!enableReveal);
 
+  // Live refs so hover-pause and wiggle config can change without restarting the reveal.
+  const pausedRef = useRef(paused);
+  const enableWiggleRef = useRef(enableWiggle);
+  const wiggleIntensityRef = useRef(wiggleIntensity);
+  pausedRef.current = paused;
+  enableWiggleRef.current = enableWiggle;
+  wiggleIntensityRef.current = wiggleIntensity;
+
   function coords(i: number, value: number) {
     const angle = (Math.PI * 2 * i) / num - Math.PI / 2;
     const d = (value / maxValue) * radius;
@@ -82,18 +90,19 @@ export function Spinnennetz({
         const eased = easeOutCubic(t);
         setValues(base.map((v) => v * eased));
         if (t >= 1) revealDoneRef.current = true;
-      } else if (enableWiggle && !paused) {
+      } else if (enableWiggleRef.current && !pausedRef.current) {
         const time = performance.now() / 1000;
+        const intensity = wiggleIntensityRef.current;
         setValues(
           base.map((v, i) => {
             const phase = i * 0.85;
             const w =
-              Math.sin(time * 0.6 + phase) * wiggleIntensity +
-              Math.sin(time * 1.7 + phase * 1.3) * (wiggleIntensity * 0.4);
+              Math.sin(time * 0.6 + phase) * intensity +
+              Math.sin(time * 1.7 + phase * 1.3) * (intensity * 0.4);
             return Math.max(0, Math.min(maxValue, v + w));
           }),
         );
-      } else if (paused || !enableWiggle) {
+      } else {
         setValues(base);
       }
 
@@ -105,7 +114,7 @@ export function Spinnennetz({
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [base.join(','), enableReveal, revealDuration, enableWiggle, wiggleIntensity, paused, radius, maxValue]);
+  }, [base.join(','), enableReveal, revealDuration, radius, maxValue]);
 
   const gridPolys: string[] = [];
   for (let level = 1; level <= levels; level++) {
