@@ -171,3 +171,27 @@ export const emailSubscription = pgTable('email_subscription', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
+
+// A Dashboard is a customer workspace (separate from Funnels). One dashboard can
+// reference MULTIPLE funnels via dashboard_funnel; end-customers are assigned a
+// dashboard (user.dashboardId) and see exactly its funnels.
+export const dashboard = pgTable('dashboard', {
+  id: text('id').primaryKey(),
+  orgId: text('org_id').notNull(),
+  name: text('name').notNull(),
+  description: text('description').notNull().default(''),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const dashboardFunnel = pgTable('dashboard_funnel', {
+  id: text('id').primaryKey(),
+  dashboardId: text('dashboard_id')
+    .notNull()
+    .references(() => dashboard.id, { onDelete: 'cascade' }),
+  funnelId: text('funnel_id')
+    .notNull()
+    .references(() => funnel.id, { onDelete: 'cascade' }),
+  position: integer('position').notNull().default(0),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});

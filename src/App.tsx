@@ -18,6 +18,9 @@ import PotenzialanalyseEmbed from './pages/customer/PotenzialanalyseEmbed';
 import Leitfaden from './pages/customer/Leitfaden';
 import Account from './pages/customer/Account';
 import Rechtliches from './pages/customer/Rechtliches';
+import FunnelEmbed from './pages/customer/FunnelEmbed';
+import DashboardsManager from './pages/DashboardsManager';
+import { AgencyRoute } from './components/AgencyRoute';
 import { AuthProvider } from './components/AuthProvider';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AdminRoute } from './components/AdminRoute';
@@ -67,6 +70,7 @@ function App() {
             <Route path="leitfaden" element={<Leitfaden />} />
             <Route path="account" element={<Account />} />
             <Route path="rechtliches" element={<Rechtliches />} />
+            <Route path="funnel/:slug" element={<FunnelEmbed />} />
           </Route>
 
           {/* Admin (super_admin only): old calculator builder + funnel editor */}
@@ -132,6 +136,24 @@ function App() {
               <AdminRoute>
                 <AdminSettings />
               </AdminRoute>
+            }
+          />
+
+          {/* Dashboards manager (platform admin) + agency landing (white-label) */}
+          <Route
+            path="/admin/dashboards"
+            element={
+              <AdminRoute>
+                <DashboardsManager />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/agency"
+            element={
+              <AgencyRoute>
+                <DashboardsManager />
+              </AgencyRoute>
             }
           />
 

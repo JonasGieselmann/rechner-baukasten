@@ -416,6 +416,106 @@ export async function assignDashboardToUser(userId: string, dashboardId: string 
 }
 
 // ============================================
+// Dashboards (customer workspaces) + dashboard<->funnel links
+// ============================================
+
+export async function initDashboardSchema() {
+  await client`
+    CREATE TABLE IF NOT EXISTS dashboard (
+      id TEXT PRIMARY KEY,
+      org_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `;
+  await client`
+    CREATE TABLE IF NOT EXISTS dashboard_funnel (
+      id TEXT PRIMARY KEY,
+      dashboard_id TEXT NOT NULL REFERENCES dashboard(id) ON DELETE CASCADE,
+      funnel_id TEXT NOT NULL REFERENCES funnel(id) ON DELETE CASCADE,
+      position INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `;
+  await client`CREATE INDEX IF NOT EXISTS dashboard_org_idx ON dashboard(org_id)`;
+  await client`CREATE INDEX IF NOT EXISTS dashboard_funnel_dashboard_idx ON dashboard_funnel(dashboard_id)`;
+  await client`CREATE UNIQUE INDEX IF NOT EXISTS dashboard_funnel_uniq ON dashboard_funnel(dashboard_id, funnel_id)`;
+  console.log('Dashboard schema initialized (PostgreSQL)');
+}
+
+export async function getDashboardById(id: string) {
+  if (!isValidId(id)) return null;
+  const r = await client`SELECT * FROM dashboard WHERE id = ${id}`;
+  return r[0] || null;
+}
+
+export async function createDashboard(p: { id: string; orgId: string; name: string; description?: string }) {
+  await client`
+    INSERT INTO dashboard (id, org_id, name, description)
+    VALUES (${p.id}, ${p.orgId}, ${p.name}, ${p.description ?? ''})
+  `;
+  return getDashboardById(p.id);
+}
+
+export async function getDashboardsByOrg(orgId: string) {
+  return await client`
+    SELECT id, org_id, name, description, created_at FROM dashboard
+    WHERE org_id = ${orgId} ORDER BY created_at DESC LIMIT 1000
+  `;
+}
+
+export async function getAllDashboards() {
+  return await client`
+    SELECT id, org_id, name, description, created_at FROM dashboard
+    ORDER BY created_at DESC LIMIT 1000
+  `;
+}
+
+export async function updateDashboard(id: string, name: string, description: string): Promise<void> {
+  if (!isValidId(id)) throw new Error('Invalid dashboard ID');
+  await client`UPDATE dashboard SET name = ${name}, description = ${description}, updated_at = NOW() WHERE id = ${id}`;
+}
+
+export async function deleteDashboard(id: string): Promise<void> {
+  if (!isValidId(id)) throw new Error('Invalid dashboard ID');
+  await client`DELETE FROM dashboard WHERE id = ${id}`;
+}
+
+export async function addFunnelToDashboard(linkId: string, dashboardId: string, funnelId: string, position: number): Promise<void> {
+  await client`
+    INSERT INTO dashboard_funnel (id, dashboard_id, funnel_id, position)
+    VALUES (${linkId}, ${dashboardId}, ${funnelId}, ${position})
+    ON CONFLICT (dashboard_id, funnel_id) DO NOTHING
+  `;
+}
+
+export async function removeFunnelFromDashboard(dashboardId: string, funnelId: string): Promise<void> {
+  await client`DELETE FROM dashboard_funnel WHERE dashboard_id = ${dashboardId} AND funnel_id = ${funnelId}`;
+}
+
+export async function getDashboardFunnels(dashboardId: string) {
+  if (!isValidId(dashboardId)) return [];
+  return await client`
+    SELECT f.id, f.slug, f.name, f.description, f.status, df.position
+    FROM dashboard_funnel df JOIN funnel f ON f.id = df.funnel_id
+    WHERE df.dashboard_id = ${dashboardId}
+    ORDER BY df.position ASC, df.created_at ASC
+  `;
+}
+
+// Resolve the dashboard + ordered funnels for an end-customer (null if none assigned).
+export async function getUserDashboard(userId: string) {
+  const u = await getUserById(userId);
+  if (!u?.dashboard_id) return null;
+  const d = await getDashboardById(u.dashboard_id);
+  if (!d) return null;
+  const funnels = await getDashboardFunnels(u.dashboard_id);
+  return { dashboard: { id: d.id, name: d.name, description: d.description }, funnels };
+}
+
+// ============================================
 // Compliance: consent log + email subscriptions
 // ============================================
 

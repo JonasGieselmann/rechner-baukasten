@@ -213,6 +213,7 @@ export default function Overview() {
   const { user } = useAuth();
   const [progress, setProgress] = useState<AnalysisProgress>(computeProgress([]));
   const [loading, setLoading] = useState(true);
+  const [funnels, setFunnels] = useState<{ slug: string; name: string }[]>([]);
 
   useEffect(() => {
     fetch('/api/me/leads', { credentials: 'include' })
@@ -222,6 +223,15 @@ export default function Overview() {
       })
       .catch(() => undefined)
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/dashboards/me', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { funnels?: { slug: string; name: string }[] } | null) => {
+        if (d?.funnels) setFunnels(d.funnels);
+      })
+      .catch(() => undefined);
   }, []);
 
   const displayName = user?.name?.trim() || user?.email || '';
@@ -237,6 +247,24 @@ export default function Overview() {
           Mehr Patienten durch smarte Systeme.
         </p>
       </div>
+
+      {funnels.length > 0 && (
+        <Card title="Ihre Analyse-Tools">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {funnels.map((f) => (
+              <Link
+                key={f.slug}
+                to={`/dashboard/funnel/${f.slug}`}
+                className="flex items-center justify-between gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-opacity hover:opacity-80"
+                style={{ borderColor: BRAND.colors.border, color: BRAND.colors.text }}
+              >
+                {f.name}
+                <span aria-hidden="true">&#x2192;</span>
+              </Link>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <PotenzialCard progress={progress} loading={loading} />
