@@ -10,7 +10,7 @@ interface UserData {
   id: string;
   name: string;
   email: string;
-  role: 'super_admin' | 'user';
+  role: 'super_admin' | 'agency_admin' | 'customer' | 'user';
   approved: boolean;
   created_at: string;
 }
@@ -64,6 +64,25 @@ export function AdminUsers() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuperAdmin]);
+
+  // Change a user's role (super_admin only). 3-tier: super_admin/agency_admin/customer.
+  const handleRoleChange = async (userId: string, role: string) => {
+    try {
+      setActionLoading(userId);
+      const res = await fetch(`${API_BASE}/api/admin/users/${userId}/role`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role }),
+      });
+      if (!res.ok) throw new Error('Rollenwechsel fehlgeschlagen');
+      await loadUsers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unbekannter Fehler');
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   // Approve user
   const handleApprove = async (userId: string) => {
@@ -318,6 +337,21 @@ export function AdminUsers() {
                       <span className="text-xs" style={{ color: BRAND.colors.muted }}>
                         {formatDateTime(u.created_at)}
                       </span>
+                      {u.id !== user?.id && (
+                        <select
+                          value={u.role}
+                          onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                          disabled={actionLoading === u.id}
+                          className="text-xs rounded-lg border px-2 py-1 disabled:opacity-50"
+                          style={{ borderColor: BRAND.colors.border, backgroundColor: BRAND.colors.card, color: BRAND.colors.text }}
+                          title="Rolle ändern"
+                        >
+                          <option value="super_admin">Super Admin</option>
+                          <option value="agency_admin">Agency Admin</option>
+                          <option value="customer">Kunde</option>
+                          <option value="user">User</option>
+                        </select>
+                      )}
                       {u.role !== 'super_admin' && u.id !== user?.id && (
                         <button
                           onClick={() => handleDelete(u.id)}

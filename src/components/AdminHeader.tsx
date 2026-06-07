@@ -12,6 +12,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Rechner', path: '/admin' },
   { label: 'Funnels', path: '/admin?tab=funnel' },
+  { label: 'Dashboards', path: '/admin/dashboards' },
   { label: 'Kunden', path: '/admin/customers' },
   { label: 'Benutzer', path: '/admin/users' },
   { label: 'Einstellungen', path: '/admin/settings' },
