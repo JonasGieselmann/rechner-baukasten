@@ -14,11 +14,11 @@ export const RECOMMENDATION_TEXTS: Record<RecommendationKey, string> = {
   'fundament-aufbauen':
     'Marketing ohne Fundament verbrennt Geld. Erst Social Media, Website und Branding sauber aufbauen, dann skalieren.',
   'stufe-1':
-    'Dein Fundament steht. Du bekommst qualifizierte Leads und schließt selbst ab, maximale Transparenz.',
+    'Ihr Fundament steht. Sie bekommen qualifizierte Leads und schließen selbst ab, maximale Transparenz.',
   'stufe-2':
-    'Du bist bereit für automatische Buchungen. Wir leiten Interessenten direkt in deinen Kalender.',
+    'Sie sind bereit für automatische Buchungen. Wir leiten Interessenten direkt in Ihren Kalender.',
   'stufe-3':
-    'Du spielst in der Skalierungsliga. Wir übernehmen alles, du behandelst.',
+    'Sie spielen in der Skalierungsliga. Wir übernehmen alles, Sie behandeln.',
 };
 
 // Human-readable stage titles. The internal RecommendationKey (e.g. 'stufe-1')

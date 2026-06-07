@@ -202,11 +202,11 @@ function StrategiegespraechCard() {
         </p>
       </div>
       <a
-        href="#termin"
-        className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 self-start opacity-40 cursor-not-allowed"
+        href="https://calendly.com/beauty-flow/30min"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 self-start"
         style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
-        aria-disabled="true"
-        onClick={(e) => e.preventDefault()}
       >
         Termin buchen
         <span aria-hidden="true">&#x21AA;</span>

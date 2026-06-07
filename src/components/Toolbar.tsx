@@ -287,7 +287,7 @@ export function Toolbar() {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold" style={{ color: BRAND.colors.text }}>Embed-Code</h2>
-                  <p className="text-xs" style={{ color: BRAND.colors.muted }}>Füge diesen Code in deine Website ein</p>
+                  <p className="text-xs" style={{ color: BRAND.colors.muted }}>Fügen Sie diesen Code in Ihre Website ein</p>
                 </div>
               </div>
             </div>

@@ -38,7 +38,7 @@ export function PropertiesPanel() {
             </svg>
           </div>
           <p className="text-sm font-medium" style={{ color: BRAND.colors.text }}>Vorschau-Modus</p>
-          <p className="text-xs mt-1" style={{ color: BRAND.colors.muted }}>Teste deinen Rechner live</p>
+          <p className="text-xs mt-1" style={{ color: BRAND.colors.muted }}>Testen Sie Ihren Rechner live</p>
         </div>
       </div>
     );

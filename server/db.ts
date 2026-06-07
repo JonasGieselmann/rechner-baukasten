@@ -280,6 +280,14 @@ export async function deleteUser(userId: string): Promise<void> {
   await client`DELETE FROM "user" WHERE id = ${validatedId}`;
 }
 
+// DSGVO Art. 17 self-service deletion: removes the user's own leads (PII) and
+// then the user row (sessions/accounts/consents cascade via their FKs).
+export async function deleteOwnAccount(userId: string): Promise<void> {
+  const validatedId = validateUserId(userId);
+  await client`DELETE FROM lead WHERE user_id = ${validatedId}`;
+  await client`DELETE FROM "user" WHERE id = ${validatedId}`;
+}
+
 // Get all users (for admin panel) - with limit for safety
 export async function getAllUsers(limit = 1000) {
   // Limit to prevent potential DoS from large datasets

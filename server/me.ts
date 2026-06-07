@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { eq, desc } from 'drizzle-orm';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from './auth.js';
-import { db, schema, getUserById } from './db.js';
+import { db, schema, getUserById, deleteOwnAccount } from './db.js';
 import { requireAuth, type AuthenticatedRequest } from './middleware.js';
 
 const router = Router();
@@ -97,6 +97,21 @@ router.patch('/', requireAuth, async (req: AuthenticatedRequest, res) => {
     res.json(updated);
   } catch (err) {
     console.error('Me patch error:', err);
+    res.status(500).json({ error: 'Request failed' });
+  }
+});
+
+// DSGVO Art. 17: self-service account deletion. Platform operators (super_admin)
+// cannot self-delete here, to avoid locking the platform out of its own admin.
+router.delete('/', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    if (req.user!.role === 'super_admin') {
+      return res.status(403).json({ error: 'Plattform-Administratoren können sich hier nicht selbst löschen.' });
+    }
+    await deleteOwnAccount(req.user!.id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Me delete error:', err);
     res.status(500).json({ error: 'Request failed' });
   }
 });

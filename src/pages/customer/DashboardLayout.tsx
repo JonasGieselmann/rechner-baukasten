@@ -55,13 +55,6 @@ const PlanIcon = () => (
   </svg>
 );
 
-const BellIcon = () => (
-  <svg {...iconBase} width="18" height="18" aria-hidden="true">
-    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-  </svg>
-);
-
 interface NavItem {
   label: string;
   shortLabel: string;
@@ -98,14 +91,6 @@ export default function DashboardLayout() {
           />
         </div>
         <div className="flex items-center gap-1 sm:gap-2">
-          <button
-            onClick={() => alert('Keine neuen Benachrichtigungen')}
-            className="p-2 rounded-full transition-colors hover:opacity-70"
-            style={{ color: BRAND.colors.text }}
-            aria-label="Benachrichtigungen"
-          >
-            <BellIcon />
-          </button>
           {isSuperAdmin && (
             <NavLink
               to="/admin"
@@ -163,7 +148,7 @@ export default function DashboardLayout() {
         </nav>
 
         <main
-          className="flex-1 p-4 sm:p-6 overflow-y-auto pb-24 md:pb-6"
+          className="flex-1 p-4 sm:p-6 overflow-y-auto pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6"
           style={{ backgroundColor: BRAND.colors.background }}
         >
           <Outlet />
@@ -192,13 +177,14 @@ export default function DashboardLayout() {
             key={item.path}
             to={item.path}
             end={item.path === '/dashboard'}
-            className="flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-opacity"
+            aria-label={item.label}
+            className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset"
             style={({ isActive }) => ({
               color: isActive ? BRAND.colors.accent : BRAND.colors.muted,
             })}
           >
             {item.icon}
-            <span className="text-[11px] font-medium">{item.shortLabel}</span>
+            <span className="text-xs font-medium">{item.shortLabel}</span>
           </NavLink>
         ))}
       </nav>

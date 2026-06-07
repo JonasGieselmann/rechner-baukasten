@@ -92,7 +92,7 @@ export default function Plans() {
               ) : (
                 <a
                   href={CONTACT}
-                  className="text-center px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+                  className="text-center px-5 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
                   style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
                 >
                   Upgrade anfragen

@@ -5,6 +5,7 @@ import { useAuth } from '../components/AuthProvider';
 import { AdminHeader } from '../components/AdminHeader';
 import { BRAND } from '../../branding/tokens';
 import { formatDateTime } from '../lib/dateFormat';
+import { OVERLAY_STYLE } from '../lib/uiStyles';
 
 interface CustomCalculator {
   id: string;
@@ -23,11 +24,6 @@ const TABS: TabType[] = ['builder', 'custom'];
 
 // API base URL - different in dev vs production
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : '';
-
-// Shared overlay style for all modals
-const OVERLAY_STYLE: React.CSSProperties = {
-  backgroundColor: 'rgba(15, 47, 91, 0.5)',
-};
 
 export function Home() {
   const navigate = useNavigate();

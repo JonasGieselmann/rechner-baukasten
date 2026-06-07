@@ -308,7 +308,8 @@ function QuestionStep({
             <button
               key={opt.id}
               onClick={() => toggle(opt.id)}
-              className="w-full rounded-xl border px-4 py-3 text-left text-sm font-medium transition-all"
+              aria-pressed={active}
+              className="w-full rounded-xl border px-4 py-3 text-left text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
               style={{
                 backgroundColor: active ? theme.accentColor : theme.cardColor,
                 borderColor: active ? theme.accentColor : theme.borderColor,

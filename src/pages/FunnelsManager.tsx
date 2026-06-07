@@ -4,11 +4,7 @@ import { useFunnelStore } from '../store/funnelStore';
 import { AdminHeader } from '../components/AdminHeader';
 import { BRAND } from '../../branding/tokens';
 import { formatDateTime } from '../lib/dateFormat';
-
-// Shared overlay style for modals
-const OVERLAY_STYLE: React.CSSProperties = {
-  backgroundColor: 'rgba(15, 47, 91, 0.5)',
-};
+import { OVERLAY_STYLE } from '../lib/uiStyles';
 
 export default function FunnelsManager() {
   const navigate = useNavigate();
@@ -91,7 +87,7 @@ export default function FunnelsManager() {
               Noch keine Funnels
             </h2>
             <p className="mb-6 text-center max-w-md" style={{ color: BRAND.colors.muted }}>
-              Erstelle deinen ersten Funnel, um Leads mit mehrstufigen Formularen einzusammeln.
+              Erstellen Sie Ihren ersten Funnel, um Leads mit mehrstufigen Formularen einzusammeln.
             </p>
             <button
               onClick={() => setShowNewFunnelModal(true)}

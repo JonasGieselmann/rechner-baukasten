@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../components/AuthProvider';
 import { Avatar } from '../../components/Avatar';
 import { BRAND } from '../../../branding/tokens';
@@ -312,6 +312,29 @@ function PasswordCard() {
 }
 
 function DeleteAccountCard() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    setError('');
+    try {
+      const res = await fetch('/api/me', { method: 'DELETE', credentials: 'include' });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? 'Löschung fehlgeschlagen.');
+      }
+      await logout();
+      navigate('/', { replace: true });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unbekannter Fehler.');
+      setDeleting(false);
+    }
+  };
+
   return (
     <div
       className="rounded-2xl border p-6 space-y-3"
@@ -321,15 +344,41 @@ function DeleteAccountCard() {
         Konto
       </h2>
       <p className="text-sm" style={{ color: BRAND.colors.muted }}>
-        Sie möchten Ihr Konto dauerhaft entfernen?
+        Löschen Sie Ihr Konto endgültig. Ihre Analysen und personenbezogenen Daten werden dabei
+        unwiderruflich entfernt (Recht auf Löschung, Art. 17 DSGVO).
       </p>
-      <button
-        className="text-sm transition-opacity hover:opacity-70 underline underline-offset-2"
-        style={{ color: BRAND.colors.muted }}
-        onClick={() => alert('Funktion folgt')}
-      >
-        Konto löschen
-      </button>
+      {error && <p className="text-sm text-red-500">{error}</p>}
+      {!confirming ? (
+        <button
+          className="text-sm transition-opacity hover:opacity-70 underline underline-offset-2"
+          style={{ color: BRAND.colors.muted }}
+          onClick={() => setConfirming(true)}
+        >
+          Konto löschen
+        </button>
+      ) : (
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium" style={{ color: BRAND.colors.text }}>
+            Wirklich endgültig löschen?
+          </span>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="text-sm font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-90 disabled:opacity-40"
+            style={{ backgroundColor: '#C0392B', color: '#FFFFFF' }}
+          >
+            {deleting ? 'Wird gelöscht...' : 'Ja, Konto löschen'}
+          </button>
+          <button
+            onClick={() => setConfirming(false)}
+            disabled={deleting}
+            className="text-sm transition-opacity hover:opacity-70"
+            style={{ color: BRAND.colors.muted }}
+          >
+            Abbrechen
+          </button>
+        </div>
+      )}
     </div>
   );
 }
