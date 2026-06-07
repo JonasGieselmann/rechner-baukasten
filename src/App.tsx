@@ -22,6 +22,7 @@ import FunnelEmbed from './pages/customer/FunnelEmbed';
 import Plans from './pages/customer/Plans';
 import DashboardsManager from './pages/DashboardsManager';
 import FunnelsManager from './pages/FunnelsManager';
+import AdminOrganizations from './pages/AdminOrganizations';
 import { AgencyRoute } from './components/AgencyRoute';
 import { AuthProvider } from './components/AuthProvider';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -148,6 +149,16 @@ function App() {
             element={
               <AdminRoute>
                 <FunnelsManager />
+              </AdminRoute>
+            }
+          />
+
+          {/* White-label tenant management (platform admin) */}
+          <Route
+            path="/admin/organizations"
+            element={
+              <AdminRoute>
+                <AdminOrganizations />
               </AdminRoute>
             }
           />

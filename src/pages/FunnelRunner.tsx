@@ -8,6 +8,7 @@ import type {
   FunnelStep,
   FunnelTheme,
   LeadField,
+  SpiderDimension,
 } from '../types';
 import { SPIDER_DIMENSIONS, DEFAULT_FUNNEL_THEME } from '../types';
 import {
@@ -409,6 +410,8 @@ function ResultSpiderStep({
   theme,
   ctaUrl,
   calcVars,
+  onCalcChange,
+  dimensions,
   onNext,
   hasNextStep,
 }: {
@@ -421,14 +424,21 @@ function ResultSpiderStep({
   theme: FunnelTheme;
   ctaUrl: string;
   calcVars: CalcVarsState;
+  onCalcChange: (name: string, value: number) => void;
+  dimensions: SpiderDimension[];
   onNext: () => void;
   hasNextStep: boolean;
 }) {
-  // Scale to Spinnennetz 0..10 range (scores are 0..100)
-  const spiderValues = SPIDER_DIMENSIONS.map((d) => (scores[d.key] ?? 0) / 10);
-  const spiderLabels = SPIDER_DIMENSIONS.map((d) => d.label);
+  // Only show the dimensions this funnel actually asked about (clean smaller
+  // spider for short funnels); fall back to all if none were tagged.
+  const dims = dimensions.length > 0
+    ? SPIDER_DIMENSIONS.filter((d) => dimensions.includes(d.key))
+    : SPIDER_DIMENSIONS;
+  const spiderValues = dims.map((d) => (scores[d.key] ?? 0) / 10);
+  const spiderLabels = dims.map((d) => d.label);
 
   const kalku = step.showKalkuChart ? computeKalkuPotential(calcVars) : null;
+  const sliders = step.calcInputs ?? [];
 
   return (
     <div className="flex flex-col gap-12 sm:gap-16">
@@ -473,13 +483,48 @@ function ResultSpiderStep({
               <p className="text-xs opacity-50 mt-1">pro Monat</p>
             </div>
           </div>
+
+          {/* Interactive sliders, pre-filled from the funnel answers. The numbers
+              above recompute live as you drag. */}
+          {sliders.length > 0 && (
+            <div className="flex flex-col gap-4 pt-2">
+              <p className="text-sm opacity-70">
+                Ihre Werte aus der Analyse, zum Weiterspielen, der Mehrumsatz rechnet live:
+              </p>
+              {sliders.map((sl) => {
+                const v = calcVars[sl.variableName] ?? sl.min;
+                return (
+                  <div key={sl.variableName} className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{sl.label}</span>
+                      <span className="font-semibold" style={{ color: theme.accentColor }}>
+                        {v}
+                        {sl.suffix ? ` ${sl.suffix}` : ''}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={sl.min}
+                      max={sl.max}
+                      step={sl.step ?? 1}
+                      value={v}
+                      onChange={(e) => onCalcChange(sl.variableName, Number(e.target.value))}
+                      aria-label={sl.label}
+                      className="w-full"
+                      style={{ accentColor: theme.accentColor }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
       )}
 
       {/* SECTION 2: Spider-Profil */}
       <section className="flex flex-col gap-6">
         <p className="text-xs uppercase tracking-[0.12em] opacity-50 font-semibold">
-          Ihr Profil in 8 Dimensionen
+          Ihr Profil in {dims.length} {dims.length === 1 ? 'Dimension' : 'Dimensionen'}
         </p>
         <div className="w-full" style={{ height: 380 }}>
           <Spinnennetz
@@ -639,6 +684,15 @@ export default function FunnelRunner() {
         const defaults: CalcVarsState = {};
         for (const s of f.config.steps) {
           if (s.type === 'calc-input') defaults[s.variableName] = s.defaultValue;
+          // Seed result-step sliders with a sensible midpoint; the funnel's
+          // calc-questions override these once answered.
+          if (s.type === 'result-spider' && s.calcInputs) {
+            for (const ci of s.calcInputs) {
+              if (defaults[ci.variableName] === undefined) {
+                defaults[ci.variableName] = Math.round((ci.min + ci.max) / 2);
+              }
+            }
+          }
         }
         setCalcVars(defaults);
       })
@@ -651,6 +705,16 @@ export default function FunnelRunner() {
 
   const scores = funnel ? computeScores(steps, answers) : ({} as DimScores);
   const recommendation = computeRecommendation(scores);
+
+  // The result spider only shows the dimensions this funnel actually asks about,
+  // so a short funnel renders a clean (smaller) spider instead of one with empty axes.
+  const askedDimensions = Array.from(
+    new Set(
+      steps
+        .filter((s): s is Extract<FunnelStep, { type: 'question' }> => s.type === 'question')
+        .map((s) => s.dimension),
+    ),
+  );
 
   const doSubmit = useCallback(() => {
     if (!slug) return;
@@ -774,9 +838,19 @@ export default function FunnelRunner() {
           <QuestionStep
             step={s}
             selected={answers[s.id] ?? []}
-            onChange={(ids) =>
-              setAnswers((prev) => ({ ...prev, [s.id]: ids }))
-            }
+            onChange={(ids) => {
+              setAnswers((prev) => ({ ...prev, [s.id]: ids }));
+              // If this question seeds a calc value, capture the chosen option's
+              // calcValue so the result-step sliders start from the funnel answer.
+              if (s.calcVariable) {
+                const opt = s.options.find((o) => ids.includes(o.id));
+                if (opt && typeof opt.calcValue === 'number') {
+                  const variable = s.calcVariable;
+                  const val = opt.calcValue;
+                  setCalcVars((prev) => ({ ...prev, [variable]: val }));
+                }
+              }
+            }}
             onNext={advance}
             theme={theme}
           />
@@ -805,6 +879,8 @@ export default function FunnelRunner() {
             theme={theme}
             ctaUrl={ctaUrl}
             calcVars={calcVars}
+            onCalcChange={(name, v) => setCalcVars((prev) => ({ ...prev, [name]: v }))}
+            dimensions={askedDimensions}
             onNext={advance}
             hasNextStep={currentStepIndex < steps.length - 1}
             onMount={handleResultMount}
@@ -882,6 +958,8 @@ function ResultSpiderStepWrapper({
   theme,
   ctaUrl,
   calcVars,
+  onCalcChange,
+  dimensions,
   onNext,
   hasNextStep,
   onMount,
@@ -895,6 +973,8 @@ function ResultSpiderStepWrapper({
   theme: FunnelTheme;
   ctaUrl: string;
   calcVars: CalcVarsState;
+  onCalcChange: (name: string, value: number) => void;
+  dimensions: SpiderDimension[];
   onNext: () => void;
   hasNextStep: boolean;
   onMount: () => void;
@@ -917,6 +997,8 @@ function ResultSpiderStepWrapper({
       theme={theme}
       ctaUrl={ctaUrl}
       calcVars={calcVars}
+      onCalcChange={onCalcChange}
+      dimensions={dimensions}
       onNext={onNext}
       hasNextStep={hasNextStep}
     />

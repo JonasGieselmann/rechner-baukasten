@@ -182,6 +182,9 @@ export interface AnswerOption {
   id: string;
   label: string;
   score: number; // 0..100
+  // Optional: selecting this option seeds the question's calcVariable with this
+  // numeric value (e.g. a "Termine/Woche: 10-20" answer seeds terminePerWeek=15).
+  calcValue?: number;
 }
 
 export interface QuestionStep extends BaseStep {
@@ -191,6 +194,9 @@ export interface QuestionStep extends BaseStep {
   options: AnswerOption[];
   allowMultiple?: boolean;
   required?: boolean;
+  // Optional: the answer also pre-fills this calc variable (used to seed the
+  // interactive sliders shown on the result step) from the chosen option's calcValue.
+  calcVariable?: string;
 }
 
 export interface CalcInputStep extends BaseStep {
@@ -205,10 +211,23 @@ export interface CalcInputStep extends BaseStep {
   suffix?: string;
 }
 
+// Interactive slider shown on the result step, pre-filled from funnel answers.
+export interface CalcSlider {
+  variableName: string;
+  label: string;
+  min: number;
+  max: number;
+  step?: number;
+  suffix?: string;
+}
+
 export interface ResultSpiderStep extends BaseStep {
   type: 'result-spider';
   showKalkuChart?: boolean;
   cliffhanger?: string;
+  // Sliders the user can "play with" on the result (seeded from the funnel
+  // answers via QuestionStep.calcVariable); the growth numbers update live.
+  calcInputs?: CalcSlider[];
 }
 
 export interface CtaBookingStep extends BaseStep {

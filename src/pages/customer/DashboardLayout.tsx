@@ -3,6 +3,7 @@ import { NavLink, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../../components/AuthProvider';
 import { BRAND } from '../../../branding/tokens';
 import { Wordmark } from '../../components/Wordmark';
+import { Avatar } from '../../components/Avatar';
 
 const iconBase = {
   width: 22,
@@ -71,7 +72,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 export default function DashboardLayout() {
-  const { logout, isSuperAdmin } = useAuth();
+  const { logout, isSuperAdmin, user } = useAuth();
 
   return (
     <div
@@ -108,6 +109,14 @@ export default function DashboardLayout() {
           >
             Abmelden
           </button>
+          <Link
+            to="/dashboard/account"
+            aria-label="Profil und Einstellungen"
+            title="Profil und Einstellungen"
+            className="rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2"
+          >
+            <Avatar name={user?.name} email={user?.email} size="sm" />
+          </Link>
         </div>
       </header>
 

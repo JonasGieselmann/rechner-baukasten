@@ -19,18 +19,18 @@ test('prod: funnel ends on result with working Calendly CTA', async ({ page }: {
   await page.getByTestId('consent-privacy').check();
   await page.getByRole('button', { name: 'Weiter' }).click();
 
-  for (let i = 0; i < 8; i++) {
-    await page.locator('button.text-left').first().click();
-    await page.waitForTimeout(250);
-  }
-  for (let i = 0; i < 3; i++) {
-    await page.getByRole('button', { name: 'Weiter' }).click();
-    await page.waitForTimeout(250);
+  // 5 single-select questions -> auto-advance; pick the last (highest) option.
+  for (let i = 0; i < 5; i++) {
+    await page.locator('button.text-left').last().click();
+    await page.waitForTimeout(300);
   }
 
   // Terminal result: growth chart + recommendation visible
   await expect(page.getByText('Ihr Wachstumspotenzial')).toBeVisible({ timeout: 10000 });
   await expect(page.getByText('Mehrumsatz pro Monat')).toBeVisible();
+
+  // Sliders are pre-filled from the funnel answers ("zum Rumspielen").
+  await expect(page.getByRole('slider').first()).toBeVisible();
 
   // Booking works: the terminal CTA points at the real Calendly URL.
   const cta = page.getByTestId('result-booking-cta');
@@ -38,7 +38,7 @@ test('prod: funnel ends on result with working Calendly CTA', async ({ page }: {
   await expect(cta).toHaveAttribute('href', CALENDLY);
 
   // No trailing booking dead-end: progress shows the result as the LAST step.
-  await expect(page.getByText(/Schritt \d+ von \d+/)).toContainText('von 14');
+  await expect(page.getByText(/Schritt \d+ von \d+/)).toContainText('von 8');
 
   await page.screenshot({ path: 'test-results/prod-walkthrough/result.png', fullPage: true });
 });

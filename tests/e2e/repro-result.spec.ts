@@ -23,14 +23,11 @@ async function completeFunnel(scope: Page | FrameLocator) {
   await scope.getByTestId('lead-field-websiteUrl').fill('https://example.com');
   await scope.getByTestId('consent-privacy').check();
   await scope.getByRole('button', { name: 'Weiter' }).click();
-  // 8 single-select questions -> auto-advance; click first option each time
-  for (let i = 0; i < 8; i++) {
-    await scope.locator('button.text-left').first().click();
-    await (scope as Page).waitForTimeout?.(250).catch(() => undefined);
-  }
-  // 3 calc-inputs -> Weiter
-  for (let i = 0; i < 3; i++) {
-    await scope.getByRole('button', { name: 'Weiter' }).click();
+  // 5 single-select questions -> auto-advance; click the LAST option each time
+  // (highest values) so the growth calc produces a positive Mehrumsatz.
+  for (let i = 0; i < 5; i++) {
+    await scope.locator('button.text-left').last().click();
+    await (scope as Page).waitForTimeout?.(300).catch(() => undefined);
   }
 }
 

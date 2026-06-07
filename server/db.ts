@@ -1,6 +1,8 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import { nanoid } from 'nanoid';
 import * as schema from './schema.js';
+import { buildPotenzialanalyseConfig, POTENZIALANALYSE_SLUG, POTENZIALANALYSE_VERSION } from './funnel-seed.js';
 
 // ============================================
 // Database Configuration
@@ -388,10 +390,13 @@ export async function getOrgBySlug(slug: string) {
   return r[0] || null;
 }
 
-export async function createOrganization(params: { id: string; name: string; slug: string }) {
+export async function createOrganization(params: { id: string; name: string; slug: string; parentOrgId?: string }) {
+  // White-label customer orgs are children of the platform org (Layer One,
+  // id 'default') by default, so they appear under it in the hierarchy.
+  const parentOrgId = params.parentOrgId ?? 'default';
   await client`
-    INSERT INTO organization (id, name, slug)
-    VALUES (${params.id}, ${params.name}, ${params.slug})
+    INSERT INTO organization (id, name, slug, parent_org_id, plan_id)
+    VALUES (${params.id}, ${params.name}, ${params.slug}, ${parentOrgId}, 'basic')
   `;
   return getOrgById(params.id);
 }
@@ -625,45 +630,53 @@ export async function initBeautyflowTenant() {
   await client`UPDATE "user" SET org_id = 'beautyflow' WHERE role = 'customer' AND org_id = 'default'`;
   // Customer dashboards belong to the customer org, not the platform.
   await client`UPDATE dashboard SET org_id = 'beautyflow' WHERE org_id = 'default'`;
+  // Give BeautyFlow a dashboard that bundles its funnel(s), so it shows up under
+  // "Dashboards" (1 Dashboard : N Funnels) instead of only as a loose funnel.
+  const bfFunnel = await client`SELECT id FROM funnel WHERE slug = 'potenzialanalyse' LIMIT 1`;
+  if (bfFunnel[0]) {
+    await client`
+      INSERT INTO dashboard (id, org_id, name, description)
+      VALUES ('beautyflow-dashboard', 'beautyflow', 'BeautyFlow Dashboard', 'Kundenportal mit Potenzialanalyse')
+      ON CONFLICT (id) DO NOTHING
+    `;
+    await client`
+      INSERT INTO dashboard_funnel (id, dashboard_id, funnel_id, position)
+      VALUES ('bf-dash-potenzial', 'beautyflow-dashboard', ${bfFunnel[0].id as string}, 0)
+      ON CONFLICT (id) DO NOTHING
+    `;
+  }
   console.log('BeautyFlow tenant provisioned (PostgreSQL)');
 }
 
-// Idempotent, conservative repair of the live potenzialanalyse funnel config so
-// the deployed funnel matches the intended UX without needing direct prod DB
-// access (the config is data, not code; this runs on boot). It ONLY fixes the
-// known-broken state and never clobbers deliberate admin edits:
-//  - sets the booking URL if it is still empty,
-//  - drops a TRAILING cta-booking step that has no URL (a dead end), so the
-//    result-spider becomes the terminal screen (which renders its own booking CTA).
-// Once fixed it is a no-op on every subsequent boot.
-const POTENZIAL_BOOKING_URL = 'https://calendly.com/beauty-flow/30min';
-export async function repairPotenzialanalyseFunnel() {
-  const rows = await client`SELECT id, config FROM funnel WHERE slug = 'potenzialanalyse' LIMIT 1`;
+// Keep the live potenzialanalyse funnel in sync with the canonical config
+// (server/funnel-seed.ts) without needing direct prod DB access — the config is
+// data, not code, so it ships via this boot step. Version-guarded: it only
+// rewrites the funnel when the stored config version is older than the canonical
+// one, so structural changes deploy in place while admin edits persist between
+// versions. Creates the funnel if it does not exist yet and a platform admin
+// is available to own it.
+export async function syncPotenzialanalyseFunnel() {
+  const canonical = buildPotenzialanalyseConfig();
+  const rows = await client`SELECT id, config FROM funnel WHERE slug = ${POTENZIALANALYSE_SLUG} LIMIT 1`;
   const row = rows[0];
-  if (!row) return;
-  const config = row.config as {
-    settings?: { ctaCalendarUrl?: string };
-    steps?: Array<{ type?: string; calendarUrl?: string }>;
-  };
-  if (!config || !Array.isArray(config.steps)) return;
-  let changed = false;
-
-  config.settings = config.settings ?? {};
-  if (!config.settings.ctaCalendarUrl || !config.settings.ctaCalendarUrl.trim()) {
-    config.settings.ctaCalendarUrl = POTENZIAL_BOOKING_URL;
-    changed = true;
+  if (!row) {
+    const owner = await client`SELECT id FROM "user" WHERE role = 'super_admin' AND approved = true ORDER BY created_at ASC LIMIT 1`;
+    if (!owner[0]) return; // no one to own it yet (fresh DB) -> seed script handles creation
+    // Create in the always-present platform org ('default'); initBeautyflowTenant
+    // (runs right after) moves it into 'beautyflow' and links the dashboard. This
+    // avoids referencing 'beautyflow' before that org exists.
+    await client`
+      INSERT INTO funnel (id, owner_id, org_id, name, slug, description, status, config)
+      VALUES (${nanoid()}, ${owner[0].id as string}, 'default', 'BeautyFlow Potenzialanalyse', ${POTENZIALANALYSE_SLUG}, 'Kurz-Funnel: Mehrumsatz-Rechner + Profil', 'published', ${JSON.stringify(canonical)}::jsonb)
+    `;
+    console.log('Potenzialanalyse funnel created (PostgreSQL)');
+    return;
   }
-
-  const last = config.steps[config.steps.length - 1];
-  const hasResult = config.steps.some((s) => s.type === 'result-spider');
-  if (last && last.type === 'cta-booking' && hasResult && (!last.calendarUrl || !last.calendarUrl.trim())) {
-    config.steps.pop();
-    changed = true;
-  }
-
-  if (changed) {
-    await client`UPDATE funnel SET config = ${JSON.stringify(config)}::jsonb, updated_at = NOW() WHERE id = ${row.id as string}`;
-    console.log('Potenzialanalyse funnel config repaired (booking URL + terminal result)');
+  const stored = row.config as { version?: number } | null;
+  const storedVersion = typeof stored?.version === 'number' ? stored.version : 0;
+  if (storedVersion < POTENZIALANALYSE_VERSION) {
+    await client`UPDATE funnel SET config = ${JSON.stringify(canonical)}::jsonb, updated_at = NOW() WHERE id = ${row.id as string}`;
+    console.log(`Potenzialanalyse funnel upgraded to v${POTENZIALANALYSE_VERSION} (PostgreSQL)`);
   }
 }
 

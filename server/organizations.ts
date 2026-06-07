@@ -9,6 +9,7 @@ import {
   updateOrgBranding,
   setUserRoleAndOrg,
   setOrgPlan,
+  getPlans,
 } from './db.js';
 
 const router = Router();
@@ -99,6 +100,9 @@ router.post('/:id/members', requireRole('super_admin'), async (req: Authenticate
     const userId = typeof req.body?.userId === 'string' ? req.body.userId : '';
     const role = req.body?.role === 'agency_admin' ? 'agency_admin' : 'customer';
     if (!userId) return res.status(400).json({ error: 'userId erforderlich' });
+    // The platform org (Layer One) is operator-only; never assign customers or
+    // agency-admins into it via this onboarding endpoint.
+    if (req.params.id === 'default') return res.status(403).json({ error: 'In der Plattform-Organisation können hier keine Mitglieder zugewiesen werden.' });
     if (!(await getOrgById(req.params.id))) return res.status(404).json({ error: 'Org nicht gefunden' });
     await setUserRoleAndOrg(userId, role, req.params.id);
     res.json({ success: true });
@@ -113,6 +117,9 @@ router.patch('/:id/plan', requireRole('super_admin'), async (req: AuthenticatedR
   try {
     const planId = typeof req.body?.planId === 'string' ? req.body.planId : '';
     if (!planId) return res.status(400).json({ error: 'planId erforderlich' });
+    // Validate against the real plan tiers so an org can't be set to a bogus plan.
+    const plans = await getPlans();
+    if (!plans.some((p) => p.id === planId)) return res.status(400).json({ error: 'Unbekannter Plan' });
     if (!(await getOrgById(req.params.id))) return res.status(404).json({ error: 'Org nicht gefunden' });
     await setOrgPlan(req.params.id, planId);
     res.json({ success: true });

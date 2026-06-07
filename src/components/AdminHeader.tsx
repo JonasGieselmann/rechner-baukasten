@@ -13,6 +13,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Rechner', path: '/admin' },
   { label: 'Funnels', path: '/admin/funnels' },
   { label: 'Dashboards', path: '/admin/dashboards' },
+  { label: 'Organisationen', path: '/admin/organizations' },
   { label: 'Kunden', path: '/admin/customers' },
   { label: 'Benutzer', path: '/admin/users' },
   { label: 'Einstellungen', path: '/admin/settings' },
@@ -73,7 +74,14 @@ export function AdminHeader() {
           >
             Customer-Ansicht ↗
           </button>
-          <Avatar name={user?.name} email={user?.email} size="sm" />
+          <Link
+            to="/dashboard/account"
+            aria-label="Profil und Einstellungen"
+            title="Profil und Einstellungen"
+            className="rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2"
+          >
+            <Avatar name={user?.name} email={user?.email} size="sm" />
+          </Link>
           <button
             onClick={logout}
             className="text-sm px-3 py-1.5 rounded-full border transition-opacity hover:opacity-70"
