@@ -7,6 +7,24 @@ export const appSetting = pgTable('app_setting', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
+// Tenant root. Every user/funnel/lead belongs to an organization. The platform
+// itself is the 'default' org; white-label customers (agencies) get their own.
+export const organization = pgTable('organization', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  planId: text('plan_id'),
+  // White-label branding (nullable -> falls back to platform defaults)
+  brandName: text('brand_name'),
+  logoUrl: text('logo_url'),
+  primaryColor: text('primary_color'),
+  accentColor: text('accent_color'),
+  backgroundColor: text('background_color'),
+  textColor: text('text_color'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -15,6 +33,8 @@ export const user = pgTable('user', {
   image: text('image'),
   role: text('role').notNull().default('user'),
   approved: boolean('approved').notNull().default(false),
+  orgId: text('org_id'),
+  dashboardId: text('dashboard_id'),
   phone: text('phone'),
   businessName: text('business_name'),
   websiteUrl: text('website_url'),
@@ -84,6 +104,7 @@ export const funnel = pgTable('funnel', {
   ownerId: text('owner_id')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
+  orgId: text('org_id'),
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
   description: text('description').notNull().default(''),
@@ -98,6 +119,7 @@ export const lead = pgTable('lead', {
   funnelId: text('funnel_id')
     .notNull()
     .references(() => funnel.id, { onDelete: 'cascade' }),
+  orgId: text('org_id'),
   userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
   name: text('name'),
   email: text('email'),

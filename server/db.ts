@@ -291,12 +291,128 @@ export async function getAllUsers(limit = 1000) {
 export async function getUserById(userId: string) {
   const validatedId = validateUserId(userId);
   const result = await client`
-    SELECT id, name, email, role, approved, created_at,
+    SELECT id, name, email, role, approved, org_id, dashboard_id, created_at,
            phone, business_name, website_url, instagram_handle, gmb_url
     FROM "user"
     WHERE id = ${validatedId}
   `;
   return result[0] || null;
+}
+
+// ============================================
+// Multi-tenancy: organizations + org scoping
+// ============================================
+
+// Initialize the organization layer (idempotent, additive, no lockout):
+// creates the org table, a 'default' platform org, adds org_id to user/funnel/lead,
+// backfills existing rows to 'default', and sets that as the column default.
+export async function initOrganizationSchema() {
+  await client`
+    CREATE TABLE IF NOT EXISTS organization (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      plan_id TEXT,
+      brand_name TEXT,
+      logo_url TEXT,
+      primary_color TEXT,
+      accent_color TEXT,
+      background_color TEXT,
+      text_color TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `;
+  await client`
+    INSERT INTO organization (id, name, slug)
+    VALUES ('default', 'BeautyFlow Platform', 'default')
+    ON CONFLICT (id) DO NOTHING
+  `;
+  await client`ALTER TABLE "user" ADD COLUMN IF NOT EXISTS org_id TEXT`;
+  await client`UPDATE "user" SET org_id = 'default' WHERE org_id IS NULL`;
+  await client`ALTER TABLE "user" ALTER COLUMN org_id SET DEFAULT 'default'`;
+  await client`ALTER TABLE "user" ADD COLUMN IF NOT EXISTS dashboard_id TEXT`;
+  await client`ALTER TABLE funnel ADD COLUMN IF NOT EXISTS org_id TEXT`;
+  await client`UPDATE funnel SET org_id = 'default' WHERE org_id IS NULL`;
+  await client`ALTER TABLE funnel ALTER COLUMN org_id SET DEFAULT 'default'`;
+  await client`ALTER TABLE lead ADD COLUMN IF NOT EXISTS org_id TEXT`;
+  await client`UPDATE lead SET org_id = 'default' WHERE org_id IS NULL`;
+  await client`ALTER TABLE lead ALTER COLUMN org_id SET DEFAULT 'default'`;
+  await client`CREATE INDEX IF NOT EXISTS user_org_id_idx ON "user"(org_id)`;
+  await client`CREATE INDEX IF NOT EXISTS funnel_org_id_idx ON funnel(org_id)`;
+  await client`CREATE INDEX IF NOT EXISTS lead_org_id_idx ON lead(org_id)`;
+  console.log('Organization schema initialized (PostgreSQL)');
+}
+
+export async function getAllOrganizations() {
+  return await client`
+    SELECT id, name, slug, plan_id, brand_name, logo_url, created_at
+    FROM organization ORDER BY created_at DESC LIMIT 1000
+  `;
+}
+
+export async function getOrgById(orgId: string) {
+  if (!isValidId(orgId)) return null;
+  const r = await client`SELECT * FROM organization WHERE id = ${orgId}`;
+  return r[0] || null;
+}
+
+export async function getOrgBySlug(slug: string) {
+  if (typeof slug !== 'string' || !/^[a-z0-9-]{1,64}$/.test(slug)) return null;
+  const r = await client`SELECT * FROM organization WHERE slug = ${slug}`;
+  return r[0] || null;
+}
+
+export async function createOrganization(params: { id: string; name: string; slug: string }) {
+  await client`
+    INSERT INTO organization (id, name, slug)
+    VALUES (${params.id}, ${params.name}, ${params.slug})
+  `;
+  return getOrgById(params.id);
+}
+
+export async function updateOrgBranding(
+  orgId: string,
+  b: { brandName?: string | null; logoUrl?: string | null; primaryColor?: string | null; accentColor?: string | null; backgroundColor?: string | null; textColor?: string | null },
+): Promise<void> {
+  if (!isValidId(orgId)) throw new Error('Invalid org ID');
+  await client`
+    UPDATE organization SET
+      brand_name = ${b.brandName ?? null},
+      logo_url = ${b.logoUrl ?? null},
+      primary_color = ${b.primaryColor ?? null},
+      accent_color = ${b.accentColor ?? null},
+      background_color = ${b.backgroundColor ?? null},
+      text_color = ${b.textColor ?? null},
+      updated_at = NOW()
+    WHERE id = ${orgId}
+  `;
+}
+
+// Promote a user to agency admin (Tier 2 white-label) within an org.
+export async function setUserAsAgencyAdmin(userId: string, orgId: string): Promise<void> {
+  const v = validateUserId(userId);
+  if (!isValidId(orgId)) throw new Error('Invalid org ID');
+  await client`
+    UPDATE "user" SET role = 'agency_admin', approved = true, org_id = ${orgId}, updated_at = NOW()
+    WHERE id = ${v}
+  `;
+}
+
+// Set a user's role + org (platform_admin only operation).
+export async function setUserRoleAndOrg(userId: string, role: string, orgId: string): Promise<void> {
+  const v = validateUserId(userId);
+  if (!['super_admin', 'agency_admin', 'customer', 'user'].includes(role)) throw new Error('Invalid role');
+  if (!isValidId(orgId)) throw new Error('Invalid org ID');
+  await client`
+    UPDATE "user" SET role = ${role}, org_id = ${orgId}, approved = true, updated_at = NOW()
+    WHERE id = ${v}
+  `;
+}
+
+export async function assignDashboardToUser(userId: string, dashboardId: string | null): Promise<void> {
+  const v = validateUserId(userId);
+  await client`UPDATE "user" SET dashboard_id = ${dashboardId}, updated_at = NOW() WHERE id = ${v}`;
 }
 
 // ============================================

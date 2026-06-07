@@ -2,7 +2,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 
 export function IndexRedirect() {
-  const { user, loading, isSuperAdmin } = useAuth();
+  const { user, loading, isSuperAdmin, isAgencyAdmin } = useAuth();
 
   if (loading) {
     return (
@@ -13,5 +13,6 @@ export function IndexRedirect() {
   }
 
   if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={isSuperAdmin ? '/admin' : '/dashboard'} replace />;
+  const target = isSuperAdmin ? '/admin' : isAgencyAdmin ? '/agency' : '/dashboard';
+  return <Navigate to={target} replace />;
 }

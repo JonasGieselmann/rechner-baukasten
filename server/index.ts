@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { toNodeHandler } from 'better-auth/node';
 import { auth } from './auth.js';
-import { checkDb, initAuthSchema, initFunnelSchema, initAppSettings, initComplianceSchema } from './db.js';
+import { checkDb, initAuthSchema, initFunnelSchema, initAppSettings, initComplianceSchema, initOrganizationSchema } from './db.js';
 import customCalculatorsRouter, { seedCustomCalculators } from './custom-calculators.js';
 import adminRouter from './admin.js';
 import settingsRouter from './settings.js';
@@ -283,6 +283,7 @@ async function start() {
     // Initialize database schema
     await initAuthSchema();
     await initFunnelSchema();
+    await initOrganizationSchema();
     await initAppSettings();
     await initComplianceSchema();
 

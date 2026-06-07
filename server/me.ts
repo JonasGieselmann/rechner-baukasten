@@ -21,6 +21,8 @@ router.get('/', async (req, res) => {
         image: session.user.image,
         role: extendedUser?.role || 'user',
         approved: extendedUser?.approved ?? false,
+        orgId: extendedUser?.org_id ?? null,
+        dashboardId: extendedUser?.dashboard_id ?? null,
         phone: extendedUser?.phone ?? null,
         businessName: extendedUser?.business_name ?? null,
         websiteUrl: extendedUser?.website_url ?? null,
