@@ -19,6 +19,7 @@ import Leitfaden from './pages/customer/Leitfaden';
 import Account from './pages/customer/Account';
 import Rechtliches from './pages/customer/Rechtliches';
 import FunnelEmbed from './pages/customer/FunnelEmbed';
+import Plans from './pages/customer/Plans';
 import DashboardsManager from './pages/DashboardsManager';
 import { AgencyRoute } from './components/AgencyRoute';
 import { AuthProvider } from './components/AuthProvider';
@@ -71,6 +72,7 @@ function App() {
             <Route path="account" element={<Account />} />
             <Route path="rechtliches" element={<Rechtliches />} />
             <Route path="funnel/:slug" element={<FunnelEmbed />} />
+            <Route path="plan" element={<Plans />} />
           </Route>
 
           {/* Admin (super_admin only): old calculator builder + funnel editor */}

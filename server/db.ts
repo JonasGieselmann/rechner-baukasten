@@ -516,6 +516,63 @@ export async function getUserDashboard(userId: string) {
 }
 
 // ============================================
+// Plans (structure + limits; no payment integration)
+// ============================================
+
+export async function initPlanSchema() {
+  await client`
+    CREATE TABLE IF NOT EXISTS plan (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      price_label TEXT NOT NULL DEFAULT '',
+      max_funnels INTEGER NOT NULL DEFAULT 0,
+      max_end_customers INTEGER NOT NULL DEFAULT 0,
+      features JSONB NOT NULL DEFAULT '[]'::jsonb,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `;
+  await client`
+    INSERT INTO plan (id, name, description, price_label, max_funnels, max_end_customers, features, sort_order)
+    VALUES ('free', 'Free', 'Zum Ausprobieren', '0 € / Monat', 1, 10,
+      ${JSON.stringify(['1 Funnel', 'Kunden-Dashboard', 'Potenzialanalyse', 'DSGVO-Self-Service'])}::jsonb, 0)
+    ON CONFLICT (id) DO NOTHING
+  `;
+  await client`
+    INSERT INTO plan (id, name, description, price_label, max_funnels, max_end_customers, features, sort_order)
+    VALUES ('pro', 'Pro', 'Für wachsende Praxen', '49 € / Monat', 5, 100,
+      ${JSON.stringify(['Bis zu 5 Funnels', 'Branding-Anpassung', 'Leitfaden', 'E-Mail-Reports'])}::jsonb, 1)
+    ON CONFLICT (id) DO NOTHING
+  `;
+  await client`
+    INSERT INTO plan (id, name, description, price_label, max_funnels, max_end_customers, features, sort_order)
+    VALUES ('agency', 'Agency', 'White-Label für Agenturen', '199 € / Monat', 0, 0,
+      ${JSON.stringify(['Unbegrenzte Funnels', 'White-Label-Branding', 'Mehrere Kunden-Dashboards', 'Prioritäts-Support'])}::jsonb, 2)
+    ON CONFLICT (id) DO NOTHING
+  `;
+  await client`UPDATE organization SET plan_id = 'free' WHERE plan_id IS NULL`;
+  console.log('Plan schema initialized (PostgreSQL)');
+}
+
+export async function getPlans() {
+  return await client`SELECT id, name, description, price_label, max_funnels, max_end_customers, features, sort_order FROM plan ORDER BY sort_order ASC`;
+}
+
+export async function setOrgPlan(orgId: string, planId: string): Promise<void> {
+  if (!isValidId(orgId)) throw new Error('Invalid org ID');
+  await client`UPDATE organization SET plan_id = ${planId}, updated_at = NOW() WHERE id = ${orgId}`;
+}
+
+export async function getOrgPlanWithUsage(orgId: string) {
+  const org = await getOrgById(orgId);
+  const planId = (org?.plan_id as string) || 'free';
+  const [planRow] = await client`SELECT * FROM plan WHERE id = ${planId}`;
+  const [cnt] = await client`SELECT COUNT(*)::int AS count FROM funnel WHERE org_id = ${orgId}`;
+  return { plan: planRow ?? null, usage: { funnels: Number(cnt?.count ?? 0) } };
+}
+
+// ============================================
 // Compliance: consent log + email subscriptions
 // ============================================
 

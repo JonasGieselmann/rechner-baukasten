@@ -195,3 +195,16 @@ export const dashboardFunnel = pgTable('dashboard_funnel', {
   position: integer('position').notNull().default(0),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
+
+// Subscription plan tiers (structure + limits + upsell; no payment integration).
+export const plan = pgTable('plan', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description').notNull().default(''),
+  priceLabel: text('price_label').notNull().default(''),
+  maxFunnels: integer('max_funnels').notNull().default(0), // 0 = unbegrenzt
+  maxEndCustomers: integer('max_end_customers').notNull().default(0),
+  features: jsonb('features').notNull().default([]),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});

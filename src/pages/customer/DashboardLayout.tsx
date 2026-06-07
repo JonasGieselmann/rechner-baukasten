@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../../components/AuthProvider';
 import { BRAND } from '../../../branding/tokens';
 import { Wordmark } from '../../components/Wordmark';
@@ -47,10 +47,10 @@ const AccountIcon = () => (
   </svg>
 );
 
-const RechtIcon = () => (
+const PlanIcon = () => (
   <svg {...iconBase} aria-hidden="true">
-    <path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
-    <path d="M9 12l2 2 4-4" />
+    <path d="M20.5 12.5l-8 8a2 2 0 0 1-2.8 0l-6.2-6.2a2 2 0 0 1 0-2.8l8-8H19a2.5 2.5 0 0 1 2.5 2.5v6.5z" />
+    <circle cx="7.5" cy="7.5" r="1" />
   </svg>
 );
 
@@ -72,7 +72,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Übersicht', shortLabel: 'Übersicht', path: '/dashboard', icon: <OverviewIcon /> },
   { label: 'Potenzialanalyse', shortLabel: 'Analyse', path: '/dashboard/potenzialanalyse', icon: <PotenzialIcon /> },
   { label: 'Leitfaden', shortLabel: 'Leitfaden', path: '/dashboard/leitfaden', icon: <LeitfadenIcon /> },
-  { label: 'Rechtliches', shortLabel: 'Recht', path: '/dashboard/rechtliches', icon: <RechtIcon /> },
+  { label: 'Plan', shortLabel: 'Plan', path: '/dashboard/plan', icon: <PlanIcon /> },
   { label: 'Account', shortLabel: 'Account', path: '/dashboard/account', icon: <AccountIcon /> },
 ];
 
@@ -166,6 +166,12 @@ export default function DashboardLayout() {
           style={{ backgroundColor: BRAND.colors.background }}
         >
           <Outlet />
+          <footer className="mt-10 pt-4 border-t flex flex-wrap gap-x-4 gap-y-1 text-xs" style={{ borderColor: BRAND.colors.border, color: BRAND.colors.muted }}>
+            <Link to="/impressum" className="hover:opacity-70">Impressum</Link>
+            <Link to="/datenschutz" className="hover:opacity-70">Datenschutz</Link>
+            <Link to="/agb" className="hover:opacity-70">AGB</Link>
+            <Link to="/dashboard/rechtliches" className="hover:opacity-70">Rechtliches &amp; Daten</Link>
+          </footer>
         </main>
       </div>
 

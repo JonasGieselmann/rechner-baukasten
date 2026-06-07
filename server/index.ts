@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { toNodeHandler } from 'better-auth/node';
 import { auth } from './auth.js';
-import { checkDb, initAuthSchema, initFunnelSchema, initAppSettings, initComplianceSchema, initOrganizationSchema, initDashboardSchema } from './db.js';
+import { checkDb, initAuthSchema, initFunnelSchema, initAppSettings, initComplianceSchema, initOrganizationSchema, initDashboardSchema, initPlanSchema } from './db.js';
 import customCalculatorsRouter, { seedCustomCalculators } from './custom-calculators.js';
 import adminRouter from './admin.js';
 import settingsRouter from './settings.js';
@@ -14,6 +14,7 @@ import meRouter from './me.js';
 import complianceRouter from './compliance.js';
 import organizationsRouter from './organizations.js';
 import dashboardsRouter from './dashboards.js';
+import plansRouter from './plans.js';
 import { getFromS3, isS3Configured } from './s3.js';
 import { Readable } from 'stream';
 import path from 'path';
@@ -160,6 +161,9 @@ app.use('/api/organizations', organizationsRouter);
 // Dashboards API: customer workspaces grouping multiple funnels
 app.use('/api/dashboards', dashboardsRouter);
 
+// Plans API: tiers + current plan/usage
+app.use('/api/plans', plansRouter);
+
 // Custom Calculators API
 app.use('/api/custom-calculators', customCalculatorsRouter);
 
@@ -293,6 +297,7 @@ async function start() {
     await initFunnelSchema();
     await initOrganizationSchema();
     await initDashboardSchema();
+    await initPlanSchema();
     await initAppSettings();
     await initComplianceSchema();
 

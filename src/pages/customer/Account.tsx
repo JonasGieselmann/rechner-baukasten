@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../components/AuthProvider';
 import { Avatar } from '../../components/Avatar';
 import { BRAND } from '../../../branding/tokens';
@@ -333,12 +334,44 @@ function DeleteAccountCard() {
   );
 }
 
+function RechtlichesCard() {
+  return (
+    <div
+      className="rounded-2xl border p-6 space-y-3"
+      style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+    >
+      <h2 className="text-lg font-semibold" style={{ color: BRAND.colors.text }}>
+        Rechtliches &amp; Datenschutz
+      </h2>
+      <p className="text-sm leading-relaxed" style={{ color: BRAND.colors.muted }}>
+        Einwilligungen, Datenexport (Art. 20 DSGVO) und Kontolöschung verwalten Sie im
+        Self-Service-Bereich.
+      </p>
+      <div className="flex flex-wrap gap-4 text-sm">
+        <Link to="/dashboard/rechtliches" className="underline" style={{ color: BRAND.colors.primary }}>
+          Self-Service
+        </Link>
+        <Link to="/impressum" className="underline" style={{ color: BRAND.colors.primary }}>
+          Impressum
+        </Link>
+        <Link to="/datenschutz" className="underline" style={{ color: BRAND.colors.primary }}>
+          Datenschutz
+        </Link>
+        <Link to="/agb" className="underline" style={{ color: BRAND.colors.primary }}>
+          AGB
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export default function Account() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <ProfileCard />
       <PraxisCard />
       <PasswordCard />
+      <RechtlichesCard />
       <DeleteAccountCard />
     </div>
   );

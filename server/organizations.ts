@@ -8,6 +8,7 @@ import {
   createOrganization,
   updateOrgBranding,
   setUserRoleAndOrg,
+  setOrgPlan,
 } from './db.js';
 
 const router = Router();
@@ -103,6 +104,20 @@ router.post('/:id/members', requireRole('super_admin'), async (req: Authenticate
     res.json({ success: true });
   } catch (err) {
     console.error('Member assign error:', err);
+    res.status(400).json({ error: 'Request failed' });
+  }
+});
+
+// PATCH /api/organizations/:id/plan { planId } - assign a plan tier (platform admin)
+router.patch('/:id/plan', requireRole('super_admin'), async (req: AuthenticatedRequest<{ id: string }>, res) => {
+  try {
+    const planId = typeof req.body?.planId === 'string' ? req.body.planId : '';
+    if (!planId) return res.status(400).json({ error: 'planId erforderlich' });
+    if (!(await getOrgById(req.params.id))) return res.status(404).json({ error: 'Org nicht gefunden' });
+    await setOrgPlan(req.params.id, planId);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Org plan assign error:', err);
     res.status(400).json({ error: 'Request failed' });
   }
 });
