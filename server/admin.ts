@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAllUsers, approveUser, deleteUser, getUserById, getRawClient, setUserRoleAndOrg, assignDashboardToUser, getDashboardById, setCredentialPassword, getOrgById, adminCreateUser } from './db.js';
+import { getAllUsers, approveUser, deleteUser, getUserById, getRawClient, setUserRoleAndOrg, assignDashboardToUser, getDashboardById, setCredentialPassword, getOrgById, adminCreateUser, createPasswordReset } from './db.js';
 import { nanoid } from 'nanoid';
 import { requireRole, type AuthenticatedRequest } from './middleware.js';
 import { auth } from './auth.js';
@@ -140,6 +140,28 @@ router.post('/users/:userId/password', requireRole('super_admin'), async (req: A
     res.json({ success: true });
   } catch (error) {
     console.error('Set password error:', error);
+    res.status(500).json({ error: 'Operation failed' });
+  }
+});
+
+// Generate a password-reset LINK for a user (platform admin only). Returns a
+// token the admin hands to the user — works without SMTP and replaces the
+// force-set modal as the primary, less error-prone reset path. The link lives
+// longer than a public "forgot password" link since it is delivered manually.
+const RESET_LINK_TTL_DAYS = 7;
+router.post('/users/:userId/reset-link', requireRole('super_admin'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const { userId } = req.params;
+    if (!isValidUserId(userId)) return res.status(400).json({ error: 'Invalid request' });
+    const target = await getUserById(userId);
+    if (!target) return res.status(404).json({ error: 'User nicht gefunden' });
+    const token = nanoid(32);
+    const expiresAt = new Date(Date.now() + RESET_LINK_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    await createPasswordReset({ id: nanoid(), token, userId, createdBy: req.user!.id, expiresAt });
+    logAdminAction(req.user!.id, 'RESET_LINK', userId);
+    res.status(201).json({ token, expiresAt });
+  } catch (error) {
+    console.error('Reset link error:', error);
     res.status(500).json({ error: 'Operation failed' });
   }
 });

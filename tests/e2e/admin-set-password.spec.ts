@@ -46,8 +46,10 @@ test('super_admin sets a user password; user logs in with the new password', asy
 
   await apage.goto('/admin/users');
   await apage.getByTestId(`set-pw-${targetId}`).click();
+  // Reset-link is primary now; the direct-set form lives under a <details>.
+  await apage.getByText('Stattdessen direkt ein Passwort setzen').click();
   await apage.getByPlaceholder('Neues Passwort (min. 8 Zeichen)').fill(NEW_PW);
-  await apage.getByRole('button', { name: 'Passwort setzen' }).click();
+  await apage.getByRole('button', { name: 'Passwort direkt setzen' }).click();
   await expect(apage.getByText('Passwort gesetzt.')).toBeVisible({ timeout: 10000 });
   await actx.close();
 

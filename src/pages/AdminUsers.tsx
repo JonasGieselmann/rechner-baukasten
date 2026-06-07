@@ -32,6 +32,10 @@ export function AdminUsers() {
   const [pwValue, setPwValue] = useState('');
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState('');
+  // Reset-link (primary, SMTP-independent) state
+  const [resetLink, setResetLink] = useState('');
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   // Create-user modal
   const [showCreate, setShowCreate] = useState(false);
   const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
@@ -179,6 +183,47 @@ export function AdminUsers() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  // Generate a copyable reset link (primary path). Built with the current origin
+  // so it works in any environment without server-side URL config.
+  const handleGenLink = async () => {
+    if (!pwUser) return;
+    setLinkLoading(true);
+    setPwMsg('');
+    setResetLink('');
+    setLinkCopied(false);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users/${pwUser.id}/reset-link`, {
+        method: 'POST', credentials: 'include',
+      });
+      if (!res.ok) {
+        const d = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(d.error || 'Link erzeugen fehlgeschlagen.');
+      }
+      const { token } = (await res.json()) as { token: string };
+      setResetLink(`${window.location.origin}/passwort-zuruecksetzen/${token}`);
+    } catch (e) {
+      setPwMsg(e instanceof Error ? e.message : 'Fehler.');
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
+  const copyResetLink = async () => {
+    try {
+      await navigator.clipboard.writeText(resetLink);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 1500);
+    } catch { /* clipboard unavailable; user can select manually */ }
+  };
+
+  const closePwModal = () => {
+    setPwUser(null);
+    setPwValue('');
+    setPwMsg('');
+    setResetLink('');
+    setLinkCopied(false);
   };
 
   // Set / reset a user's password (admin). Works for any user incl. self.
@@ -426,11 +471,11 @@ export function AdminUsers() {
                         {formatDateTime(u.created_at)}
                       </span>
                       <button
-                        onClick={() => { setPwUser(u); setPwValue(''); setPwMsg(''); }}
+                        onClick={() => { setPwUser(u); setPwValue(''); setPwMsg(''); setResetLink(''); setLinkCopied(false); }}
                         data-testid={`set-pw-${u.id}`}
                         className="text-xs px-2.5 py-1 rounded-lg border transition-opacity hover:opacity-70"
                         style={{ borderColor: BRAND.colors.border, color: BRAND.colors.text }}
-                        title="Passwort setzen / zurücksetzen"
+                        title="Passwort zurücksetzen (Link oder direkt setzen)"
                       >
                         Passwort
                       </button>
@@ -481,7 +526,7 @@ export function AdminUsers() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={OVERLAY_STYLE}
-          onClick={() => !pwSaving && setPwUser(null)}
+          onClick={() => !pwSaving && !linkLoading && closePwModal()}
         >
           <div
             className="w-full max-w-sm rounded-2xl border p-6 space-y-4"
@@ -489,39 +534,74 @@ export function AdminUsers() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold" style={{ color: BRAND.colors.text }}>
-              Passwort setzen
+              Passwort zurücksetzen
             </h3>
             <p className="text-sm" style={{ color: BRAND.colors.muted }}>
-              Neues Passwort für <strong>{pwUser.name}</strong> ({pwUser.email}). Teilen Sie es der
-              Person sicher mit; sie kann es danach selbst im Konto ändern.
+              Für <strong>{pwUser.name}</strong> ({pwUser.email}).
             </p>
-            <input
-              type="text"
-              value={pwValue}
-              onChange={(e) => setPwValue(e.target.value)}
-              placeholder="Neues Passwort (min. 8 Zeichen)"
-              autoFocus
-              className="w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2"
-              style={{ borderColor: BRAND.colors.border, backgroundColor: BRAND.colors.background, color: BRAND.colors.text }}
-              onKeyDown={(e) => e.key === 'Enter' && handleSetPassword()}
-            />
+
+            {/* Primary: reset link */}
+            <div className="space-y-2">
+              {!resetLink ? (
+                <button
+                  onClick={handleGenLink}
+                  disabled={linkLoading}
+                  data-testid={`gen-reset-link-${pwUser.id}`}
+                  className="w-full text-sm px-4 py-2.5 rounded-full font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
+                  style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
+                >
+                  {linkLoading ? 'Erzeuge…' : 'Reset-Link erzeugen'}
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs" style={{ color: BRAND.colors.muted }}>
+                    Link an die Person senden. Sie vergibt damit selbst ein neues Passwort (7 Tage gültig).
+                  </p>
+                  <div className="flex items-center gap-2 border rounded-lg px-3 py-2" style={{ borderColor: BRAND.colors.border }}>
+                    <span className="truncate text-xs flex-1" style={{ color: BRAND.colors.text }} data-testid="reset-link-value">{resetLink}</span>
+                    <button onClick={copyResetLink} className="shrink-0 text-xs px-3 py-1 rounded-full border transition-opacity hover:opacity-70" style={{ borderColor: BRAND.colors.border, color: BRAND.colors.text }}>
+                      {linkCopied ? 'Kopiert!' : 'Kopieren'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Secondary: directly set a password */}
+            <details className="group">
+              <summary className="text-xs cursor-pointer select-none" style={{ color: BRAND.colors.muted }}>
+                Stattdessen direkt ein Passwort setzen
+              </summary>
+              <div className="mt-3 space-y-2">
+                <input
+                  type="text"
+                  value={pwValue}
+                  onChange={(e) => setPwValue(e.target.value)}
+                  placeholder="Neues Passwort (min. 8 Zeichen)"
+                  className="w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2"
+                  style={{ borderColor: BRAND.colors.border, backgroundColor: BRAND.colors.background, color: BRAND.colors.text }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSetPassword()}
+                />
+                <button
+                  onClick={handleSetPassword}
+                  disabled={pwSaving || pwValue.length < 8}
+                  className="text-sm px-4 py-2 rounded-full font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
+                  style={{ backgroundColor: BRAND.colors.card, color: BRAND.colors.text, border: `1px solid ${BRAND.colors.border}` }}
+                >
+                  {pwSaving ? 'Speichern...' : 'Passwort direkt setzen'}
+                </button>
+              </div>
+            </details>
+
             {pwMsg && <p className="text-sm" style={{ color: BRAND.colors.accent }}>{pwMsg}</p>}
-            <div className="flex gap-2 justify-end">
+            <div className="flex justify-end">
               <button
-                onClick={() => setPwUser(null)}
-                disabled={pwSaving}
+                onClick={closePwModal}
+                disabled={pwSaving || linkLoading}
                 className="text-sm px-4 py-2 rounded-full transition-opacity hover:opacity-70"
                 style={{ color: BRAND.colors.muted }}
               >
-                Abbrechen
-              </button>
-              <button
-                onClick={handleSetPassword}
-                disabled={pwSaving || pwValue.length < 8}
-                className="text-sm px-4 py-2 rounded-full font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
-                style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
-              >
-                {pwSaving ? 'Speichern...' : 'Passwort setzen'}
+                Schließen
               </button>
             </div>
           </div>

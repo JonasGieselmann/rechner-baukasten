@@ -435,6 +435,23 @@ export async function getOrgById(orgId: string) {
   return r[0] || null;
 }
 
+// Platform overview: every org plus REAL counts (no invented metrics). Platform
+// org (parent_org_id IS NULL = Layer One) sorts first, then customer orgs.
+export async function getOrganizationsWithCounts() {
+  return await client`
+    SELECT
+      o.id, o.name, o.slug, o.parent_org_id, o.brand_name, o.logo_url, o.created_at,
+      (SELECT COUNT(*)::int FROM "user" u WHERE u.org_id = o.id) AS user_count,
+      (SELECT COUNT(*)::int FROM "user" u WHERE u.org_id = o.id AND u.role = 'customer') AS customer_count,
+      (SELECT COUNT(*)::int FROM "user" u WHERE u.org_id = o.id AND u.role = 'agency_admin') AS admin_count,
+      (SELECT COUNT(*)::int FROM funnel f WHERE f.org_id = o.id) AS funnel_count,
+      (SELECT COUNT(*)::int FROM dashboard d WHERE d.org_id = o.id) AS dashboard_count
+    FROM organization o
+    ORDER BY (o.parent_org_id IS NULL) DESC, o.created_at ASC
+    LIMIT 1000
+  `;
+}
+
 export async function getOrgBySlug(slug: string) {
   if (typeof slug !== 'string' || !/^[a-z0-9-]{1,64}$/.test(slug)) return null;
   const r = await client`SELECT * FROM organization WHERE slug = ${slug}`;
@@ -622,33 +639,126 @@ export async function initInviteSchema() {
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     )
   `;
+  // Invites carry the role the invitee receives on claim: 'customer' (end client)
+  // or 'agency_admin' (the agency's own team). Added idempotently for existing DBs.
+  await client`ALTER TABLE org_invite ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'customer'`;
+  // Team (agency_admin) invites are single-use — they grant admin, so a leaked
+  // multi-use link must not let multiple strangers become admins. used_at marks
+  // a consumed team invite. Customer invites stay multi-use (bulk onboarding).
+  await client`ALTER TABLE org_invite ADD COLUMN IF NOT EXISTS used_at TIMESTAMP`;
   await client`CREATE INDEX IF NOT EXISTS org_invite_token_idx ON org_invite(token)`;
   await client`CREATE INDEX IF NOT EXISTS org_invite_org_idx ON org_invite(org_id)`;
   console.log('Invite schema initialized (PostgreSQL)');
 }
 
-export async function createInvite(p: { id: string; token: string; orgId: string; createdBy: string; expiresAt: string }) {
+// Invite role is restricted to customer or agency_admin — NEVER super_admin
+// (platform operators are never minted through a tenant invite).
+const INVITE_ROLES = ['customer', 'agency_admin'] as const;
+export async function createInvite(p: { id: string; token: string; orgId: string; createdBy: string; expiresAt: string; role?: string }) {
   if (!isValidId(p.orgId)) throw new Error('Invalid org ID');
+  const role: string = INVITE_ROLES.includes(p.role as typeof INVITE_ROLES[number]) ? (p.role as string) : 'customer';
   await client`
-    INSERT INTO org_invite (id, token, org_id, created_by, expires_at)
-    VALUES (${p.id}, ${p.token}, ${p.orgId}, ${p.createdBy}, ${p.expiresAt}::timestamp)
+    INSERT INTO org_invite (id, token, org_id, created_by, expires_at, role)
+    VALUES (${p.id}, ${p.token}, ${p.orgId}, ${p.createdBy}, ${p.expiresAt}::timestamp, ${role})
   `;
-  const [row] = await client`SELECT id, token, org_id, expires_at, created_at FROM org_invite WHERE id = ${p.id}`;
+  const [row] = await client`SELECT id, token, org_id, role, expires_at, created_at FROM org_invite WHERE id = ${p.id}`;
   return row ?? null;
 }
 
 export async function getInviteByToken(token: string) {
   if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{10,64}$/.test(token)) return null;
-  const [row] = await client`SELECT id, token, org_id, expires_at, created_at FROM org_invite WHERE token = ${token}`;
+  const [row] = await client`SELECT id, token, org_id, role, used_at, expires_at, created_at FROM org_invite WHERE token = ${token}`;
+  return row ?? null;
+}
+
+// Atomically consume a single-use (team) invite: marks used_at only if still
+// unused, returning the row iff this caller won the race. Used for agency_admin
+// invites so a leaked link cannot mint more than one admin.
+export async function markInviteUsed(id: string) {
+  if (typeof id !== 'string') return null;
+  const [row] = await client`
+    UPDATE org_invite SET used_at = NOW() WHERE id = ${id} AND used_at IS NULL RETURNING id
+  `;
   return row ?? null;
 }
 
 export async function getInvitesByOrg(orgId: string) {
   if (!isValidId(orgId)) return [];
   return await client`
-    SELECT id, token, org_id, expires_at, created_at FROM org_invite
+    SELECT id, token, org_id, role, expires_at, created_at FROM org_invite
     WHERE org_id = ${orgId} ORDER BY created_at DESC LIMIT 200
   `;
+}
+
+// ============================================
+// Password reset tokens. SMTP-independent: an admin/agency can generate a link
+// and hand it to the user directly; when SMTP is configured the user can also
+// request one via "Passwort vergessen". Mirrors the org_invite token pattern.
+// ============================================
+export async function initPasswordResetSchema() {
+  await client`
+    CREATE TABLE IF NOT EXISTS password_reset (
+      id TEXT PRIMARY KEY,
+      token TEXT NOT NULL UNIQUE,
+      user_id TEXT NOT NULL,
+      created_by TEXT,
+      expires_at TIMESTAMP NOT NULL,
+      used_at TIMESTAMP,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `;
+  await client`CREATE INDEX IF NOT EXISTS password_reset_token_idx ON password_reset(token)`;
+  await client`CREATE INDEX IF NOT EXISTS password_reset_user_idx ON password_reset(user_id)`;
+  console.log('Password-reset schema initialized (PostgreSQL)');
+}
+
+// Create a reset token for a user. Invalidates any prior unused tokens so only
+// one reset link is ever live per user. expiresAt is an ISO string (postgres-js
+// rejects JS Date objects — same gotcha as createInvite).
+export async function createPasswordReset(p: { id: string; token: string; userId: string; createdBy: string | null; expiresAt: string }) {
+  const validatedId = validateUserId(p.userId);
+  await client`UPDATE password_reset SET used_at = NOW() WHERE user_id = ${validatedId} AND used_at IS NULL`;
+  await client`
+    INSERT INTO password_reset (id, token, user_id, created_by, expires_at)
+    VALUES (${p.id}, ${p.token}, ${validatedId}, ${p.createdBy}, ${p.expiresAt}::timestamp)
+  `;
+  return { token: p.token };
+}
+
+// Returns the reset row + target user iff the token is valid (exists, unused,
+// not expired). Null otherwise. Token format guarded against pathological input.
+export async function getValidPasswordReset(token: string) {
+  if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{10,64}$/.test(token)) return null;
+  const [row] = await client`
+    SELECT pr.id, pr.token, pr.user_id, pr.expires_at, pr.used_at, u.email, u.name
+    FROM password_reset pr
+    JOIN "user" u ON u.id = pr.user_id
+    WHERE pr.token = ${token} AND pr.used_at IS NULL AND pr.expires_at > NOW()
+  `;
+  return row ?? null;
+}
+
+// Atomically consume a reset token: marks used_at only if still valid+unused and
+// returns the bound user_id iff this caller won the race. Prevents the TOCTOU
+// double-use window of a separate read-then-mark.
+export async function consumePasswordReset(token: string) {
+  if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{10,64}$/.test(token)) return null;
+  const [row] = await client`
+    UPDATE password_reset SET used_at = NOW()
+    WHERE token = ${token} AND used_at IS NULL AND expires_at > NOW()
+    RETURNING id, user_id
+  `;
+  return row ?? null;
+}
+
+// Lookup a user by email for the public "forgot password" flow. Returns null on
+// invalid/unknown email (the route still responds generically — no enumeration).
+export async function getUserByEmailForReset(email: string) {
+  if (typeof email !== 'string') return null;
+  const normalized = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return null;
+  const [row] = await client`SELECT id, name, email FROM "user" WHERE lower(email) = ${normalized}`;
+  return row ?? null;
 }
 
 // ============================================

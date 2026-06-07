@@ -103,6 +103,12 @@ export function Login() {
             >
               {loading ? 'Wird angemeldet...' : 'Anmelden'}
             </button>
+
+            <div className="text-center">
+              <Link to="/passwort-vergessen" className="text-sm hover:opacity-80" style={{ color: BRAND.colors.accent }}>
+                Passwort vergessen?
+              </Link>
+            </div>
           </form>
 
           <div

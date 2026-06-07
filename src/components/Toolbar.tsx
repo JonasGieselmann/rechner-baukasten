@@ -26,7 +26,7 @@ export function Toolbar() {
 
   const handleBack = () => {
     closeCalculator();
-    navigate('/admin');
+    navigate('/admin/rechner');
   };
 
   const handleSave = () => {

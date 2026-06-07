@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid';
 import { requireRole, type AuthenticatedRequest } from './middleware.js';
 import {
   getAllOrganizations,
+  getOrganizationsWithCounts,
   getOrgById,
   getOrgBySlug,
   createOrganization,
@@ -53,6 +54,16 @@ router.get('/', requireRole('super_admin'), async (_req: AuthenticatedRequest, r
     res.json(await getAllOrganizations());
   } catch (err) {
     console.error('List orgs error:', err);
+    res.status(500).json({ error: 'Request failed' });
+  }
+});
+
+// GET /api/organizations/overview - orgs + real counts for the platform dashboard
+router.get('/overview', requireRole('super_admin'), async (_req: AuthenticatedRequest, res) => {
+  try {
+    res.json(await getOrganizationsWithCounts());
+  } catch (err) {
+    console.error('Org overview error:', err);
     res.status(500).json({ error: 'Request failed' });
   }
 });

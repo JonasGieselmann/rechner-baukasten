@@ -72,12 +72,12 @@ test('white-label: dashboard shows multiple funnels, plans tab, legal relocation
   await expect(page.getByText('Ihre Analyse-Tools')).toBeVisible();
   await expect(page.getByText('WL Test Funnel')).toBeVisible();
 
-  // Plans tab
+  // Packages tab (org-bound agency packages — no Kalku pricing tier)
   await page.goto('/dashboard/plan');
-  await expect(page.getByRole('heading', { name: 'Ihr Plan' })).toBeVisible();
-  // BeautyFlow org is on the Enterprise tier; no prices are shown.
-  await expect(page.getByText('Enterprise', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Pakete' })).toBeVisible();
+  // No prices are shown anywhere.
   await expect(page.getByText('/ Monat')).toHaveCount(0);
+  await expect(page.getByText('€')).toHaveCount(0);
 
   // Legal relocation: Rechtliches lives under Account now (not a top nav tab)
   await page.goto('/dashboard/account');

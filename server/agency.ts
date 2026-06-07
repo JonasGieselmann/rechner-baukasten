@@ -13,6 +13,7 @@ import {
   createPackage,
   updatePackage,
   deletePackage,
+  createPasswordReset,
 } from './db.js';
 
 // Normalize a package payload: name required, features = up to 20 short strings.
@@ -43,16 +44,23 @@ function callerOrg(req: AuthenticatedRequest): string | null {
 }
 
 const INVITE_TTL_DAYS = 30;
+const TEAM_INVITE_TTL_DAYS = 7;
 
-// POST /api/agency/invites - create an org-bound invite link
+// POST /api/agency/invites { role? } - create an org-bound invite link.
+// role: 'customer' (default, end client) or 'agency_admin' (the agency's own
+// team). super_admin can never be minted via an invite (enforced in createInvite).
 router.post('/invites', requireRole('agency_admin', 'super_admin'), async (req: AuthenticatedRequest, res) => {
   try {
     const orgId = callerOrg(req);
     if (!orgId) return res.status(400).json({ error: 'Keine Organisation' });
     if (orgId === 'default') return res.status(403).json({ error: 'Für die Plattform-Organisation können keine Kunden-Invites erstellt werden.' });
+    const role = req.body?.role === 'agency_admin' ? 'agency_admin' : 'customer';
     const token = nanoid(24);
-    const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
-    const invite = await createInvite({ id: nanoid(), token, orgId, createdBy: req.user!.id, expiresAt });
+    // Team (admin-granting) invites are short-lived + single-use; customer invites
+    // are longer-lived + multi-use (a shareable bulk-onboarding link).
+    const ttlDays = role === 'agency_admin' ? TEAM_INVITE_TTL_DAYS : INVITE_TTL_DAYS;
+    const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000).toISOString();
+    const invite = await createInvite({ id: nanoid(), token, orgId, createdBy: req.user!.id, expiresAt, role });
     res.status(201).json(invite);
   } catch (err) {
     console.error('Create invite error:', err);
@@ -108,6 +116,33 @@ router.post('/customers/:id/password', requireRole('agency_admin', 'super_admin'
     res.json({ success: true });
   } catch (err) {
     console.error('Agency password reset error:', err);
+    res.status(500).json({ error: 'Request failed' });
+  }
+});
+
+// POST /api/agency/customers/:id/reset-link - generate a password-reset link for
+// a customer (own org only). Same scope rules as the password reset above: an
+// agency_admin may only reset CUSTOMER accounts, never a peer admin. Returns a
+// token the agency hands to the customer (works without SMTP).
+const AGENCY_RESET_TTL_DAYS = 7;
+router.post('/customers/:id/reset-link', requireRole('agency_admin', 'super_admin'), async (req: AuthenticatedRequest<{ id: string }>, res) => {
+  try {
+    const orgId = callerOrg(req);
+    const target = await getUserById(req.params.id);
+    if (!target) return res.status(404).json({ error: 'Nutzer nicht gefunden' });
+    if (req.user!.role !== 'super_admin' && (target.org_id as string) !== orgId) {
+      return res.status(403).json({ error: 'Nutzer gehört zu einer anderen Organisation.' });
+    }
+    if (req.user!.role === 'agency_admin' && target.role !== 'customer') {
+      return res.status(403).json({ error: 'Sie können nur Kunden-Zugänge zurücksetzen.' });
+    }
+    if (target.role === 'super_admin') return res.status(403).json({ error: 'Plattform-Administratoren können hier nicht geändert werden.' });
+    const token = nanoid(32);
+    const expiresAt = new Date(Date.now() + AGENCY_RESET_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    await createPasswordReset({ id: nanoid(), token, userId: target.id as string, createdBy: req.user!.id, expiresAt });
+    res.status(201).json({ token, expiresAt });
+  } catch (err) {
+    console.error('Agency reset link error:', err);
     res.status(500).json({ error: 'Request failed' });
   }
 });

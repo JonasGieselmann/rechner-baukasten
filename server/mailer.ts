@@ -96,6 +96,34 @@ export async function sendDoiConfirmationEmail(args: { to: string; doiToken: str
 }
 
 /**
+ * Password-reset email. Sent on a public "Passwort vergessen" request when SMTP
+ * is configured. Best-effort: the caller wraps this in try/catch so a missing
+ * SMTP config never breaks the (generic) response.
+ */
+export async function sendPasswordResetEmail(args: { to: string; name?: string; link: string }): Promise<void> {
+  const { cfg, transporter } = await createTransporter();
+  const greeting = escapeHtml(args.name?.trim() ? args.name.trim() : 'Hallo');
+  await transporter.sendMail({
+    from: `"${cfg.fromName}" <${cfg.fromEmail}>`,
+    to: args.to,
+    subject: 'Passwort zurücksetzen',
+    html: `<!DOCTYPE html>
+<html lang="de"><head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;color:#0F2F5B;background:#F7FAFF;margin:0;padding:0;">
+  <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:8px;padding:32px;">
+    <h2 style="color:#0F2F5B;margin-top:0;">Passwort zurücksetzen</h2>
+    <p>${greeting},</p>
+    <p>Sie haben angefordert, Ihr Passwort zurückzusetzen. Klicken Sie auf den folgenden Link, um ein neues Passwort zu vergeben:</p>
+    <p style="margin:28px 0;"><a href="${args.link}" style="background:#0F2F5B;color:#F7FAFF;padding:12px 24px;border-radius:9999px;text-decoration:none;">Neues Passwort vergeben</a></p>
+    <p style="font-size:12px;color:#5A7090;">Der Link ist aus Sicherheitsgründen nur begrenzt gültig. Wenn Sie das nicht angefordert haben, ignorieren Sie diese Nachricht einfach.</p>
+  </div>
+</body></html>`,
+  });
+}
+
+export { appBaseUrl };
+
+/**
  * Send a short test email to the given address to verify end-to-end delivery.
  */
 export async function sendTestEmail(to: string): Promise<void> {

@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { toNodeHandler } from 'better-auth/node';
 import { auth } from './auth.js';
-import { checkDb, initAuthSchema, initFunnelSchema, initAppSettings, initComplianceSchema, initOrganizationSchema, initDashboardSchema, initPlanSchema, initInviteSchema, initPackageSchema, initBeautyflowTenant, syncPotenzialanalyseFunnel } from './db.js';
+import { checkDb, initAuthSchema, initFunnelSchema, initAppSettings, initComplianceSchema, initOrganizationSchema, initDashboardSchema, initPlanSchema, initInviteSchema, initPackageSchema, initPasswordResetSchema, initBeautyflowTenant, syncPotenzialanalyseFunnel } from './db.js';
 import customCalculatorsRouter, { seedCustomCalculators } from './custom-calculators.js';
 import adminRouter from './admin.js';
 import settingsRouter from './settings.js';
@@ -17,6 +17,7 @@ import dashboardsRouter from './dashboards.js';
 import plansRouter from './plans.js';
 import agencyRouter from './agency.js';
 import invitesRouter from './invites.js';
+import passwordResetRouter from './password-reset.js';
 import { getFromS3, isS3Configured } from './s3.js';
 import { Readable } from 'stream';
 import path from 'path';
@@ -164,6 +165,7 @@ app.use('/api/organizations', organizationsRouter);
 app.use('/api/agency', agencyRouter);
 // Public invite validate + authed claim (org onboarding via link)
 app.use('/api/invites', invitesRouter);
+app.use('/api/password-reset', passwordResetRouter);
 
 // Dashboards API: customer workspaces grouping multiple funnels
 app.use('/api/dashboards', dashboardsRouter);
@@ -308,6 +310,7 @@ async function start() {
     await initInviteSchema();
     await initAppSettings();
     await initPackageSchema();
+    await initPasswordResetSchema();
     await initComplianceSchema();
     // Keep the canonical funnel config in sync (version-guarded) BEFORE carving
     // out the tenant, so the funnel exists to move + link into BeautyFlow.

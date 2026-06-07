@@ -4,6 +4,8 @@ import { Editor } from './pages/Editor';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import InvitePage from './pages/InvitePage';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import { BuilderEmbed } from './pages/BuilderEmbed';
 import { CustomEmbed } from './pages/CustomEmbed';
 import { AdminUsers } from './pages/AdminUsers';
@@ -21,9 +23,11 @@ import Account from './pages/customer/Account';
 import Rechtliches from './pages/customer/Rechtliches';
 import FunnelEmbed from './pages/customer/FunnelEmbed';
 import Plans from './pages/customer/Plans';
+import Profile from './pages/Profile';
 import DashboardsManager from './pages/DashboardsManager';
 import FunnelsManager from './pages/FunnelsManager';
 import AdminOrganizations from './pages/AdminOrganizations';
+import PlatformOverview from './pages/PlatformOverview';
 import AgencyConsole from './pages/AgencyConsole';
 import { AgencyRoute } from './components/AgencyRoute';
 import { AuthProvider } from './components/AuthProvider';
@@ -44,6 +48,8 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/invite/:token" element={<InvitePage />} />
+          <Route path="/passwort-vergessen" element={<ForgotPassword />} />
+          <Route path="/passwort-zuruecksetzen/:token" element={<ResetPassword />} />
 
           {/* Embed routes (public, no auth required) */}
           <Route path="/embed/:id" element={<BuilderEmbed />} />
@@ -61,6 +67,16 @@ function App() {
 
           {/* Root: role-based redirect to /admin or /dashboard */}
           <Route path="/" element={<IndexRedirect />} />
+
+          {/* Profile + settings (all authenticated roles, standalone) */}
+          <Route
+            path="/profil"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Customer dashboard */}
           <Route
@@ -80,9 +96,18 @@ function App() {
             <Route path="plan" element={<Plans />} />
           </Route>
 
-          {/* Admin (super_admin only): old calculator builder + funnel editor */}
+          {/* Admin (super_admin only): platform overview is the landing; the
+              legacy calculator builder moves to /admin/rechner */}
           <Route
             path="/admin"
+            element={
+              <AdminRoute>
+                <PlatformOverview />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/rechner"
             element={
               <AdminRoute>
                 <Home />
