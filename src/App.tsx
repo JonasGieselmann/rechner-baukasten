@@ -3,6 +3,7 @@ import { Home } from './pages/Home';
 import { Editor } from './pages/Editor';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+import InvitePage from './pages/InvitePage';
 import { BuilderEmbed } from './pages/BuilderEmbed';
 import { CustomEmbed } from './pages/CustomEmbed';
 import { AdminUsers } from './pages/AdminUsers';
@@ -23,6 +24,7 @@ import Plans from './pages/customer/Plans';
 import DashboardsManager from './pages/DashboardsManager';
 import FunnelsManager from './pages/FunnelsManager';
 import AdminOrganizations from './pages/AdminOrganizations';
+import AgencyConsole from './pages/AgencyConsole';
 import { AgencyRoute } from './components/AgencyRoute';
 import { AuthProvider } from './components/AuthProvider';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -41,6 +43,7 @@ function App() {
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/invite/:token" element={<InvitePage />} />
 
           {/* Embed routes (public, no auth required) */}
           <Route path="/embed/:id" element={<BuilderEmbed />} />
@@ -174,6 +177,14 @@ function App() {
           />
           <Route
             path="/agency"
+            element={
+              <AgencyRoute>
+                <AgencyConsole />
+              </AgencyRoute>
+            }
+          />
+          <Route
+            path="/agency/dashboards"
             element={
               <AgencyRoute>
                 <DashboardsManager />

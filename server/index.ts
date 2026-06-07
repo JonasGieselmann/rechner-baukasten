@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { toNodeHandler } from 'better-auth/node';
 import { auth } from './auth.js';
-import { checkDb, initAuthSchema, initFunnelSchema, initAppSettings, initComplianceSchema, initOrganizationSchema, initDashboardSchema, initPlanSchema, initBeautyflowTenant, syncPotenzialanalyseFunnel } from './db.js';
+import { checkDb, initAuthSchema, initFunnelSchema, initAppSettings, initComplianceSchema, initOrganizationSchema, initDashboardSchema, initPlanSchema, initInviteSchema, initBeautyflowTenant, syncPotenzialanalyseFunnel } from './db.js';
 import customCalculatorsRouter, { seedCustomCalculators } from './custom-calculators.js';
 import adminRouter from './admin.js';
 import settingsRouter from './settings.js';
@@ -15,6 +15,8 @@ import complianceRouter from './compliance.js';
 import organizationsRouter from './organizations.js';
 import dashboardsRouter from './dashboards.js';
 import plansRouter from './plans.js';
+import agencyRouter from './agency.js';
+import invitesRouter from './invites.js';
 import { getFromS3, isS3Configured } from './s3.js';
 import { Readable } from 'stream';
 import path from 'path';
@@ -158,6 +160,11 @@ app.use('/api/compliance', complianceRouter);
 // Organizations API: white-label tenants, branding, membership
 app.use('/api/organizations', organizationsRouter);
 
+// Agency self-service (agency_admin): invites, own customers, customer password reset
+app.use('/api/agency', agencyRouter);
+// Public invite validate + authed claim (org onboarding via link)
+app.use('/api/invites', invitesRouter);
+
 // Dashboards API: customer workspaces grouping multiple funnels
 app.use('/api/dashboards', dashboardsRouter);
 
@@ -298,6 +305,7 @@ async function start() {
     await initOrganizationSchema();
     await initDashboardSchema();
     await initPlanSchema();
+    await initInviteSchema();
     await initAppSettings();
     await initComplianceSchema();
     // Keep the canonical funnel config in sync (version-guarded) BEFORE carving

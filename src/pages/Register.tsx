@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { signUp } from '../lib/auth-client';
 import { BRAND } from '../../branding/tokens';
 
@@ -7,6 +7,10 @@ const INPUT_CLS =
   'w-full rounded-lg py-3 px-4 border outline-none transition-all focus:ring-2';
 
 export function Register() {
+  const [searchParams] = useSearchParams();
+  // Only honor an invite token explicitly present in the URL — never a stale
+  // localStorage value (which would silently contaminate an unrelated signup).
+  const inviteToken = searchParams.get('invite');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -61,6 +65,15 @@ export function Register() {
       if (result.error) {
         setError(result.error.message || 'Registrierung fehlgeschlagen.');
       } else {
+        // If the user came via an org invite link, join that org now (the
+        // signup created a session, so the authed claim succeeds).
+        if (inviteToken) {
+          try {
+            await fetch(`/api/invites/${encodeURIComponent(inviteToken)}/claim`, { method: 'POST', credentials: 'include' });
+          } catch {
+            /* non-fatal: fall through to the default org */
+          }
+        }
         window.location.href = '/';
       }
     } catch (err) {

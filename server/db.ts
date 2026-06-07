@@ -323,6 +323,19 @@ export async function getAllUsers(limit = 1000) {
   `;
 }
 
+// Users within one organization (for the agency console — org-scoped).
+export async function getUsersByOrg(orgId: string, limit = 1000) {
+  if (!isValidId(orgId)) return [];
+  const safeLimit = Math.min(Math.max(1, limit), 1000);
+  return await client`
+    SELECT id, name, email, role, approved, created_at
+    FROM "user"
+    WHERE org_id = ${orgId}
+    ORDER BY created_at DESC
+    LIMIT ${safeLimit}
+  `;
+}
+
 // Get user by ID
 export async function getUserById(userId: string) {
   const validatedId = validateUserId(userId);
@@ -575,6 +588,50 @@ export async function getUserDashboard(userId: string) {
   if ((d.org_id as string) !== (u.org_id as string)) return null;
   const funnels = await getDashboardFunnels(u.dashboard_id);
   return { dashboard: { id: d.id, name: d.name, description: d.description }, funnels };
+}
+
+// ============================================
+// Org invites (agency self-service onboarding via link)
+// ============================================
+
+export async function initInviteSchema() {
+  await client`
+    CREATE TABLE IF NOT EXISTS org_invite (
+      id TEXT PRIMARY KEY,
+      token TEXT NOT NULL UNIQUE,
+      org_id TEXT NOT NULL,
+      created_by TEXT,
+      expires_at TIMESTAMP,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `;
+  await client`CREATE INDEX IF NOT EXISTS org_invite_token_idx ON org_invite(token)`;
+  await client`CREATE INDEX IF NOT EXISTS org_invite_org_idx ON org_invite(org_id)`;
+  console.log('Invite schema initialized (PostgreSQL)');
+}
+
+export async function createInvite(p: { id: string; token: string; orgId: string; createdBy: string; expiresAt: string }) {
+  if (!isValidId(p.orgId)) throw new Error('Invalid org ID');
+  await client`
+    INSERT INTO org_invite (id, token, org_id, created_by, expires_at)
+    VALUES (${p.id}, ${p.token}, ${p.orgId}, ${p.createdBy}, ${p.expiresAt}::timestamp)
+  `;
+  const [row] = await client`SELECT id, token, org_id, expires_at, created_at FROM org_invite WHERE id = ${p.id}`;
+  return row ?? null;
+}
+
+export async function getInviteByToken(token: string) {
+  if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{10,64}$/.test(token)) return null;
+  const [row] = await client`SELECT id, token, org_id, expires_at, created_at FROM org_invite WHERE token = ${token}`;
+  return row ?? null;
+}
+
+export async function getInvitesByOrg(orgId: string) {
+  if (!isValidId(orgId)) return [];
+  return await client`
+    SELECT id, token, org_id, expires_at, created_at FROM org_invite
+    WHERE org_id = ${orgId} ORDER BY created_at DESC LIMIT 200
+  `;
 }
 
 // ============================================
