@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAllUsers, approveUser, deleteUser, getUserById, getRawClient } from './db.js';
+import { getAllUsers, approveUser, deleteUser, getUserById, getRawClient, setUserRoleAndOrg, assignDashboardToUser } from './db.js';
 import { requireRole, type AuthenticatedRequest } from './middleware.js';
 
 // ============================================
@@ -64,6 +64,42 @@ router.post('/users/:userId/approve', requireRole('super_admin'), async (req: Au
     res.json({ success: true, message: 'User approved' });
   } catch (error) {
     console.error('Approve user error:', error);
+    res.status(500).json({ error: 'Operation failed' });
+  }
+});
+
+// Change a user's role + org assignment (platform admin only)
+router.patch('/users/:userId/role', requireRole('super_admin'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const { userId } = req.params;
+    if (!isValidUserId(userId)) return res.status(400).json({ error: 'Invalid request' });
+    const role = typeof req.body?.role === 'string' ? req.body.role : '';
+    if (!['super_admin', 'agency_admin', 'customer', 'user'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+    const target = await getUserById(userId);
+    if (!target) return res.status(400).json({ error: 'Invalid request' });
+    const orgId =
+      typeof req.body?.orgId === 'string' && req.body.orgId ? req.body.orgId : target.org_id ?? 'default';
+    await setUserRoleAndOrg(userId, role, orgId);
+    logAdminAction(req.user!.id, 'CHANGE_ROLE', userId, `role=${role} org=${orgId}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Change role error:', error);
+    res.status(500).json({ error: 'Operation failed' });
+  }
+});
+
+// Assign a dashboard to a user (platform admin only)
+router.patch('/users/:userId/dashboard', requireRole('super_admin'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const { userId } = req.params;
+    if (!isValidUserId(userId)) return res.status(400).json({ error: 'Invalid request' });
+    const dashboardId = typeof req.body?.dashboardId === 'string' && req.body.dashboardId ? req.body.dashboardId : null;
+    await assignDashboardToUser(userId, dashboardId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Assign dashboard error:', error);
     res.status(500).json({ error: 'Operation failed' });
   }
 });

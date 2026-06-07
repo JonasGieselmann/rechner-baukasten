@@ -12,6 +12,7 @@ import settingsRouter from './settings.js';
 import funnelsRouter from './funnels.js';
 import meRouter from './me.js';
 import complianceRouter from './compliance.js';
+import organizationsRouter from './organizations.js';
 import { getFromS3, isS3Configured } from './s3.js';
 import { Readable } from 'stream';
 import path from 'path';
@@ -151,6 +152,9 @@ app.use('/api/me', meRouter);
 
 // Compliance API: DSGVO export, consents, email opt-in/unsubscribe
 app.use('/api/compliance', complianceRouter);
+
+// Organizations API: white-label tenants, branding, membership
+app.use('/api/organizations', organizationsRouter);
 
 // Custom Calculators API
 app.use('/api/custom-calculators', customCalculatorsRouter);

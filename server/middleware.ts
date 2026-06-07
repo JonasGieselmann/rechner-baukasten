@@ -4,7 +4,7 @@ import { auth } from './auth.js';
 import { getUserById } from './db.js';
 
 export interface AuthenticatedRequest<P = Record<string, string>> extends Request<P> {
-  user?: { id: string; role: string };
+  user?: { id: string; role: string; orgId: string | null };
 }
 
 export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -13,7 +13,7 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
     if (!session) return res.status(401).json({ error: 'Authentication required' });
     const user = await getUserById(session.user.id);
     if (!user || !user.approved) return res.status(403).json({ error: 'User not approved' });
-    req.user = { id: user.id, role: user.role };
+    req.user = { id: user.id, role: user.role, orgId: user.org_id ?? null };
     next();
   } catch (err) {
     console.error('Auth error:', err);
@@ -29,7 +29,7 @@ export function requireRole(...allowed: string[]) {
       const user = await getUserById(session.user.id);
       if (!user || !user.approved) return res.status(403).json({ error: 'User not approved' });
       if (!allowed.includes(user.role)) return res.status(403).json({ error: 'Forbidden' });
-      req.user = { id: user.id, role: user.role };
+      req.user = { id: user.id, role: user.role, orgId: user.org_id ?? null };
       next();
     } catch (err) {
       console.error('Role auth error:', err);

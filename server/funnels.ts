@@ -268,7 +268,18 @@ router.post('/by-slug/:slug/submit', submitLimiter, async (req: Request<{ slug: 
 // Authenticated CRUD
 // ============================================
 
-// GET /api/funnels - list mine, with on-demand leads count
+// Org scoping: platform admins (super_admin) see funnels across all orgs;
+// everyone else is restricted to their own organization. Cross-tenant boundary.
+function funnelByIdScope(req: AuthenticatedRequest, id: string) {
+  return req.user!.role === 'super_admin'
+    ? eq(schema.funnel.id, id)
+    : and(eq(schema.funnel.id, id), eq(schema.funnel.orgId, req.user!.orgId ?? '__none__'));
+}
+function funnelListScope(req: AuthenticatedRequest) {
+  return req.user!.role === 'super_admin' ? undefined : eq(schema.funnel.orgId, req.user!.orgId ?? '__none__');
+}
+
+// GET /api/funnels - list (org-scoped), with on-demand leads count
 router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
     const rows = await db
@@ -285,7 +296,7 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
         leadsCount: sql<number>`(SELECT COUNT(*)::int FROM ${schema.lead} WHERE ${schema.lead.funnelId} = ${schema.funnel.id})`.as('leadsCount'),
       })
       .from(schema.funnel)
-      .where(eq(schema.funnel.ownerId, req.user!.id))
+      .where(funnelListScope(req))
       .orderBy(desc(schema.funnel.updatedAt));
     res.json(rows);
   } catch (err) {
@@ -315,6 +326,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
       .values({
         id,
         ownerId: req.user!.id,
+        orgId: req.user!.orgId ?? 'default',
         name,
         slug,
         description,
@@ -336,7 +348,7 @@ router.get('/:id', requireAuth, async (req: AuthenticatedRequest<{ id: string }>
     const [row] = await db
       .select()
       .from(schema.funnel)
-      .where(and(eq(schema.funnel.id, req.params.id), eq(schema.funnel.ownerId, req.user!.id)))
+      .where(funnelByIdScope(req, req.params.id))
       .limit(1);
     if (!row) return res.status(404).json({ error: 'Not found' });
     res.json(row);
@@ -352,7 +364,7 @@ router.patch('/:id', requireAuth, async (req: AuthenticatedRequest<{ id: string 
     const [existing] = await db
       .select()
       .from(schema.funnel)
-      .where(and(eq(schema.funnel.id, req.params.id), eq(schema.funnel.ownerId, req.user!.id)))
+      .where(funnelByIdScope(req, req.params.id))
       .limit(1);
     if (!existing) return res.status(404).json({ error: 'Not found' });
 
@@ -398,7 +410,7 @@ router.delete('/:id', requireAuth, async (req: AuthenticatedRequest<{ id: string
   try {
     const result = await db
       .delete(schema.funnel)
-      .where(and(eq(schema.funnel.id, req.params.id), eq(schema.funnel.ownerId, req.user!.id)))
+      .where(funnelByIdScope(req, req.params.id))
       .returning({ id: schema.funnel.id });
     if (result.length === 0) return res.status(404).json({ error: 'Not found' });
     res.json({ success: true });
@@ -414,7 +426,7 @@ router.get('/:id/leads', requireAuth, async (req: AuthenticatedRequest<{ id: str
     const [own] = await db
       .select({ id: schema.funnel.id })
       .from(schema.funnel)
-      .where(and(eq(schema.funnel.id, req.params.id), eq(schema.funnel.ownerId, req.user!.id)))
+      .where(funnelByIdScope(req, req.params.id))
       .limit(1);
     if (!own) return res.status(404).json({ error: 'Not found' });
 
