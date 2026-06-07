@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { toNodeHandler } from 'better-auth/node';
 import { auth } from './auth.js';
-import { checkDb, initAuthSchema, initFunnelSchema, initAppSettings, initComplianceSchema, initOrganizationSchema, initDashboardSchema, initPlanSchema } from './db.js';
+import { checkDb, initAuthSchema, initFunnelSchema, initAppSettings, initComplianceSchema, initOrganizationSchema, initDashboardSchema, initPlanSchema, initBeautyflowTenant, repairPotenzialanalyseFunnel } from './db.js';
 import customCalculatorsRouter, { seedCustomCalculators } from './custom-calculators.js';
 import adminRouter from './admin.js';
 import settingsRouter from './settings.js';
@@ -300,6 +300,21 @@ async function start() {
     await initPlanSchema();
     await initAppSettings();
     await initComplianceSchema();
+    // First white-label tenant: carve BeautyFlow out of the platform org.
+    // Idempotent data migration -> non-fatal: a transient DB hiccup here must not
+    // take the site down on boot (customers fall back to the 'default' org).
+    try {
+      await initBeautyflowTenant();
+    } catch (tenantError) {
+      console.error('BeautyFlow tenant provisioning failed (non-fatal, server continues):', tenantError);
+    }
+    // Conservatively repair the live funnel config (booking URL + terminal result).
+    // Non-fatal: a config-repair failure must never block server startup.
+    try {
+      await repairPotenzialanalyseFunnel();
+    } catch (repairError) {
+      console.error('Funnel config repair failed (non-fatal, server continues):', repairError);
+    }
 
     // Seed custom calculators to S3 (non-fatal - server starts even if S3 fails)
     try {

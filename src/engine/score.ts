@@ -21,6 +21,23 @@ export const RECOMMENDATION_TEXTS: Record<RecommendationKey, string> = {
     'Du spielst in der Skalierungsliga. Wir übernehmen alles, du behandelst.',
 };
 
+// Human-readable stage titles. The internal RecommendationKey (e.g. 'stufe-1')
+// must never reach the UI directly; always resolve it through this map.
+export const RECOMMENDATION_LABELS: Record<RecommendationKey, string> = {
+  'fundament-aufbauen': 'Fundament aufbauen',
+  'stufe-1': 'Stufe 1: Fundament steht',
+  'stufe-2': 'Stufe 2: Bereit für Automatisierung',
+  'stufe-3': 'Stufe 3: Skalierung',
+};
+
+// Resolve a stored recommendation value (key OR already-friendly text) to a
+// readable label. Returns the input unchanged if it isn't a known key, so
+// historical/free-text values never render as a raw enum slug.
+export function recommendationLabel(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return RECOMMENDATION_LABELS[value as RecommendationKey] ?? value;
+}
+
 const FUNDAMENT_DIMENSIONS: SpiderDimension[] = [
   'social-media',
   'website',

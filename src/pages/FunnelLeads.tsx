@@ -4,6 +4,7 @@ import { getFunnel, getFunnelLeads } from '../lib/funnelApi';
 import type { Funnel, Lead } from '../types';
 import { AdminHeader } from '../components/AdminHeader';
 import { BRAND } from '../../branding/tokens';
+import { recommendationLabel } from '../engine/score';
 
 export function FunnelLeads() {
   const { id } = useParams<{ id: string }>();
@@ -108,7 +109,7 @@ export function FunnelLeads() {
                     <td className="py-3 px-4">{l.name ?? '-'}</td>
                     <td className="py-3 px-4">{l.email ?? '-'}</td>
                     <td className="py-3 px-4">{l.businessName ?? '-'}</td>
-                    <td className="py-3 px-4">{l.recommendation ?? '-'}</td>
+                    <td className="py-3 px-4">{recommendationLabel(l.recommendation) ?? '-'}</td>
                     <td className="py-3 px-4 text-xs" style={{ color: BRAND.colors.muted }}>
                       {l.scrapeStatus}
                     </td>

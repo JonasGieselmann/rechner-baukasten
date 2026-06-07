@@ -5,7 +5,6 @@ interface Plan {
   id: string;
   name: string;
   description: string;
-  price_label: string;
   max_funnels: number;
   features: string[];
 }
@@ -42,7 +41,7 @@ export default function Plans() {
         </h1>
         <p className="text-base" style={{ color: BRAND.colors.muted }}>
           {mine?.plan
-            ? `Aktuell: ${mine.plan.name} (${mine.plan.price_label}). ${mine.usage.funnels} Funnel${
+            ? `Aktuell: ${mine.plan.name}. ${mine.usage.funnels} Funnel${
                 mine.usage.funnels === 1 ? '' : 's'
               } in Nutzung${limit > 0 ? ` von ${limit}` : ''}.`
             : 'Wählen Sie den passenden Plan für Ihr Wachstum.'}
@@ -75,9 +74,6 @@ export default function Plans() {
                   </span>
                 )}
               </div>
-              <p className="text-2xl font-semibold" style={{ color: BRAND.colors.text }}>
-                {p.price_label}
-              </p>
               <p className="text-sm" style={{ color: BRAND.colors.muted }}>
                 {p.description}
               </p>

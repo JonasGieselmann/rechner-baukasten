@@ -30,12 +30,15 @@ test.beforeEach(async ({ page }) => {
 
 test.beforeAll(async () => {
   sql = postgres(process.env.DATABASE_URL!);
+  // ADMIN stays in the platform org (Layer One = 'default'); the white-label
+  // funnel + dashboard live in the BeautyFlow customer org, where self-registered
+  // customers now land (initBeautyflowTenant).
   await sql`INSERT INTO "user" (id, name, email, email_verified, role, approved, org_id) VALUES (${ADMIN}, 'WL Admin', 'wl-admin@e2e.local', true, 'super_admin', true, 'default') ON CONFLICT (id) DO NOTHING`;
   await sql`DELETE FROM dashboard_funnel WHERE dashboard_id = ${DASH}`;
   await sql`DELETE FROM dashboard WHERE id = ${DASH}`;
   await sql`DELETE FROM funnel WHERE id = ${FUNNEL}`;
-  await sql`INSERT INTO funnel (id, owner_id, org_id, name, slug, status, config) VALUES (${FUNNEL}, ${ADMIN}, 'default', 'WL Test Funnel', 'wl-test-funnel', 'published', ${sql.json(CONFIG)})`;
-  await sql`INSERT INTO dashboard (id, org_id, name, description) VALUES (${DASH}, 'default', 'WL Dashboard', '')`;
+  await sql`INSERT INTO funnel (id, owner_id, org_id, name, slug, status, config) VALUES (${FUNNEL}, ${ADMIN}, 'beautyflow', 'WL Test Funnel', 'wl-test-funnel', 'published', ${sql.json(CONFIG)})`;
+  await sql`INSERT INTO dashboard (id, org_id, name, description) VALUES (${DASH}, 'beautyflow', 'WL Dashboard', '')`;
   await sql`INSERT INTO dashboard_funnel (id, dashboard_id, funnel_id, position) VALUES (${'e2e-wl-link'}, ${DASH}, ${FUNNEL}, 0)`;
 });
 
@@ -60,8 +63,9 @@ test('white-label: dashboard shows multiple funnels, plans tab, legal relocation
   await page.getByRole('button', { name: 'Konto erstellen' }).click();
   await page.waitForURL(/\/dashboard\/?$/, { timeout: 10000 });
 
-  // Assign the seeded dashboard to this customer, then reload
-  await sql`UPDATE "user" SET dashboard_id = ${DASH} WHERE email = ${EMAIL}`;
+  // Assign the seeded dashboard to this customer (and pin to the BeautyFlow org,
+  // matching where self-registered customers land), then reload.
+  await sql`UPDATE "user" SET dashboard_id = ${DASH}, org_id = 'beautyflow' WHERE email = ${EMAIL}`;
   await page.goto('/dashboard');
 
   // Dashboard <-> Funnel separation: the assigned dashboard's funnel shows up
@@ -71,7 +75,9 @@ test('white-label: dashboard shows multiple funnels, plans tab, legal relocation
   // Plans tab
   await page.goto('/dashboard/plan');
   await expect(page.getByRole('heading', { name: 'Ihr Plan' })).toBeVisible();
-  await expect(page.getByText('Agency', { exact: true })).toBeVisible();
+  // BeautyFlow org is on the Enterprise tier; no prices are shown.
+  await expect(page.getByText('Enterprise', { exact: true })).toBeVisible();
+  await expect(page.getByText('/ Monat')).toHaveCount(0);
 
   // Legal relocation: Rechtliches lives under Account now (not a top nav tab)
   await page.goto('/dashboard/account');

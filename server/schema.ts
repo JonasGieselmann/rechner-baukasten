@@ -7,12 +7,16 @@ export const appSetting = pgTable('app_setting', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
-// Tenant root. Every user/funnel/lead belongs to an organization. The platform
-// itself is the 'default' org; white-label customers (agencies) get their own.
+// Tenant root + hierarchy. The platform/operator org is 'default' (Layer One,
+// the über-org of the software team); white-label customers (e.g. BeautyFlow)
+// get their own org whose parent_org_id points back at the platform org. Their
+// end-customers live inside that customer org.
 export const organization = pgTable('organization', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
+  // NULL = platform/root org. Otherwise the managing parent org's id.
+  parentOrgId: text('parent_org_id'),
   planId: text('plan_id'),
   // White-label branding (nullable -> falls back to platform defaults)
   brandName: text('brand_name'),

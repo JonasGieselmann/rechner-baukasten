@@ -21,6 +21,7 @@ import Rechtliches from './pages/customer/Rechtliches';
 import FunnelEmbed from './pages/customer/FunnelEmbed';
 import Plans from './pages/customer/Plans';
 import DashboardsManager from './pages/DashboardsManager';
+import FunnelsManager from './pages/FunnelsManager';
 import { AgencyRoute } from './components/AgencyRoute';
 import { AuthProvider } from './components/AuthProvider';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -137,6 +138,16 @@ function App() {
             element={
               <AdminRoute>
                 <AdminSettings />
+              </AdminRoute>
+            }
+          />
+
+          {/* Funnels manager */}
+          <Route
+            path="/admin/funnels"
+            element={
+              <AdminRoute>
+                <FunnelsManager />
               </AdminRoute>
             }
           />

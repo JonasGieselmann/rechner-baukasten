@@ -101,9 +101,9 @@ export default function DashboardsManager() {
 
       <main className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
         <div className="space-y-1">
-          <h1 className="text-3xl font-semibold">Dashboards &amp; Funnels</h1>
+          <h1 className="text-3xl font-semibold">Dashboards</h1>
           <p className="text-sm" style={{ color: BRAND.colors.muted }}>
-            Ein Dashboard b&uuml;ndelt mehrere Funnels. Legen Sie ein Dashboard an und verkn&uuml;pfen Sie die gew&uuml;nschten Funnels.
+            Ein Dashboard b&uuml;ndelt mehrere Funnels f&uuml;r einen Kunden. Funnels verwalten Sie unter dem Men&uuml;punkt &bdquo;Funnels&ldquo;; hier verkn&uuml;pfen Sie bestehende Funnels mit einem Dashboard.
           </p>
         </div>
 

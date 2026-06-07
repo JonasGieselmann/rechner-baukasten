@@ -4,6 +4,7 @@ import { useAuth } from '../../components/AuthProvider';
 import { BRAND } from '../../../branding/tokens';
 import { renderTitleWithItalics } from '../../lib/textFormat';
 import { computeProgress, overallScore, formatAnalysisDate, type AnalysisProgress } from '../../lib/analysis';
+import { recommendationLabel } from '../../engine/score';
 import type { Lead } from '../../types';
 
 const POSITIVE = '#1FA971'; // green for improvement vs last month
@@ -92,9 +93,14 @@ function PotenzialCard({ progress, loading }: { progress: AnalysisProgress; load
           )}
 
           {latest.recommendation && (
-            <p className="text-sm leading-relaxed" style={{ color: BRAND.colors.text }}>
-              {latest.recommendation}
-            </p>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs uppercase tracking-wider font-semibold" style={{ color: BRAND.colors.muted }}>
+                Ihre Empfehlung
+              </span>
+              <p className="text-sm font-medium leading-relaxed" style={{ color: BRAND.colors.text }}>
+                {recommendationLabel(latest.recommendation)}
+              </p>
+            </div>
           )}
 
           {dueForUpdate && (

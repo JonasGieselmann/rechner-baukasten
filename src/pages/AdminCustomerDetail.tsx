@@ -5,6 +5,7 @@ import { AdminHeader } from '../components/AdminHeader';
 import { Avatar } from '../components/Avatar';
 import { BRAND } from '../../branding/tokens';
 import { formatDateTime } from '../lib/dateFormat';
+import { recommendationLabel } from '../engine/score';
 
 interface CustomerDetail {
   id: string;
@@ -187,7 +188,7 @@ export function AdminCustomerDetail() {
                       <td className="py-3 px-4 text-xs" style={{ color: BRAND.colors.muted }}>
                         {l.funnelSlug ?? l.funnelId}
                       </td>
-                      <td className="py-3 px-4">{l.recommendation ?? '-'}</td>
+                      <td className="py-3 px-4">{recommendationLabel(l.recommendation) ?? '-'}</td>
                       <td className="py-3 px-4 text-xs" style={{ color: BRAND.colors.muted }}>
                         {l.scrapeStatus}
                       </td>

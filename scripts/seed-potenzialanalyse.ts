@@ -129,7 +129,9 @@ function buildConfig() {
     },
     settings: {
       progressBar: true,
-      ctaCalendarUrl: '',
+      // Single source of truth for the booking CTA (result step + cta-booking step).
+      // BeautyFlow's live Calendly link (from beauty-flow.de).
+      ctaCalendarUrl: 'https://calendly.com/beauty-flow/30min',
     },
     steps: [
       {
@@ -201,20 +203,16 @@ function buildConfig() {
         step: 1,
       },
       {
+        // Terminal step: the result IS the end of the funnel. It shows the growth
+        // chart + spider + recommendation and, because no step follows and
+        // settings.ctaCalendarUrl is set, its own "Strategiegespräch buchen" CTA
+        // (-> Calendly). No separate dead-end booking step.
         id: 'result',
         type: 'result-spider',
         title: 'Ihre Potenzialanalyse',
         body: 'Hier ist Ihre Auswertung. Die vollständige Version erhalten Sie gleich per E-Mail.',
         showKalkuChart: true,
         cliffhanger: 'Ihre schwächste Säule ist der größte Hebel. Im Strategiegespräch zeigen wir Ihnen den Plan dazu.',
-      },
-      {
-        id: 'cta',
-        type: 'cta-booking',
-        title: 'Bereit für den nächsten Schritt?',
-        body: 'Im Strategiegespräch leiten wir aus Ihrem Spider-Web einen konkreten Plan ab. Keine Verkaufsmasche, kein Druck.',
-        ctaLabel: 'Strategiegespräch buchen',
-        calendarUrl: '',
       },
     ],
   };

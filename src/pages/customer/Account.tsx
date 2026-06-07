@@ -345,20 +345,15 @@ function RechtlichesCard() {
       </h2>
       <p className="text-sm leading-relaxed" style={{ color: BRAND.colors.muted }}>
         Einwilligungen, Datenexport (Art. 20 DSGVO) und Kontolöschung verwalten Sie im
-        Self-Service-Bereich.
+        Self-Service-Bereich. Impressum, Datenschutz und AGB finden Sie jederzeit in der Fußzeile.
       </p>
       <div className="flex flex-wrap gap-4 text-sm">
-        <Link to="/dashboard/rechtliches" className="underline" style={{ color: BRAND.colors.primary }}>
-          Self-Service
-        </Link>
-        <Link to="/impressum" className="underline" style={{ color: BRAND.colors.primary }}>
-          Impressum
-        </Link>
-        <Link to="/datenschutz" className="underline" style={{ color: BRAND.colors.primary }}>
-          Datenschutz
-        </Link>
-        <Link to="/agb" className="underline" style={{ color: BRAND.colors.primary }}>
-          AGB
+        <Link
+          to="/dashboard/rechtliches"
+          className="inline-flex items-center px-4 py-2 rounded-full font-semibold transition-opacity hover:opacity-90"
+          style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
+        >
+          Self-Service öffnen
         </Link>
       </div>
     </div>

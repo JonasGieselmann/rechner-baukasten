@@ -16,6 +16,8 @@ test('visual walk-through of prod funnel', async ({ page }: { page: Page }) => {
   await page.getByTestId('lead-field-email').fill('vt@example.com');
   await page.getByTestId('lead-field-businessName').fill('Test Praxis');
   await page.getByTestId('lead-field-websiteUrl').fill('https://example.com');
+  // Privacy consent is required before the lead step can advance.
+  await page.getByTestId('consent-privacy').check();
   await page.getByRole('button', { name: 'Weiter' }).click();
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${SCREENSHOTS}/3-q1.png`, fullPage: true });

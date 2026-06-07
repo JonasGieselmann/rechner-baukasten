@@ -262,9 +262,14 @@ export async function approveUser(userId: string): Promise<void> {
 // Set a user as customer (approved, role=customer) in one statement
 export async function setUserAsCustomer(userId: string): Promise<void> {
   const validatedId = validateUserId(userId);
+  // Self-registering end-customers belong to the BeautyFlow customer org (the
+  // first white-label tenant), not the Layer One platform org. Fall back to
+  // 'default' only if the beautyflow org has not been provisioned yet.
   await client`
     UPDATE "user"
-    SET role = 'customer', approved = true, updated_at = NOW()
+    SET role = 'customer', approved = true,
+        org_id = COALESCE((SELECT id FROM organization WHERE id = 'beautyflow'), 'default'),
+        updated_at = NOW()
     WHERE id = ${validatedId}
   `;
 }
@@ -312,6 +317,7 @@ export async function initOrganizationSchema() {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       slug TEXT NOT NULL UNIQUE,
+      parent_org_id TEXT,
       plan_id TEXT,
       brand_name TEXT,
       logo_url TEXT,
@@ -323,10 +329,17 @@ export async function initOrganizationSchema() {
       updated_at TIMESTAMP NOT NULL DEFAULT NOW()
     )
   `;
+  // Hierarchy column for existing deployments.
+  await client`ALTER TABLE organization ADD COLUMN IF NOT EXISTS parent_org_id TEXT`;
+  // The 'default' org is the platform / operator org = Layer One (the über-org of
+  // the software team). It is the root of the hierarchy (parent_org_id NULL) and
+  // hosts the super_admins. Rename it from the old "BeautyFlow Platform" label so
+  // BeautyFlow can become its own customer org (see initBeautyflowTenant).
   await client`
-    INSERT INTO organization (id, name, slug)
-    VALUES ('default', 'BeautyFlow Platform', 'default')
-    ON CONFLICT (id) DO NOTHING
+    INSERT INTO organization (id, name, slug, parent_org_id)
+    VALUES ('default', 'Layer One', 'default', NULL)
+    ON CONFLICT (id) DO UPDATE SET name = 'Layer One', parent_org_id = NULL
+    WHERE organization.name = 'BeautyFlow Platform' OR organization.name = 'Layer One'
   `;
   await client`ALTER TABLE "user" ADD COLUMN IF NOT EXISTS org_id TEXT`;
   await client`UPDATE "user" SET org_id = 'default' WHERE org_id IS NULL`;
@@ -350,7 +363,7 @@ export async function initOrganizationSchema() {
 
 export async function getAllOrganizations() {
   return await client`
-    SELECT id, name, slug, plan_id, brand_name, logo_url, created_at
+    SELECT id, name, slug, parent_org_id, plan_id, brand_name, logo_url, created_at
     FROM organization ORDER BY created_at DESC LIMIT 1000
   `;
 }
@@ -537,26 +550,113 @@ export async function initPlanSchema() {
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     )
   `;
+  // Tiers: Basic / Business / Enterprise. NO prices are shown anywhere (price_label
+  // stays empty by design). DSGVO-Self-Service is a baseline legal entitlement for
+  // every account, not a tier feature, so it is intentionally not listed.
+  // ON CONFLICT DO UPDATE keeps name/features/limits in sync on every boot.
   await client`
     INSERT INTO plan (id, name, description, price_label, max_funnels, max_end_customers, features, sort_order)
-    VALUES ('free', 'Free', 'Zum Ausprobieren', '0 € / Monat', 1, 10,
-      ${JSON.stringify(['1 Funnel', 'Kunden-Dashboard', 'Potenzialanalyse', 'DSGVO-Self-Service'])}::jsonb, 0)
-    ON CONFLICT (id) DO NOTHING
+    VALUES ('basic', 'Basic', 'Der Einstieg', '', 1, 10,
+      ${JSON.stringify(['1 Funnel', 'Kunden-Dashboard', 'Potenzialanalyse'])}::jsonb, 0)
+    ON CONFLICT (id) DO UPDATE SET
+      name = EXCLUDED.name, description = EXCLUDED.description, price_label = EXCLUDED.price_label,
+      max_funnels = EXCLUDED.max_funnels, max_end_customers = EXCLUDED.max_end_customers,
+      features = EXCLUDED.features, sort_order = EXCLUDED.sort_order
   `;
   await client`
     INSERT INTO plan (id, name, description, price_label, max_funnels, max_end_customers, features, sort_order)
-    VALUES ('pro', 'Pro', 'Für wachsende Praxen', '49 € / Monat', 5, 100,
+    VALUES ('business', 'Business', 'Für wachsende Praxen', '', 5, 100,
       ${JSON.stringify(['Bis zu 5 Funnels', 'Branding-Anpassung', 'Leitfaden', 'E-Mail-Reports'])}::jsonb, 1)
-    ON CONFLICT (id) DO NOTHING
+    ON CONFLICT (id) DO UPDATE SET
+      name = EXCLUDED.name, description = EXCLUDED.description, price_label = EXCLUDED.price_label,
+      max_funnels = EXCLUDED.max_funnels, max_end_customers = EXCLUDED.max_end_customers,
+      features = EXCLUDED.features, sort_order = EXCLUDED.sort_order
   `;
   await client`
     INSERT INTO plan (id, name, description, price_label, max_funnels, max_end_customers, features, sort_order)
-    VALUES ('agency', 'Agency', 'White-Label für Agenturen', '199 € / Monat', 0, 0,
+    VALUES ('enterprise', 'Enterprise', 'White-Label für Agenturen', '', 0, 0,
       ${JSON.stringify(['Unbegrenzte Funnels', 'White-Label-Branding', 'Mehrere Kunden-Dashboards', 'Prioritäts-Support'])}::jsonb, 2)
-    ON CONFLICT (id) DO NOTHING
+    ON CONFLICT (id) DO UPDATE SET
+      name = EXCLUDED.name, description = EXCLUDED.description, price_label = EXCLUDED.price_label,
+      max_funnels = EXCLUDED.max_funnels, max_end_customers = EXCLUDED.max_end_customers,
+      features = EXCLUDED.features, sort_order = EXCLUDED.sort_order
   `;
-  await client`UPDATE organization SET plan_id = 'free' WHERE plan_id IS NULL`;
+  // Re-point any org still on the obsolete tiers (or unset) to the equivalent
+  // new tier, preserving limits/semantics (NOT a blanket downgrade):
+  //   free(1/10)->basic(1/10), pro(5/100)->business(5/100), agency(0/0)->enterprise(0/0).
+  await client`
+    UPDATE organization SET plan_id = CASE
+      WHEN plan_id = 'pro' THEN 'business'
+      WHEN plan_id = 'agency' THEN 'enterprise'
+      ELSE 'basic'
+    END
+    WHERE plan_id IN ('free', 'pro', 'agency') OR plan_id IS NULL
+  `;
+  await client`DELETE FROM plan WHERE id IN ('free', 'pro', 'agency')`;
   console.log('Plan schema initialized (PostgreSQL)');
+}
+
+// Idempotent provisioning of the first white-label customer org. BeautyFlow
+// becomes its own org (a child of the Layer One platform org); the
+// potenzialanalyse funnel, its leads, all end-customers and their dashboards
+// move into it. The platform org ('default' = Layer One) keeps only the
+// operators (super_admins). Re-running is safe: every statement is conditional.
+// Must run AFTER initOrganizationSchema / initFunnelSchema / initDashboardSchema /
+// initPlanSchema so all tables, the org_id columns and the 'enterprise' plan exist.
+export async function initBeautyflowTenant() {
+  await client`
+    INSERT INTO organization (id, name, slug, parent_org_id, plan_id, brand_name, primary_color, accent_color, background_color, text_color)
+    VALUES ('beautyflow', 'BeautyFlow', 'beautyflow', 'default', 'enterprise', 'BeautyFlow', '#0F2F5B', '#7EC8F3', '#F7FAFF', '#0F2F5B')
+    ON CONFLICT (id) DO UPDATE SET parent_org_id = 'default', plan_id = COALESCE(organization.plan_id, 'enterprise')
+  `;
+  // Move BeautyFlow's funnel(s) into the customer org (potenzialanalyse is the seed).
+  await client`UPDATE funnel SET org_id = 'beautyflow' WHERE slug = 'potenzialanalyse'`;
+  // Move the leads that belong to BeautyFlow's funnels.
+  await client`UPDATE lead SET org_id = 'beautyflow' WHERE funnel_id IN (SELECT id FROM funnel WHERE org_id = 'beautyflow')`;
+  // Move existing end-customers out of the platform org (super_admins stay).
+  await client`UPDATE "user" SET org_id = 'beautyflow' WHERE role = 'customer' AND org_id = 'default'`;
+  // Customer dashboards belong to the customer org, not the platform.
+  await client`UPDATE dashboard SET org_id = 'beautyflow' WHERE org_id = 'default'`;
+  console.log('BeautyFlow tenant provisioned (PostgreSQL)');
+}
+
+// Idempotent, conservative repair of the live potenzialanalyse funnel config so
+// the deployed funnel matches the intended UX without needing direct prod DB
+// access (the config is data, not code; this runs on boot). It ONLY fixes the
+// known-broken state and never clobbers deliberate admin edits:
+//  - sets the booking URL if it is still empty,
+//  - drops a TRAILING cta-booking step that has no URL (a dead end), so the
+//    result-spider becomes the terminal screen (which renders its own booking CTA).
+// Once fixed it is a no-op on every subsequent boot.
+const POTENZIAL_BOOKING_URL = 'https://calendly.com/beauty-flow/30min';
+export async function repairPotenzialanalyseFunnel() {
+  const rows = await client`SELECT id, config FROM funnel WHERE slug = 'potenzialanalyse' LIMIT 1`;
+  const row = rows[0];
+  if (!row) return;
+  const config = row.config as {
+    settings?: { ctaCalendarUrl?: string };
+    steps?: Array<{ type?: string; calendarUrl?: string }>;
+  };
+  if (!config || !Array.isArray(config.steps)) return;
+  let changed = false;
+
+  config.settings = config.settings ?? {};
+  if (!config.settings.ctaCalendarUrl || !config.settings.ctaCalendarUrl.trim()) {
+    config.settings.ctaCalendarUrl = POTENZIAL_BOOKING_URL;
+    changed = true;
+  }
+
+  const last = config.steps[config.steps.length - 1];
+  const hasResult = config.steps.some((s) => s.type === 'result-spider');
+  if (last && last.type === 'cta-booking' && hasResult && (!last.calendarUrl || !last.calendarUrl.trim())) {
+    config.steps.pop();
+    changed = true;
+  }
+
+  if (changed) {
+    await client`UPDATE funnel SET config = ${JSON.stringify(config)}::jsonb, updated_at = NOW() WHERE id = ${row.id as string}`;
+    console.log('Potenzialanalyse funnel config repaired (booking URL + terminal result)');
+  }
 }
 
 export async function getPlans() {
@@ -570,7 +670,7 @@ export async function setOrgPlan(orgId: string, planId: string): Promise<void> {
 
 export async function getOrgPlanWithUsage(orgId: string) {
   const org = await getOrgById(orgId);
-  const planId = (org?.plan_id as string) || 'free';
+  const planId = (org?.plan_id as string) || 'basic';
   const [planRow] = await client`SELECT * FROM plan WHERE id = ${planId}`;
   const [cnt] = await client`SELECT COUNT(*)::int AS count FROM funnel WHERE org_id = ${orgId}`;
   return { plan: planRow ?? null, usage: { funnels: Number(cnt?.count ?? 0) } };

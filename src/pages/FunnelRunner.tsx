@@ -527,6 +527,15 @@ function ResultSpiderStep({
         {submitted && !submitError && (
           <p className="text-xs opacity-50">Auswertung gespeichert.</p>
         )}
+        {!hasNextStep && ctaUrl && (
+          <div className="flex flex-col gap-1 pt-2">
+            <p className="text-lg font-semibold">Bereit für den nächsten Schritt?</p>
+            <p className="text-sm opacity-70 leading-relaxed">
+              Im Strategiegespräch leiten wir aus Ihrem Spider-Web einen konkreten Plan ab.
+              Keine Verkaufsmasche, kein Druck.
+            </p>
+          </div>
+        )}
         {hasNextStep ? (
           <PrimaryButton label="Weiter" onClick={onNext} theme={theme} />
         ) : ctaUrl ? (
@@ -534,6 +543,7 @@ function ResultSpiderStep({
             href={ctaUrl}
             target="_blank"
             rel="noopener noreferrer"
+            data-testid="result-booking-cta"
             className="w-full py-3 px-6 rounded-xl font-semibold text-base text-center block transition-opacity hover:opacity-90"
             style={{ backgroundColor: theme.primaryColor, color: theme.backgroundColor }}
           >
@@ -548,18 +558,23 @@ function ResultSpiderStep({
 function CtaBookingStep({
   step,
   theme,
+  fallbackUrl,
 }: {
   step: Extract<FunnelStep, { type: 'cta-booking' }>;
   theme: FunnelTheme;
+  fallbackUrl?: string;
 }) {
-  const hasUrl = Boolean(step.calendarUrl && step.calendarUrl.trim());
+  // Booking URL can come from the step itself or, as a fallback, the funnel's
+  // global settings.ctaCalendarUrl (single source of truth, matches the result step).
+  const calendarUrl = (step.calendarUrl && step.calendarUrl.trim()) || (fallbackUrl && fallbackUrl.trim()) || '';
+  const hasUrl = Boolean(calendarUrl);
   return (
     <div className="flex flex-col gap-4">
       {step.title && <h2 className="text-2xl font-semibold">{step.title}</h2>}
       {step.body && <p className="text-base opacity-80">{step.body}</p>}
       <PrimaryButton
         label={step.ctaLabel ?? 'Termin buchen'}
-        href={hasUrl ? step.calendarUrl : undefined}
+        href={hasUrl ? calendarUrl : undefined}
         disabled={!hasUrl}
         theme={theme}
       />
@@ -795,7 +810,7 @@ export default function FunnelRunner() {
           />
         );
       case 'cta-booking':
-        return <CtaBookingStep step={s} theme={theme} />;
+        return <CtaBookingStep step={s} theme={theme} fallbackUrl={ctaUrl} />;
     }
   }
 

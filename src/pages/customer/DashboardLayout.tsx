@@ -49,8 +49,9 @@ const AccountIcon = () => (
 
 const PlanIcon = () => (
   <svg {...iconBase} aria-hidden="true">
-    <path d="M20.5 12.5l-8 8a2 2 0 0 1-2.8 0l-6.2-6.2a2 2 0 0 1 0-2.8l8-8H19a2.5 2.5 0 0 1 2.5 2.5v6.5z" />
-    <circle cx="7.5" cy="7.5" r="1" />
+    <polygon points="12 2 2 7 12 12 22 7 12 2" />
+    <polyline points="2 17 12 22 22 17" />
+    <polyline points="2 12 12 17 22 12" />
   </svg>
 );
 
