@@ -4,11 +4,13 @@ import { nanoid } from 'nanoid';
 import { fromNodeHeaders } from 'better-auth/node';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { auth } from './auth.js';
-import { db, schema, getRawClient } from './db.js';
+import { db, schema, getRawClient, recordConsent, getOrCreateSubscription } from './db.js';
 import { requireAuth, type AuthenticatedRequest } from './middleware.js';
 import { isValidSlug, sanitizeString } from './utils.js';
 import { renderLeadReportPdf } from './pdf/leadReport.js';
-import { sendLeadReportEmail } from './mailer.js';
+import { sendLeadReportEmail, sendDoiConfirmationEmail } from './mailer.js';
+import { LEGAL_VERSIONS } from './legal.js';
+import { enrichLead, scrapeSucceeded, type ScrapeData } from './scrape/index.js';
 
 const router = Router();
 
@@ -113,10 +115,25 @@ router.post('/by-slug/:slug/submit', submitLimiter, async (req: Request<{ slug: 
     if (funnelRow.status === 'archived') return res.status(410).json({ error: 'Funnel archived' });
 
     const body = req.body || {};
+
+    // DSGVO: privacy consent is mandatory whenever personal data is submitted.
+    // Custom funnels without lead capture (no personal data) stay unaffected.
+    const consentInput = body.consent && typeof body.consent === 'object' ? body.consent : {};
+    const hasPersonalData = Boolean(
+      body.email || body.name || body.phone || body.businessName ||
+        body.websiteUrl || body.instagramHandle || body.gmbUrl,
+    );
+    if (hasPersonalData && consentInput.privacy !== true) {
+      return res.status(400).json({ error: 'Einwilligung zur Datenschutzerklärung erforderlich' });
+    }
+    const privacyConsent = consentInput.privacy === true;
+    const marketingConsent = consentInput.marketing === true;
+
     const websiteUrl = sanitizeString(body.websiteUrl, 500) || null;
     const instagramHandle = sanitizeString(body.instagramHandle, 100) || null;
     const gmbUrl = sanitizeString(body.gmbUrl, 500) || null;
-    const hasScrapableInput = Boolean(websiteUrl || instagramHandle || gmbUrl);
+    // GMB is not scraped (no enrichment implemented); only website/Instagram trigger enrichment.
+    const hasScrapableInput = Boolean(websiteUrl || instagramHandle);
 
     const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) }).catch(() => null);
     const userId = session?.user?.id ?? null;
@@ -157,6 +174,59 @@ router.post('/by-slug/:slug/submit', submitLimiter, async (req: Request<{ slug: 
 
     const leadEmail = leadRow?.email;
 
+    // Enrichment: scrape the provided website (branding signals) + best-effort
+    // Instagram. Only data the user supplied is used. Bounded by internal timeouts.
+    let scrapeData: ScrapeData | null = null;
+    if (hasScrapableInput) {
+      const rc = getRawClient();
+      try {
+        scrapeData = await enrichLead({ websiteUrl, instagramHandle });
+        await rc`
+          UPDATE lead
+          SET scrape_data = ${JSON.stringify(scrapeData)}::jsonb,
+              scrape_status = ${scrapeSucceeded(scrapeData) ? 'done' : 'error'}
+          WHERE id = ${inserted.id}
+        `;
+      } catch (e) {
+        console.error('[FUNNEL] enrichment failed:', e);
+        await rc`UPDATE lead SET scrape_status = 'error' WHERE id = ${inserted.id}`.catch(() => undefined);
+      }
+    }
+
+    // Persist consent for audit (DSGVO Art. 7). Non-fatal on failure.
+    const consentIp = req.ip ?? null;
+    if (privacyConsent) {
+      await recordConsent({
+        id: nanoid(),
+        userId, // link to the user when logged in, so self-service can show/withdraw it
+        leadId: inserted.id,
+        type: 'privacy',
+        textVersion: LEGAL_VERSIONS.privacy,
+        ipAddress: consentIp,
+      }).catch((e) => console.error('[FUNNEL] consent record failed:', e));
+    }
+    if (marketingConsent) {
+      await recordConsent({
+        id: nanoid(),
+        userId,
+        leadId: inserted.id,
+        type: 'marketing',
+        textVersion: LEGAL_VERSIONS.marketing,
+        ipAddress: consentIp,
+      }).catch((e) => console.error('[FUNNEL] marketing consent record failed:', e));
+      if (leadEmail) {
+        try {
+          const sub = await getOrCreateSubscription(leadEmail, nanoid(), nanoid());
+          // Double-opt-in: send confirmation mail only while pending (not already confirmed).
+          if (sub?.status === 'pending' && sub.doi_token) {
+            await sendDoiConfirmationEmail({ to: leadEmail, doiToken: sub.doi_token as string });
+          }
+        } catch (e) {
+          console.error('[FUNNEL] DOI subscription/email failed:', e);
+        }
+      }
+    }
+
     // Send PDF report email when the lead provided an email address
     if (leadEmail) {
       const rawClient = getRawClient();
@@ -167,7 +237,7 @@ router.post('/by-slug/:slug/submit', submitLimiter, async (req: Request<{ slug: 
       const funnelName = funnelMeta?.name ?? 'BeautyFlow';
 
       try {
-        const pdf = await renderLeadReportPdf({ funnelName, lead: leadRow as Parameters<typeof renderLeadReportPdf>[0]['lead'] });
+        const pdf = await renderLeadReportPdf({ funnelName, lead: { ...leadRow, scrapeData } as Parameters<typeof renderLeadReportPdf>[0]['lead'] });
         await sendLeadReportEmail({
           to: leadEmail,
           leadName: leadRow.name ?? '',

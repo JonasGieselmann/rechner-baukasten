@@ -121,3 +121,31 @@ export const lead = pgTable('lead', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
+
+// Auditable consent log (DSGVO Art. 7 Abs. 1: Nachweisbarkeit der Einwilligung).
+// Either userId (registrierte Nutzer) or leadId (anonyme Funnel-Leads) is set.
+export const consent = pgTable('consent', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
+  leadId: text('lead_id').references(() => lead.id, { onDelete: 'set null' }),
+  type: text('type').notNull(), // 'privacy' | 'terms' | 'marketing'
+  textVersion: text('text_version').notNull(),
+  grantedAt: timestamp('granted_at').notNull().defaultNow(),
+  withdrawnAt: timestamp('withdrawn_at'),
+  ipAddress: text('ip_address'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// Email opt-in / unsubscribe state, keyed by email so it covers both
+// anonymous leads and registered users. doiToken confirms double opt-in,
+// token is the stable unsubscribe handle embedded in every marketing mail.
+export const emailSubscription = pgTable('email_subscription', {
+  email: text('email').primaryKey(),
+  token: text('token').notNull().unique(),
+  doiToken: text('doi_token'),
+  status: text('status').notNull().default('pending'), // 'pending' | 'confirmed' | 'unsubscribed'
+  confirmedAt: timestamp('confirmed_at'),
+  unsubscribedAt: timestamp('unsubscribed_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});

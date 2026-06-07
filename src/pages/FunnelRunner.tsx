@@ -163,20 +163,25 @@ function LeadCaptureStep({
   onChange,
   onNext,
   theme,
+  consent,
+  onConsentChange,
 }: {
   step: Extract<FunnelStep, { type: 'lead-capture' }>;
   lead: LeadState;
   onChange: (key: LeadField, value: string) => void;
   onNext: () => void;
   theme: FunnelTheme;
+  consent: { privacy: boolean; marketing: boolean };
+  onConsentChange: (next: { privacy: boolean; marketing: boolean }) => void;
 }) {
-  const isValid = step.fields
+  const fieldsValid = step.fields
     .filter((f) => f.required)
     .every((f) => {
       const val = lead[f.key] ?? '';
       if (f.key === 'email') return val.includes('@');
       return val.trim().length > 0;
     });
+  const isValid = fieldsValid && consent.privacy;
 
   const inputType = (key: LeadField): string => {
     if (key === 'email') return 'email';
@@ -213,9 +218,47 @@ function LeadCaptureStep({
           </div>
         ))}
       </div>
-      {step.privacyNote && (
-        <p className="text-xs opacity-50">{step.privacyNote}</p>
-      )}
+      <div className="flex flex-col gap-2 mt-1">
+        <label className="flex items-start gap-2 text-xs cursor-pointer opacity-80">
+          <input
+            type="checkbox"
+            checked={consent.privacy}
+            onChange={(e) => onConsentChange({ ...consent, privacy: e.target.checked })}
+            data-testid="consent-privacy"
+            className="mt-0.5 h-4 w-4 shrink-0"
+            style={{ accentColor: theme.accentColor }}
+          />
+          <span className="leading-relaxed">
+            Ich habe die{' '}
+            <a
+              href="/datenschutz"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline"
+              style={{ color: theme.accentColor }}
+            >
+              Datenschutzerklärung
+            </a>{' '}
+            gelesen und willige in die Verarbeitung meiner Angaben zur Erstellung der Analyse ein.
+          </span>
+        </label>
+        <label className="flex items-start gap-2 text-xs cursor-pointer opacity-80">
+          <input
+            type="checkbox"
+            checked={consent.marketing}
+            onChange={(e) => onConsentChange({ ...consent, marketing: e.target.checked })}
+            data-testid="consent-marketing"
+            className="mt-0.5 h-4 w-4 shrink-0"
+            style={{ accentColor: theme.accentColor }}
+          />
+          <span className="leading-relaxed">
+            Ich möchte zusätzlich Tipps und Angebote per E-Mail erhalten (optional, jederzeit widerrufbar).
+          </span>
+        </label>
+        {step.privacyNote && (
+          <p className="text-xs opacity-50">{step.privacyNote}</p>
+        )}
+      </div>
       <PrimaryButton
         label={step.ctaLabel ?? 'Weiter'}
         onClick={onNext}
@@ -548,6 +591,7 @@ export default function FunnelRunner() {
   const [calcVars, setCalcVars] = useState<CalcVarsState>({});
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [consent, setConsent] = useState({ privacy: false, marketing: false });
 
   const submitAttempted = useRef(false);
   const utm = useRef<Record<string, string>>(readUtm());
@@ -607,6 +651,7 @@ export default function FunnelRunner() {
       kalkuPotential: hasKalku ? computeKalkuPotential(calcVars) : undefined,
       source: 'funnel',
       utm: utm.current,
+      consent,
     };
     submitFunnelLead(slug, payload)
       .then(() => { setSubmitted(true); setSubmitError(null); })
@@ -614,7 +659,7 @@ export default function FunnelRunner() {
         const msg = err instanceof Error ? err.message : 'Unbekannter Fehler';
         setSubmitError(msg);
       });
-  }, [slug, lead, answers, scores, recommendation, calcVars]);
+  }, [slug, lead, answers, scores, recommendation, calcVars, consent]);
 
   const handleResultMount = useCallback(() => {
     if (submitAttempted.current) return;
@@ -704,6 +749,8 @@ export default function FunnelRunner() {
             }
             onNext={advance}
             theme={theme}
+            consent={consent}
+            onConsentChange={setConsent}
           />
         );
       case 'question':

@@ -6,6 +6,18 @@ const TS = Date.now();
 const EMAIL = `e2e-bottomnav-${TS}@test.local`;
 const PW = 'Test1234!secure';
 
+// Pre-acknowledge the cookie notice so its fixed bottom bar never overlays
+// the submit controls on the small mobile viewport.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem('bf-cookie-notice-ack', '1');
+    } catch {
+      /* noop */
+    }
+  });
+});
+
 test('mobile dashboard with bottom nav', async ({ page }) => {
   const sql = postgres(process.env.DATABASE_URL!);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -14,6 +26,7 @@ test('mobile dashboard with bottom nav', async ({ page }) => {
   await page.getByPlaceholder('ihre@email.de').fill(EMAIL);
   await page.getByPlaceholder('Mindestens 8 Zeichen').fill(PW);
   await page.getByPlaceholder('Passwort wiederholen').fill(PW);
+  await page.getByTestId('accept-terms').check();
   await page.getByRole('button', { name: 'Konto erstellen' }).click();
   await page.waitForURL(/\/(admin|dashboard)\/?$/, { timeout: 10000 });
   await sql`UPDATE "user" SET role = 'customer' WHERE email = ${EMAIL}`;
@@ -52,6 +65,7 @@ test('result step apple redesign mobile', async ({ page }) => {
   await page.getByRole('button', { name: 'Los' }).click();
   await page.getByTestId('lead-field-name').fill('Anna');
   await page.getByTestId('lead-field-email').fill('anna@test.local');
+  await page.getByTestId('consent-privacy').check();
   await page.getByRole('button', { name: 'Weiter' }).click();
   await page.getByRole('button', { name: 'A' }).click();
   for (let i = 0; i < 3; i++) {

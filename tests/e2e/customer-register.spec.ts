@@ -43,6 +43,7 @@ test('registration auto-approves as customer and redirects to /dashboard', async
   await page.getByPlaceholder('ihre@email.de').fill(TEST_EMAIL);
   await page.getByPlaceholder('Mindestens 8 Zeichen').fill(TEST_PASSWORD);
   await page.getByPlaceholder('Passwort wiederholen').fill(TEST_PASSWORD);
+  await page.getByTestId('accept-terms').check();
 
   await page.getByRole('button', { name: 'Konto erstellen' }).click();
 

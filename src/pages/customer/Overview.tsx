@@ -3,7 +3,10 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../components/AuthProvider';
 import { BRAND } from '../../../branding/tokens';
 import { renderTitleWithItalics } from '../../lib/textFormat';
+import { computeProgress, overallScore, formatAnalysisDate, type AnalysisProgress } from '../../lib/analysis';
 import type { Lead } from '../../types';
+
+const POSITIVE = '#1FA971'; // green for improvement vs last month
 
 interface CardProps {
   title: string;
@@ -37,129 +40,145 @@ function PillCTA({ label, to }: { label: string; to: string }) {
   );
 }
 
-function ArrowLink({ label, to }: { label: string; to: string }) {
+function DeltaBadge({ delta }: { delta: number }) {
+  const positive = delta > 0;
   return (
-    <Link
-      to={to}
-      className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70"
-      style={{ color: BRAND.colors.primary }}
+    <span
+      className="text-xs font-semibold px-2 py-0.5 rounded-full"
+      style={{
+        backgroundColor: positive ? `${POSITIVE}22` : BRAND.colors.border,
+        color: positive ? POSITIVE : BRAND.colors.muted,
+      }}
     >
-      <span
-        className="w-5 h-5 rounded-full flex items-center justify-center text-xs flex-shrink-0"
-        style={{ backgroundColor: BRAND.colors.accent }}
-        aria-hidden="true"
-      >
-        &#x2192;
-      </span>
-      {label}
-    </Link>
+      {positive ? '+' : ''}
+      {delta} Punkte ggü. letzter Analyse
+    </span>
   );
 }
 
-function PotenzialCard({ lead, loading, empty }: { lead: Lead | null; loading: boolean; empty: boolean }) {
+function PotenzialCard({ progress, loading }: { progress: AnalysisProgress; loading: boolean }) {
+  const { latest, latestScore, scoreDelta, revenueDelta, dueForUpdate } = progress;
   return (
     <Card title="Ihre Potenzialanalyse">
-      {loading && (
-        <p className="text-sm" style={{ color: BRAND.colors.muted }}>Laden...</p>
-      )}
-      {!loading && empty && (
+      {loading && <p className="text-sm" style={{ color: BRAND.colors.muted }}>Laden...</p>}
+
+      {!loading && !latest && (
         <div className="space-y-4 flex-1 flex flex-col justify-between">
           <p className="text-sm leading-relaxed" style={{ color: BRAND.colors.muted }}>
-            Noch keine Analyse vorhanden. Starten Sie jetzt und entdecken Sie das
-            verborgene Potenzial Ihrer Praxis.
+            Noch keine Analyse vorhanden. Starten Sie jetzt und entdecken Sie das verborgene
+            Potenzial Ihrer Praxis.
           </p>
           <PillCTA label="Analyse starten" to="/dashboard/potenzialanalyse" />
         </div>
       )}
-      {!loading && lead && (
-        <div className="space-y-3 flex-1">
-          {lead.recommendation && (
-            <p className="text-sm leading-relaxed" style={{ color: BRAND.colors.text }}>
-              {lead.recommendation}
-            </p>
-          )}
-          {lead.scores && Object.keys(lead.scores).length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium" style={{ color: BRAND.colors.muted }}>
-                Gesamtscore:
-              </span>
-              <span className="text-sm font-semibold" style={{ color: BRAND.colors.primary }}>
-                {Math.round(
-                  Object.values(lead.scores).reduce((a, b) => a + b, 0) /
-                    Object.keys(lead.scores).length,
-                )}
-                /100
-              </span>
-            </div>
-          )}
-          {lead.kalkuPotential?.delta !== undefined && lead.kalkuPotential.delta > 0 && (
+
+      {!loading && latest && (
+        <div className="space-y-3 flex-1 flex flex-col">
+          <div className="flex items-end gap-3">
+            <span className="text-4xl font-semibold" style={{ color: BRAND.colors.text }}>
+              {latestScore}
+              <span className="text-lg" style={{ color: BRAND.colors.muted }}>/100</span>
+            </span>
+            {scoreDelta !== null && <DeltaBadge delta={scoreDelta} />}
+          </div>
+
+          {revenueDelta !== null && revenueDelta > 0 && (
             <div
-              className="rounded-xl px-4 py-2 text-sm font-semibold"
+              className="rounded-xl px-4 py-2 text-sm font-semibold self-start"
               style={{ backgroundColor: BRAND.colors.accent + '33', color: BRAND.colors.primary }}
             >
-              Mehrumsatz: +{lead.kalkuPotential.delta.toLocaleString('de-DE')} € / Monat
+              Mehrumsatz-Potenzial: +{revenueDelta.toLocaleString('de-DE')} € / Monat
             </div>
           )}
-          <Link
-            to="/dashboard/potenzialanalyse"
-            className="text-sm transition-opacity hover:opacity-70"
-            style={{ color: BRAND.colors.muted }}
-          >
-            Vollständige Auswertung ansehen &#x2192;
-          </Link>
+
+          {latest.recommendation && (
+            <p className="text-sm leading-relaxed" style={{ color: BRAND.colors.text }}>
+              {latest.recommendation}
+            </p>
+          )}
+
+          {dueForUpdate && (
+            <div
+              className="rounded-xl px-4 py-3 text-sm"
+              style={{ backgroundColor: BRAND.colors.background, color: BRAND.colors.muted }}
+            >
+              Ihre letzte Analyse ist über einen Monat alt. Wiederholen Sie sie monatlich, um
+              Ihren Fortschritt zu verfolgen.
+            </div>
+          )}
+
+          <div className="mt-auto pt-1">
+            {dueForUpdate ? (
+              <PillCTA label="Analyse aktualisieren" to="/dashboard/potenzialanalyse" />
+            ) : (
+              <Link
+                to="/dashboard/potenzialanalyse"
+                className="text-sm transition-opacity hover:opacity-70"
+                style={{ color: BRAND.colors.muted }}
+              >
+                Vollständige Auswertung ansehen &#x2192;
+              </Link>
+            )}
+          </div>
         </div>
       )}
     </Card>
   );
 }
 
-const NEXT_STEPS = [
-  { label: 'Vollständige Auswertung als PDF herunterladen', to: '/dashboard/potenzialanalyse' },
-  { label: 'Leitfaden durcharbeiten', to: '/dashboard/leitfaden' },
-  { label: 'Strategiegespräch buchen', to: '#termin' },
-];
-
-function NaechsteSchritteCard() {
+function FortschrittCard({ progress, loading }: { progress: AnalysisProgress; loading: boolean }) {
+  const { history, count } = progress;
   return (
-    <Card title="Nächste Schritte">
-      <ul className="space-y-3 flex-1">
-        {NEXT_STEPS.map((step) => (
-          <li key={step.label}>
-            <ArrowLink label={step.label} to={step.to} />
-          </li>
-        ))}
-      </ul>
+    <Card title="Ihr Fortschritt">
+      {loading && <p className="text-sm" style={{ color: BRAND.colors.muted }}>Laden...</p>}
+
+      {!loading && count <= 1 && (
+        <p className="text-sm leading-relaxed flex-1" style={{ color: BRAND.colors.muted }}>
+          Wiederholen Sie die Potenzialanalyse einmal im Monat. Ab der zweiten Analyse sehen Sie hier
+          Ihre Verbesserung in Grün.
+        </p>
+      )}
+
+      {!loading && count > 1 && (
+        <ul className="space-y-2 flex-1">
+          {history.slice(0, 5).map((entry: Lead, idx: number) => {
+            const score = overallScore(entry);
+            const older = history[idx + 1];
+            const delta = older ? score - overallScore(older) : null;
+            return (
+              <li key={entry.id} className="flex items-center justify-between gap-3">
+                <span className="text-sm" style={{ color: BRAND.colors.muted }}>
+                  {formatAnalysisDate(entry.createdAt)}
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="text-sm font-semibold" style={{ color: BRAND.colors.text }}>
+                    {score}/100
+                  </span>
+                  {delta !== null && delta !== 0 && (
+                    <span
+                      className="text-xs font-semibold"
+                      style={{ color: delta > 0 ? POSITIVE : BRAND.colors.muted }}
+                    >
+                      {delta > 0 ? '+' : ''}
+                      {delta}
+                    </span>
+                  )}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </Card>
   );
 }
 
 function LeitfadenCard() {
-  const sections = 4;
-  const done = 0;
-  const pct = Math.round((done / sections) * 100);
-
   return (
     <Card title="BeautyFlow Leitfaden">
-      <div className="flex-1 space-y-3">
-        <p className="text-sm leading-relaxed" style={{ color: BRAND.colors.muted }}>
-          Schritt für Schritt zu mehr Patienten, strukturiert und mit System.
-        </p>
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs" style={{ color: BRAND.colors.muted }}>
-            <span>{done}/{sections} Kapitel</span>
-            <span>{pct}%</span>
-          </div>
-          <div
-            className="h-1.5 rounded-full overflow-hidden"
-            style={{ backgroundColor: BRAND.colors.border }}
-          >
-            <div
-              className="h-full rounded-full transition-all"
-              style={{ width: `${pct}%`, backgroundColor: BRAND.colors.accent }}
-            />
-          </div>
-        </div>
-      </div>
+      <p className="text-sm leading-relaxed flex-1" style={{ color: BRAND.colors.muted }}>
+        Schritt für Schritt zu mehr Patienten, strukturiert und mit System.
+      </p>
       <PillCTA label="Leitfaden öffnen" to="/dashboard/leitfaden" />
     </Card>
   );
@@ -167,16 +186,13 @@ function LeitfadenCard() {
 
 function StrategiegespraechCard() {
   return (
-    <Card title="Strategiegespräch">
+    <Card title="Nächster Schritt">
       <div className="flex-1 space-y-2">
         <p className="text-xl font-semibold" style={{ color: BRAND.colors.text }}>
-          Kostenloses Erstgespräch
+          Kostenloses Strategiegespräch
         </p>
         <p className="text-sm leading-relaxed" style={{ color: BRAND.colors.muted }}>
-          30 Minuten, strukturiert, kein Druck.
-        </p>
-        <p className="text-xs" style={{ color: BRAND.colors.muted }}>
-          noch nicht freigeschaltet
+          30 Minuten, strukturiert, kein Druck. Wir zeigen Ihnen, wie Sie Ihr Potenzial heben.
         </p>
       </div>
       <a
@@ -195,32 +211,21 @@ function StrategiegespraechCard() {
 
 export default function Overview() {
   const { user } = useAuth();
-  const [lead, setLead] = useState<Lead | null>(null);
-  const [empty, setEmpty] = useState(false);
+  const [progress, setProgress] = useState<AnalysisProgress>(computeProgress([]));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/me/leads', { credentials: 'include' })
       .then((r) => r.json())
       .then((data: Lead[]) => {
-        if (Array.isArray(data) && data.length > 0) {
-          const sorted = [...data].sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-          );
-          setLead(sorted[0]);
-        } else {
-          setEmpty(true);
-        }
+        if (Array.isArray(data)) setProgress(computeProgress(data));
       })
-      .catch(() => setEmpty(true))
+      .catch(() => undefined)
       .finally(() => setLoading(false));
   }, []);
 
   const displayName = user?.name?.trim() || user?.email || '';
-
-  const greeting = displayName
-    ? `Willkommen *zurück*, ${displayName}`
-    : 'Schön, dass Sie da sind.';
+  const greeting = displayName ? `Willkommen *zurück*, ${displayName}` : 'Schön, dass Sie da sind.';
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -234,8 +239,8 @@ export default function Overview() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <PotenzialCard lead={lead} loading={loading} empty={empty} />
-        <NaechsteSchritteCard />
+        <PotenzialCard progress={progress} loading={loading} />
+        <FortschrittCard progress={progress} loading={loading} />
         <LeitfadenCard />
         <StrategiegespraechCard />
       </div>

@@ -30,6 +30,7 @@ test('super_admin can toggle between /admin and /dashboard via header buttons', 
   await page.getByPlaceholder('ihre@email.de').fill(TEST_EMAIL);
   await page.getByPlaceholder('Mindestens 8 Zeichen').fill(TEST_PASSWORD);
   await page.getByPlaceholder('Passwort wiederholen').fill(TEST_PASSWORD);
+  await page.getByTestId('accept-terms').check();
   await page.getByRole('button', { name: 'Konto erstellen' }).click();
   await page.waitForURL(/\/(admin|dashboard)\/?$/, { timeout: 10000 });
 

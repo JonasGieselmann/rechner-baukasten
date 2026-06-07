@@ -19,6 +19,7 @@ export function Register() {
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [instagramHandle, setInstagramHandle] = useState('');
   const [gmbUrl, setGmbUrl] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const inputStyle = {
     backgroundColor: BRAND.colors.card,
@@ -37,6 +38,11 @@ export function Register() {
 
     if (password.length < 8) {
       setError('Das Passwort muss mindestens 8 Zeichen lang sein.');
+      return;
+    }
+
+    if (!acceptedTerms) {
+      setError('Bitte stimmen Sie der Datenschutzerklärung und den AGB zu.');
       return;
     }
 
@@ -217,9 +223,32 @@ export function Register() {
               )}
             </div>
 
+            <label className="flex items-start gap-3 text-sm cursor-pointer" style={{ color: BRAND.colors.muted }}>
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                required
+                data-testid="accept-terms"
+                className="mt-0.5 h-4 w-4 shrink-0"
+                style={{ accentColor: BRAND.colors.primary }}
+              />
+              <span className="leading-relaxed">
+                Ich habe die{' '}
+                <Link to="/datenschutz" target="_blank" className="underline" style={{ color: BRAND.colors.primary }}>
+                  Datenschutzerklärung
+                </Link>{' '}
+                gelesen und stimme den{' '}
+                <Link to="/agb" target="_blank" className="underline" style={{ color: BRAND.colors.primary }}>
+                  AGB
+                </Link>{' '}
+                zu.
+              </span>
+            </label>
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !acceptedTerms}
               className="w-full py-3 px-4 rounded-full font-semibold transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
             >

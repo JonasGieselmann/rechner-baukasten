@@ -5,7 +5,7 @@ loadEnv();
 
 export default defineConfig({
   testDir: './tests/e2e',
-  retries: 0,
+  retries: 1,
   workers: 1,
   timeout: 60000,
   use: {

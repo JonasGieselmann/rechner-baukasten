@@ -298,3 +298,168 @@ export async function getUserById(userId: string) {
   `;
   return result[0] || null;
 }
+
+// ============================================
+// Compliance: consent log + email subscriptions
+// ============================================
+
+// Initialize compliance tables (idempotent)
+export async function initComplianceSchema() {
+  await client`
+    CREATE TABLE IF NOT EXISTS consent (
+      id TEXT PRIMARY KEY,
+      user_id TEXT REFERENCES "user"(id) ON DELETE CASCADE,
+      lead_id TEXT REFERENCES lead(id) ON DELETE SET NULL,
+      type TEXT NOT NULL,
+      text_version TEXT NOT NULL,
+      granted_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      withdrawn_at TIMESTAMP,
+      ip_address TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `;
+  await client`CREATE INDEX IF NOT EXISTS consent_user_id_idx ON consent(user_id)`;
+  await client`CREATE INDEX IF NOT EXISTS consent_lead_id_idx ON consent(lead_id)`;
+
+  await client`
+    CREATE TABLE IF NOT EXISTS email_subscription (
+      email TEXT PRIMARY KEY,
+      token TEXT NOT NULL UNIQUE,
+      doi_token TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      confirmed_at TIMESTAMP,
+      unsubscribed_at TIMESTAMP,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `;
+  console.log('Compliance schema initialized (PostgreSQL)');
+}
+
+// Record a consent entry. type: 'privacy' | 'terms' | 'marketing'
+export async function recordConsent(params: {
+  id: string;
+  userId?: string | null;
+  leadId?: string | null;
+  type: string;
+  textVersion: string;
+  ipAddress?: string | null;
+}): Promise<void> {
+  await client`
+    INSERT INTO consent (id, user_id, lead_id, type, text_version, ip_address)
+    VALUES (${params.id}, ${params.userId ?? null}, ${params.leadId ?? null}, ${params.type}, ${params.textVersion}, ${params.ipAddress ?? null})
+  `;
+}
+
+// List consents (active + withdrawn) for a user
+export async function getConsentsForUser(userId: string) {
+  const validatedId = validateUserId(userId);
+  return await client`
+    SELECT id, type, text_version, granted_at, withdrawn_at
+    FROM consent WHERE user_id = ${validatedId}
+    ORDER BY granted_at DESC
+  `;
+}
+
+// Withdraw a consent (scoped to the owning user)
+export async function withdrawConsent(userId: string, consentId: string): Promise<boolean> {
+  const validatedId = validateUserId(userId);
+  if (!isValidId(consentId)) throw new Error('Invalid consent ID');
+  const result = await client`
+    UPDATE consent SET withdrawn_at = NOW()
+    WHERE id = ${consentId} AND user_id = ${validatedId} AND withdrawn_at IS NULL
+    RETURNING id
+  `;
+  return result.length > 0;
+}
+
+// Aggregate all personal data of a user for the DSGVO Art. 20 export
+export async function getUserDataExport(userId: string) {
+  const validatedId = validateUserId(userId);
+  const [u] = await client`
+    SELECT id, name, email, role, approved, phone, business_name, website_url,
+           instagram_handle, gmb_url, created_at, updated_at
+    FROM "user" WHERE id = ${validatedId}
+  `;
+  const leads = await client`
+    SELECT id, funnel_id, name, email, phone, business_name, website_url, instagram_handle,
+           gmb_url, answers, scores, recommendation, kalku_potential, scrape_data, scrape_status,
+           source, status, created_at
+    FROM lead WHERE user_id = ${validatedId} ORDER BY created_at DESC
+  `;
+  const consents = await client`
+    SELECT id, type, text_version, granted_at, withdrawn_at
+    FROM consent WHERE user_id = ${validatedId} ORDER BY granted_at DESC
+  `;
+  let subscription = null;
+  if (u?.email) {
+    const subs = await client`
+      SELECT email, status, confirmed_at, unsubscribed_at
+      FROM email_subscription WHERE email = ${u.email}
+    `;
+    subscription = subs[0] ?? null;
+  }
+  return { user: u ?? null, leads, consents, subscription };
+}
+
+// Upsert an email subscription, returning its current state
+export async function getOrCreateSubscription(email: string, token: string, doiToken: string) {
+  const normalized = email.toLowerCase().trim();
+  const result = await client`
+    INSERT INTO email_subscription (email, token, doi_token, status)
+    VALUES (${normalized}, ${token}, ${doiToken}, 'pending')
+    ON CONFLICT (email) DO UPDATE SET
+      doi_token = EXCLUDED.doi_token,
+      token = CASE WHEN email_subscription.status = 'unsubscribed' THEN EXCLUDED.token ELSE email_subscription.token END,
+      status = CASE WHEN email_subscription.status = 'unsubscribed' THEN 'pending' ELSE email_subscription.status END,
+      updated_at = NOW()
+    RETURNING email, token, doi_token, status
+  `;
+  return result[0];
+}
+
+// Confirm double opt-in via the DOI token
+export async function confirmSubscriptionByDoiToken(doiToken: string): Promise<boolean> {
+  if (!isValidId(doiToken)) return false;
+  const result = await client`
+    UPDATE email_subscription
+    SET status = 'confirmed', confirmed_at = NOW(), updated_at = NOW()
+    WHERE doi_token = ${doiToken} AND status <> 'unsubscribed'
+    RETURNING email
+  `;
+  return result.length > 0;
+}
+
+// Unsubscribe via the stable unsubscribe token
+export async function unsubscribeByToken(token: string): Promise<boolean> {
+  if (!isValidId(token)) return false;
+  const result = await client`
+    UPDATE email_subscription
+    SET status = 'unsubscribed', unsubscribed_at = NOW(), updated_at = NOW()
+    WHERE token = ${token}
+    RETURNING email
+  `;
+  return result.length > 0;
+}
+
+// Unsubscribe by email (authenticated self-service, no token needed)
+export async function unsubscribeByEmail(email: string): Promise<boolean> {
+  const normalized = email.toLowerCase().trim();
+  const result = await client`
+    UPDATE email_subscription
+    SET status = 'unsubscribed', unsubscribed_at = NOW(), updated_at = NOW()
+    WHERE email = ${normalized}
+    RETURNING email
+  `;
+  return result.length > 0;
+}
+
+// Subscription state for a given email (for self-service display)
+export async function getSubscriptionByEmail(email: string) {
+  const normalized = email.toLowerCase().trim();
+  const subs = await client`
+    SELECT email, status, confirmed_at, unsubscribed_at
+    FROM email_subscription WHERE email = ${normalized}
+  `;
+  return subs[0] ?? null;
+}

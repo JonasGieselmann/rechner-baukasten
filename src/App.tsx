@@ -17,10 +17,15 @@ import Overview from './pages/customer/Overview';
 import PotenzialanalyseEmbed from './pages/customer/PotenzialanalyseEmbed';
 import Leitfaden from './pages/customer/Leitfaden';
 import Account from './pages/customer/Account';
+import Rechtliches from './pages/customer/Rechtliches';
 import { AuthProvider } from './components/AuthProvider';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AdminRoute } from './components/AdminRoute';
 import { IndexRedirect } from './components/IndexRedirect';
+import { LegalPage } from './components/LegalPage';
+import { CookieNotice } from './components/CookieNotice';
+import { IMPRESSUM, DATENSCHUTZ, AGB } from './lib/legalContent';
+import { Unsubscribe, ConfirmEmail } from './pages/MailAction';
 
 function App() {
   return (
@@ -35,6 +40,15 @@ function App() {
           <Route path="/embed/:id" element={<BuilderEmbed />} />
           <Route path="/embed/custom/:slug" element={<CustomEmbed />} />
           <Route path="/funnel/:slug" element={<FunnelRunner />} />
+
+          {/* Legal pages (public, required without login) */}
+          <Route path="/impressum" element={<LegalPage doc={IMPRESSUM} />} />
+          <Route path="/datenschutz" element={<LegalPage doc={DATENSCHUTZ} />} />
+          <Route path="/agb" element={<LegalPage doc={AGB} />} />
+
+          {/* Email link actions (public) */}
+          <Route path="/abmelden" element={<Unsubscribe />} />
+          <Route path="/mail-bestaetigen" element={<ConfirmEmail />} />
 
           {/* Root: role-based redirect to /admin or /dashboard */}
           <Route path="/" element={<IndexRedirect />} />
@@ -52,6 +66,7 @@ function App() {
             <Route path="potenzialanalyse" element={<PotenzialanalyseEmbed />} />
             <Route path="leitfaden" element={<Leitfaden />} />
             <Route path="account" element={<Account />} />
+            <Route path="rechtliches" element={<Rechtliches />} />
           </Route>
 
           {/* Admin (super_admin only): old calculator builder + funnel editor */}
@@ -123,6 +138,7 @@ function App() {
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <CookieNotice />
       </AuthProvider>
     </BrowserRouter>
   );

@@ -37,6 +37,13 @@ export interface LeadRow {
     withCapacity?: number;
     delta?: number;
   } | null;
+  scrapeData?: {
+    summary?: {
+      brandingScore?: number | null;
+      followers?: number | null;
+      insights?: string[];
+    };
+  } | null;
   createdAt?: Date | string | null;
 }
 
@@ -53,7 +60,7 @@ const SPIDER_DIMENSIONS: Array<{ key: string; label: string }> = [
 ];
 
 const NEXT_STEPS = [
-  'Kostenloses Erstgespraech vereinbaren und individuelle Potenziale besprechen.',
+  'Kostenloses Erstgespräch vereinbaren und individuelle Potenziale besprechen.',
   'Maßnahmenplan für die drei wichtigsten Optimierungsfelder erstellen.',
   'Erste Quick-Wins umsetzen und Fortschritt nach 30 Tagen messen.',
 ];
@@ -300,7 +307,7 @@ function KalkuBlock({ potential }: { potential: NonNullable<LeadRow['kalkuPotent
           <Text style={styles.kalkuCellValue}>{formatEur(potential.current ?? 0)}</Text>
         </View>
         <View style={styles.kalkuCell}>
-          <Text style={styles.kalkuCellLabel}>Mit Kapazitaet</Text>
+          <Text style={styles.kalkuCellLabel}>Mit Kapazität</Text>
           <Text style={styles.kalkuCellValue}>{formatEur(potential.withCapacity ?? 0)}</Text>
         </View>
       </View>
@@ -325,10 +332,36 @@ function RecommendationBlock({ text }: { text: string }) {
   );
 }
 
+function BrandingBlock({ data }: { data: NonNullable<LeadRow['scrapeData']> }) {
+  const s = data.summary;
+  if (!s) return null;
+  const insights = (s.insights ?? []).slice(0, 4);
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Branding und Sichtbarkeit</Text>
+      {typeof s.brandingScore === 'number' && (
+        <View style={styles.kalkuDeltaBox}>
+          <Text style={styles.kalkuDeltaLabel}>Website-Branding-Score:</Text>
+          <Text style={styles.kalkuDeltaValue}>{s.brandingScore}/100</Text>
+        </View>
+      )}
+      {typeof s.followers === 'number' && (
+        <Text style={styles.recText}>Instagram-Follower: {s.followers.toLocaleString('de-DE')}</Text>
+      )}
+      {insights.map((ins, i) => (
+        <View key={i} style={styles.stepRow}>
+          <Text style={styles.stepNumber}>-</Text>
+          <Text style={styles.stepText}>{ins}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function NextStepsBlock() {
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Naechste Schritte</Text>
+      <Text style={styles.sectionTitle}>Nächste Schritte</Text>
       {NEXT_STEPS.map((step, i) => (
         <View key={i} style={styles.stepRow}>
           <Text style={styles.stepNumber}>{i + 1}.</Text>
@@ -355,7 +388,7 @@ function LeadReportDocument({ funnelName, lead }: { funnelName: string; lead: Le
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>BeautyFlow Potenzialanalyse</Text>
-          <Text style={styles.subtitle}>{funnelName} - Persoenliche Auswertung</Text>
+          <Text style={styles.subtitle}>{funnelName} - Persönliche Auswertung</Text>
         </View>
 
         <View style={styles.divider} />
@@ -376,6 +409,13 @@ function LeadReportDocument({ funnelName, lead }: { funnelName: string; lead: Le
         {lead.recommendation && (
           <>
             <RecommendationBlock text={lead.recommendation} />
+            <View style={styles.divider} />
+          </>
+        )}
+
+        {lead.scrapeData?.summary && (
+          <>
+            <BrandingBlock data={lead.scrapeData} />
             <View style={styles.divider} />
           </>
         )}

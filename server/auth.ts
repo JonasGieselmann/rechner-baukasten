@@ -1,6 +1,8 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { db, schema, trySetFirstUserAsSuperAdmin, setUserAsCustomer } from './db.js';
+import { nanoid } from 'nanoid';
+import { db, schema, trySetFirstUserAsSuperAdmin, setUserAsCustomer, recordConsent } from './db.js';
+import { LEGAL_VERSIONS } from './legal.js';
 
 // ============================================
 // Security Configuration
@@ -52,6 +54,11 @@ export const auth = betterAuth({
       maxAge: 60 * 5, // 5 minutes - reduces database lookups
     },
   },
+  // Rate limiting protects auth endpoints in production; disabled in dev/e2e so
+  // serial test registrations are not throttled.
+  rateLimit: {
+    enabled: isProduction,
+  },
   // Security: Only allow requests from trusted origins
   trustedOrigins,
   // Advanced security settings
@@ -77,6 +84,14 @@ export const auth = betterAuth({
           } else {
             await setUserAsCustomer(user.id);
             console.log(`User ${user.email} auto-approved as customer`);
+          }
+          // Registration requires accepting privacy policy + terms (enforced in
+          // the Register UI); log both consents for auditability.
+          try {
+            await recordConsent({ id: nanoid(), userId: user.id, type: 'privacy', textVersion: LEGAL_VERSIONS.privacy });
+            await recordConsent({ id: nanoid(), userId: user.id, type: 'terms', textVersion: LEGAL_VERSIONS.terms });
+          } catch (e) {
+            console.error('Registration consent record failed:', e);
           }
         },
       },

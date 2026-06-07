@@ -164,11 +164,12 @@ test('should complete funnel flow and persist lead in database', async ({ page }
   await expect(page.getByText('Hi')).toBeVisible();
   await page.getByRole('button', { name: 'Los' }).click();
 
-  await expect(page.getByText('Daten')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Daten' })).toBeVisible();
   const nameInput = page.getByTestId('lead-field-name');
   const emailInput = page.getByTestId('lead-field-email');
   await nameInput.fill('Max Mustermann');
   await emailInput.fill('max@example.com');
+  await page.getByTestId('consent-privacy').check();
   await page.getByRole('button', { name: 'Weiter' }).click();
 
   await expect(page.getByText('Frage 1')).toBeVisible();
@@ -245,6 +246,7 @@ test('full path: hero with italic accent, calc-input, Kalku block, CTA, kalkuPot
   // Lead-capture
   await page.getByTestId('lead-field-name').fill('Anna Test');
   await page.getByTestId('lead-field-email').fill('anna@example.com');
+  await page.getByTestId('consent-privacy').check();
   await page.getByRole('button', { name: 'Weiter' }).click();
 
   // Question (single-select, auto-advances)
@@ -256,7 +258,7 @@ test('full path: hero with italic accent, calc-input, Kalku block, CTA, kalkuPot
   }
 
   // Result step: Kalku block and recommendation present
-  await expect(page.getByText('Ihr Umsatz-Potenzial')).toBeVisible();
+  await expect(page.getByText('Ihr Wachstumspotenzial')).toBeVisible();
   await expect(page.getByText('Mehrumsatz pro Monat')).toBeVisible();
   await expect(page.getByText(/Skalierungsliga|Fundament|automatische Buchungen|qualifizierte Leads/)).toBeVisible();
   await page.screenshot({ path: 'test-results/funnel-runner-full/2-result.png', fullPage: true });
@@ -264,7 +266,7 @@ test('full path: hero with italic accent, calc-input, Kalku block, CTA, kalkuPot
   // Submit fired, lead in DB with kalkuPotential
   await page.waitForTimeout(1500);
   const leads = await sql`
-    SELECT name, email, recommendation, kalku_potential FROM lead
+    SELECT id, name, email, recommendation, kalku_potential FROM lead
     WHERE funnel_id = ${fullFunnelId}
     LIMIT 10
   `;
@@ -274,4 +276,10 @@ test('full path: hero with italic accent, calc-input, Kalku block, CTA, kalkuPot
   expect(leads[0].kalku_potential).not.toBeNull();
   expect((leads[0].kalku_potential as { delta: number }).delta).toBeGreaterThan(0);
   expect(leads[0].recommendation).toBeTruthy();
+
+  // DSGVO: privacy consent was persisted for this lead (audit trail)
+  const consents = await sql`
+    SELECT type, text_version FROM consent WHERE lead_id = ${leads[0].id as string}
+  `;
+  expect(consents.some((c) => c.type === 'privacy')).toBe(true);
 });

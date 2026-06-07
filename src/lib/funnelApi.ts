@@ -16,6 +16,7 @@ export interface LeadSubmission {
   kalkuPotential?: Record<string, number>;
   utm?: Record<string, string>;
   source?: string;
+  consent?: { privacy: boolean; marketing: boolean };
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

@@ -47,6 +47,13 @@ const AccountIcon = () => (
   </svg>
 );
 
+const RechtIcon = () => (
+  <svg {...iconBase} aria-hidden="true">
+    <path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
+    <path d="M9 12l2 2 4-4" />
+  </svg>
+);
+
 const BellIcon = () => (
   <svg {...iconBase} width="18" height="18" aria-hidden="true">
     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -65,6 +72,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Übersicht', shortLabel: 'Übersicht', path: '/dashboard', icon: <OverviewIcon /> },
   { label: 'Potenzialanalyse', shortLabel: 'Analyse', path: '/dashboard/potenzialanalyse', icon: <PotenzialIcon /> },
   { label: 'Leitfaden', shortLabel: 'Leitfaden', path: '/dashboard/leitfaden', icon: <LeitfadenIcon /> },
+  { label: 'Rechtliches', shortLabel: 'Recht', path: '/dashboard/rechtliches', icon: <RechtIcon /> },
   { label: 'Account', shortLabel: 'Account', path: '/dashboard/account', icon: <AccountIcon /> },
 ];
 

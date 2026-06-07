@@ -5,12 +5,13 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { toNodeHandler } from 'better-auth/node';
 import { auth } from './auth.js';
-import { checkDb, initAuthSchema, initFunnelSchema, initAppSettings } from './db.js';
+import { checkDb, initAuthSchema, initFunnelSchema, initAppSettings, initComplianceSchema } from './db.js';
 import customCalculatorsRouter, { seedCustomCalculators } from './custom-calculators.js';
 import adminRouter from './admin.js';
 import settingsRouter from './settings.js';
 import funnelsRouter from './funnels.js';
 import meRouter from './me.js';
+import complianceRouter from './compliance.js';
 import { getFromS3, isS3Configured } from './s3.js';
 import { Readable } from 'stream';
 import path from 'path';
@@ -65,6 +66,7 @@ const generalLimiter = rateLimit({
   message: { error: 'Too many requests, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => !isProduction, // do not throttle local dev / e2e
 });
 
 // Stricter rate limit for auth endpoints
@@ -74,6 +76,7 @@ const authLimiter = rateLimit({
   message: { error: 'Too many authentication attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => !isProduction, // do not throttle local dev / e2e
 });
 
 // Apply general rate limiting to all API routes
@@ -145,6 +148,9 @@ app.get('/api/health', async (req, res) => {
 
 // Me (self-service) API: GET (session+user), PATCH (profile), GET /leads
 app.use('/api/me', meRouter);
+
+// Compliance API: DSGVO export, consents, email opt-in/unsubscribe
+app.use('/api/compliance', complianceRouter);
 
 // Custom Calculators API
 app.use('/api/custom-calculators', customCalculatorsRouter);
@@ -278,6 +284,7 @@ async function start() {
     await initAuthSchema();
     await initFunnelSchema();
     await initAppSettings();
+    await initComplianceSchema();
 
     // Seed custom calculators to S3 (non-fatal - server starts even if S3 fails)
     try {

@@ -75,6 +75,7 @@ test('2. funnel result with weiter to cta-booking', async ({ page }: { page: Pag
   await page.getByTestId('lead-field-name').fill('Test Person');
   await page.getByTestId('lead-field-email').fill('test@example.com');
   await page.getByTestId('lead-field-businessName').fill('Test Praxis');
+  await page.getByTestId('consent-privacy').check();
   await page.getByRole('button', { name: 'Weiter' }).click();
   await page.getByRole('button', { name: 'Über 50' }).click();
   await page.waitForTimeout(500);
@@ -92,6 +93,7 @@ test('3. customer dashboard with icons and sidebar', async ({ page }: { page: Pa
   await page.getByPlaceholder('ihre@email.de').fill(CUSTOMER_EMAIL);
   await page.getByPlaceholder('Mindestens 8 Zeichen').fill(CUSTOMER_PW);
   await page.getByPlaceholder('Passwort wiederholen').fill(CUSTOMER_PW);
+  await page.getByTestId('accept-terms').check();
   await page.getByRole('button', { name: 'Konto erstellen' }).click();
   await page.waitForURL(/\/(admin|dashboard)\/?$/, { timeout: 10000 });
   if (page.url().endsWith('/admin')) {
@@ -101,10 +103,10 @@ test('3. customer dashboard with icons and sidebar', async ({ page }: { page: Pa
   }
   await expect(page.locator('header').getByText('Beauty').first()).toBeVisible();
   await page.screenshot({ path: `${SCREENSHOTS}/04-dashboard-overview.png`, fullPage: true });
-  await page.getByRole('link', { name: /Leitfaden/ }).click();
+  await page.getByRole('link', { name: 'Leitfaden', exact: true }).click();
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${SCREENSHOTS}/05-dashboard-leitfaden.png`, fullPage: true });
-  await page.getByRole('link', { name: /Account/ }).click();
+  await page.getByRole('link', { name: 'Account', exact: true }).click();
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${SCREENSHOTS}/06-dashboard-account.png`, fullPage: true });
 });
@@ -116,6 +118,7 @@ test('4. admin settings page', async ({ page }: { page: Page }) => {
   await page.getByPlaceholder('ihre@email.de').fill(SUPERADMIN_EMAIL);
   await page.getByPlaceholder('Mindestens 8 Zeichen').fill(SUPERADMIN_PW);
   await page.getByPlaceholder('Passwort wiederholen').fill(SUPERADMIN_PW);
+  await page.getByTestId('accept-terms').check();
   await page.getByRole('button', { name: 'Konto erstellen' }).click();
   await page.waitForURL(/\/(admin|dashboard)\/?$/, { timeout: 10000 });
   await sql`UPDATE "user" SET role = 'super_admin', approved = true WHERE email = ${SUPERADMIN_EMAIL}`;
