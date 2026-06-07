@@ -5,7 +5,7 @@ import { fromNodeHeaders } from 'better-auth/node';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { auth } from './auth.js';
 import { db, schema, getRawClient, recordConsent, getOrCreateSubscription } from './db.js';
-import { requireAuth, type AuthenticatedRequest } from './middleware.js';
+import { requireAuth, requireRole, type AuthenticatedRequest } from './middleware.js';
 import { isValidSlug, sanitizeString } from './utils.js';
 import { renderLeadReportPdf } from './pdf/leadReport.js';
 import { sendLeadReportEmail, sendDoiConfirmationEmail } from './mailer.js';
@@ -107,7 +107,7 @@ router.post('/by-slug/:slug/submit', submitLimiter, async (req: Request<{ slug: 
     if (!isValidSlug(slug)) return res.status(400).json({ error: 'Invalid slug' });
 
     const [funnelRow] = await db
-      .select({ id: schema.funnel.id, status: schema.funnel.status })
+      .select({ id: schema.funnel.id, status: schema.funnel.status, orgId: schema.funnel.orgId })
       .from(schema.funnel)
       .where(eq(schema.funnel.slug, slug))
       .limit(1);
@@ -144,6 +144,7 @@ router.post('/by-slug/:slug/submit', submitLimiter, async (req: Request<{ slug: 
       .values({
         id,
         funnelId: funnelRow.id,
+        orgId: funnelRow.orgId ?? 'default',
         userId,
         name: sanitizeString(body.name, 200) || null,
         email: sanitizeString(body.email, 200) || null,
@@ -280,7 +281,7 @@ function funnelListScope(req: AuthenticatedRequest) {
 }
 
 // GET /api/funnels - list (org-scoped), with on-demand leads count
-router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get('/', requireRole('super_admin', 'agency_admin'), async (req: AuthenticatedRequest, res) => {
   try {
     const rows = await db
       .select({
@@ -306,7 +307,7 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
 });
 
 // POST /api/funnels - create
-router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.post('/', requireRole('super_admin', 'agency_admin'), async (req: AuthenticatedRequest, res) => {
   try {
     const name = sanitizeString(req.body?.name, 100);
     const description = sanitizeString(req.body?.description, 500);
@@ -314,6 +315,9 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
     const incomingConfig = req.body?.config;
 
     if (!name) return res.status(400).json({ error: 'Name is required' });
+    if (req.user!.role === 'agency_admin' && !req.user!.orgId) {
+      return res.status(400).json({ error: 'Kein Org-Kontext. Bitte neu anmelden.' });
+    }
 
     const baseSlug = requestedSlug && isValidSlug(requestedSlug) ? requestedSlug : slugify(name);
     const slug = await ensureUniqueSlug(baseSlug);
@@ -343,7 +347,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res) => {
 });
 
 // GET /api/funnels/:id - one (mine)
-router.get('/:id', requireAuth, async (req: AuthenticatedRequest<{ id: string }>, res) => {
+router.get('/:id', requireRole('super_admin', 'agency_admin'), async (req: AuthenticatedRequest<{ id: string }>, res) => {
   try {
     const [row] = await db
       .select()
@@ -359,7 +363,7 @@ router.get('/:id', requireAuth, async (req: AuthenticatedRequest<{ id: string }>
 });
 
 // PATCH /api/funnels/:id - update
-router.patch('/:id', requireAuth, async (req: AuthenticatedRequest<{ id: string }>, res) => {
+router.patch('/:id', requireRole('super_admin', 'agency_admin'), async (req: AuthenticatedRequest<{ id: string }>, res) => {
   try {
     const [existing] = await db
       .select()
@@ -406,7 +410,7 @@ router.patch('/:id', requireAuth, async (req: AuthenticatedRequest<{ id: string 
 });
 
 // DELETE /api/funnels/:id
-router.delete('/:id', requireAuth, async (req: AuthenticatedRequest<{ id: string }>, res) => {
+router.delete('/:id', requireRole('super_admin', 'agency_admin'), async (req: AuthenticatedRequest<{ id: string }>, res) => {
   try {
     const result = await db
       .delete(schema.funnel)
@@ -421,7 +425,7 @@ router.delete('/:id', requireAuth, async (req: AuthenticatedRequest<{ id: string
 });
 
 // GET /api/funnels/:id/leads - list leads of one of my funnels
-router.get('/:id/leads', requireAuth, async (req: AuthenticatedRequest<{ id: string }>, res) => {
+router.get('/:id/leads', requireRole('super_admin', 'agency_admin'), async (req: AuthenticatedRequest<{ id: string }>, res) => {
   try {
     const [own] = await db
       .select({ id: schema.funnel.id })

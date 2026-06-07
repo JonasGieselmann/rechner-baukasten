@@ -22,7 +22,7 @@ export default function Plans() {
 
   useEffect(() => {
     fetch('/api/plans', { credentials: 'include' })
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : []))
       .then((d) => Array.isArray(d) && setPlans(d))
       .catch(() => undefined);
     fetch('/api/plans/me', { credentials: 'include' })

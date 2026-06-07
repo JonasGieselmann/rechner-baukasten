@@ -341,6 +341,10 @@ export async function initOrganizationSchema() {
   await client`CREATE INDEX IF NOT EXISTS user_org_id_idx ON "user"(org_id)`;
   await client`CREATE INDEX IF NOT EXISTS funnel_org_id_idx ON funnel(org_id)`;
   await client`CREATE INDEX IF NOT EXISTS lead_org_id_idx ON lead(org_id)`;
+  // Enforce NOT NULL now that every row is backfilled + the column has a default.
+  await client`ALTER TABLE "user" ALTER COLUMN org_id SET NOT NULL`;
+  await client`ALTER TABLE funnel ALTER COLUMN org_id SET NOT NULL`;
+  await client`ALTER TABLE lead ALTER COLUMN org_id SET NOT NULL`;
   console.log('Organization schema initialized (PostgreSQL)');
 }
 
@@ -423,7 +427,7 @@ export async function initDashboardSchema() {
   await client`
     CREATE TABLE IF NOT EXISTS dashboard (
       id TEXT PRIMARY KEY,
-      org_id TEXT NOT NULL,
+      org_id TEXT NOT NULL REFERENCES organization(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),

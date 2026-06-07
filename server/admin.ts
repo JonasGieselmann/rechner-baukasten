@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAllUsers, approveUser, deleteUser, getUserById, getRawClient, setUserRoleAndOrg, assignDashboardToUser } from './db.js';
+import { getAllUsers, approveUser, deleteUser, getUserById, getRawClient, setUserRoleAndOrg, assignDashboardToUser, getDashboardById } from './db.js';
 import { requireRole, type AuthenticatedRequest } from './middleware.js';
 
 // ============================================
@@ -96,7 +96,16 @@ router.patch('/users/:userId/dashboard', requireRole('super_admin'), async (req:
     const { userId } = req.params;
     if (!isValidUserId(userId)) return res.status(400).json({ error: 'Invalid request' });
     const dashboardId = typeof req.body?.dashboardId === 'string' && req.body.dashboardId ? req.body.dashboardId : null;
+    if (dashboardId) {
+      const target = await getUserById(userId);
+      const dash = await getDashboardById(dashboardId);
+      if (!dash) return res.status(404).json({ error: 'Dashboard nicht gefunden' });
+      if (target && dash.org_id !== target.org_id) {
+        return res.status(400).json({ error: 'Dashboard gehört zu anderer Organisation' });
+      }
+    }
     await assignDashboardToUser(userId, dashboardId);
+    logAdminAction(req.user!.id, 'ASSIGN_DASHBOARD', userId, `dashboardId=${dashboardId}`);
     res.json({ success: true });
   } catch (error) {
     console.error('Assign dashboard error:', error);

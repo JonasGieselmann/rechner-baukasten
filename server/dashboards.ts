@@ -57,6 +57,9 @@ router.get('/', requireRole('super_admin', 'agency_admin'), async (req: Authenti
 // POST /api/dashboards
 router.post('/', requireRole('super_admin', 'agency_admin'), async (req: AuthenticatedRequest, res) => {
   try {
+    if (req.user!.role === 'agency_admin' && !req.user!.orgId) {
+      return res.status(400).json({ error: 'Kein Org-Kontext. Bitte neu anmelden.' });
+    }
     const name = typeof req.body?.name === 'string' ? req.body.name.slice(0, 120).trim() : '';
     if (!name) return res.status(400).json({ error: 'Name erforderlich' });
     const description = typeof req.body?.description === 'string' ? req.body.description.slice(0, 500) : '';
