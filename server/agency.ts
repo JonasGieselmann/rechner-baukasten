@@ -8,7 +8,25 @@ import {
   getUsersByOrg,
   getUserById,
   setCredentialPassword,
+  getPackagesByOrg,
+  getPackageById,
+  createPackage,
+  updatePackage,
+  deletePackage,
 } from './db.js';
+
+// Normalize a package payload: name required, features = up to 20 short strings.
+function parsePackage(body: unknown): { name: string; description: string; features: string[]; sortOrder: number } | null {
+  const b = (body ?? {}) as Record<string, unknown>;
+  const name = typeof b.name === 'string' ? b.name.trim().slice(0, 120) : '';
+  if (!name) return null;
+  const description = typeof b.description === 'string' ? b.description.trim().slice(0, 1000) : '';
+  const features = Array.isArray(b.features)
+    ? [...new Set(b.features.filter((f): f is string => typeof f === 'string').map((f) => f.trim().slice(0, 200)).filter(Boolean))].slice(0, 20)
+    : [];
+  const sortOrder = typeof b.sortOrder === 'number' && Number.isFinite(b.sortOrder) ? Math.trunc(b.sortOrder) : 0;
+  return { name, description, features, sortOrder };
+}
 
 const router = Router();
 
@@ -90,6 +108,63 @@ router.post('/customers/:id/password', requireRole('agency_admin', 'super_admin'
     res.json({ success: true });
   } catch (err) {
     console.error('Agency password reset error:', err);
+    res.status(500).json({ error: 'Request failed' });
+  }
+});
+
+// ---- Packages (the agency's own product packages shown to its customers) ----
+
+router.get('/packages', requireRole('agency_admin', 'super_admin'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const orgId = callerOrg(req);
+    if (!orgId) return res.json([]);
+    res.json(await getPackagesByOrg(orgId));
+  } catch (err) {
+    console.error('List packages error:', err);
+    res.status(500).json({ error: 'Request failed' });
+  }
+});
+
+router.post('/packages', requireRole('agency_admin', 'super_admin'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const orgId = callerOrg(req);
+    if (!orgId) return res.status(400).json({ error: 'Keine Organisation' });
+    if (orgId === 'default') return res.status(403).json({ error: 'Die Plattform-Organisation hat keine Pakete.' });
+    const p = parsePackage(req.body);
+    if (!p) return res.status(400).json({ error: 'Name erforderlich' });
+    const created = await createPackage({ id: nanoid(), orgId, ...p });
+    res.status(201).json(created);
+  } catch (err) {
+    console.error('Create package error:', err);
+    res.status(500).json({ error: 'Request failed' });
+  }
+});
+
+router.patch('/packages/:id', requireRole('agency_admin', 'super_admin'), async (req: AuthenticatedRequest<{ id: string }>, res) => {
+  try {
+    const orgId = callerOrg(req);
+    const pkg = await getPackageById(req.params.id);
+    if (!pkg) return res.status(404).json({ error: 'Paket nicht gefunden' });
+    if (req.user!.role !== 'super_admin' && (pkg.org_id as string) !== orgId) return res.status(403).json({ error: 'Forbidden' });
+    const p = parsePackage(req.body);
+    if (!p) return res.status(400).json({ error: 'Name erforderlich' });
+    res.json(await updatePackage(req.params.id, p));
+  } catch (err) {
+    console.error('Update package error:', err);
+    res.status(500).json({ error: 'Request failed' });
+  }
+});
+
+router.delete('/packages/:id', requireRole('agency_admin', 'super_admin'), async (req: AuthenticatedRequest<{ id: string }>, res) => {
+  try {
+    const orgId = callerOrg(req);
+    const pkg = await getPackageById(req.params.id);
+    if (!pkg) return res.status(404).json({ error: 'Paket nicht gefunden' });
+    if (req.user!.role !== 'super_admin' && (pkg.org_id as string) !== orgId) return res.status(403).json({ error: 'Forbidden' });
+    await deletePackage(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete package error:', err);
     res.status(500).json({ error: 'Request failed' });
   }
 });

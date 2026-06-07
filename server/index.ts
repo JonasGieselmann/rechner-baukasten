@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { toNodeHandler } from 'better-auth/node';
 import { auth } from './auth.js';
-import { checkDb, initAuthSchema, initFunnelSchema, initAppSettings, initComplianceSchema, initOrganizationSchema, initDashboardSchema, initPlanSchema, initInviteSchema, initBeautyflowTenant, syncPotenzialanalyseFunnel } from './db.js';
+import { checkDb, initAuthSchema, initFunnelSchema, initAppSettings, initComplianceSchema, initOrganizationSchema, initDashboardSchema, initPlanSchema, initInviteSchema, initPackageSchema, initBeautyflowTenant, syncPotenzialanalyseFunnel } from './db.js';
 import customCalculatorsRouter, { seedCustomCalculators } from './custom-calculators.js';
 import adminRouter from './admin.js';
 import settingsRouter from './settings.js';
@@ -307,6 +307,7 @@ async function start() {
     await initPlanSchema();
     await initInviteSchema();
     await initAppSettings();
+    await initPackageSchema();
     await initComplianceSchema();
     // Keep the canonical funnel config in sync (version-guarded) BEFORE carving
     // out the tenant, so the funnel exists to move + link into BeautyFlow.

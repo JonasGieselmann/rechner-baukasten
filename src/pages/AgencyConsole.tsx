@@ -9,6 +9,7 @@ import { formatDate } from '../lib/dateFormat';
 
 interface Customer { id: string; name: string; email: string; role: string; created_at: string }
 interface Invite { id: string; token: string; expires_at: string | null; created_at: string }
+interface Pkg { id: string; name: string; description: string; features: string[]; sort_order: number }
 
 const CARD = 'rounded-2xl border p-6 space-y-4';
 const inputStyle = { borderColor: BRAND.colors.border, backgroundColor: BRAND.colors.background, color: BRAND.colors.text };
@@ -25,6 +26,10 @@ export default function AgencyConsole() {
   const [pwValue, setPwValue] = useState('');
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState('');
+  // Packages (the agency's own product packages)
+  const [packages, setPackages] = useState<Pkg[]>([]);
+  const [editPkg, setEditPkg] = useState<{ id: string | null; name: string; description: string; featuresText: string } | null>(null);
+  const [pkgSaving, setPkgSaving] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || (!isAgencyAdmin && !isSuperAdmin))) navigate('/');
@@ -35,11 +40,13 @@ export default function AgencyConsole() {
     Promise.all([
       fetch('/api/agency/customers', { credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
       fetch('/api/agency/invites', { credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
+      fetch('/api/agency/packages', { credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
     ])
-      .then(([c, i]) => {
+      .then(([c, i, p]) => {
         // Exclude the agency admin themselves from the customer list.
         if (Array.isArray(c)) setCustomers(c.filter((u: Customer) => u.id !== user?.id));
         if (Array.isArray(i)) setInvites(i);
+        if (Array.isArray(p)) setPackages(p);
       })
       .catch(() => undefined)
       .finally(() => setLoadingData(false));
@@ -91,6 +98,28 @@ export default function AgencyConsole() {
     } finally {
       setPwSaving(false);
     }
+  };
+
+  const savePkg = async () => {
+    if (!editPkg || !editPkg.name.trim()) return;
+    setPkgSaving(true);
+    const body = {
+      name: editPkg.name.trim(),
+      description: editPkg.description.trim(),
+      features: editPkg.featuresText.split('\n').map((l) => l.trim()).filter(Boolean),
+      sortOrder: editPkg.id ? (packages.find((p) => p.id === editPkg.id)?.sort_order ?? 0) : packages.length,
+    };
+    const res = await fetch(editPkg.id ? `/api/agency/packages/${editPkg.id}` : '/api/agency/packages', {
+      method: editPkg.id ? 'PATCH' : 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    setPkgSaving(false);
+    if (res.ok) { setEditPkg(null); load(); }
+  };
+
+  const delPkg = async (id: string) => {
+    await fetch(`/api/agency/packages/${id}`, { method: 'DELETE', credentials: 'include' });
+    load();
   };
 
   return (
@@ -170,7 +199,54 @@ export default function AgencyConsole() {
             </ul>
           )}
         </div>
+
+        <div className={CARD} style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Ihre Pakete</h2>
+            <button onClick={() => setEditPkg({ id: null, name: '', description: '', featuresText: '' })} className="text-sm px-4 py-2 rounded-full font-semibold transition-opacity hover:opacity-90" style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}>
+              + Paket
+            </button>
+          </div>
+          <p className="text-sm" style={{ color: BRAND.colors.muted }}>
+            Diese Pakete sehen Ihre Kunden im Portal (unter „Pakete"). Keine Preise — Anfragen laufen über Sie.
+          </p>
+          {packages.length === 0 ? (
+            <p className="text-sm" style={{ color: BRAND.colors.muted }}>Noch keine Pakete. Legen Sie Ihr erstes an.</p>
+          ) : (
+            <ul className="space-y-2">
+              {packages.map((p) => (
+                <li key={p.id} className="flex items-start justify-between gap-3 border rounded-lg px-3 py-2" style={{ borderColor: BRAND.colors.border }}>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold" style={{ color: BRAND.colors.text }}>{p.name}</p>
+                    <p className="text-xs truncate" style={{ color: BRAND.colors.muted }}>
+                      {p.description || '—'}{p.features?.length ? ` · ${p.features.length} Merkmal${p.features.length === 1 ? '' : 'e'}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => setEditPkg({ id: p.id, name: p.name, description: p.description, featuresText: (p.features ?? []).join('\n') })} className="text-xs px-2.5 py-1 rounded-lg border transition-opacity hover:opacity-70" style={{ borderColor: BRAND.colors.border, color: BRAND.colors.text }}>Bearbeiten</button>
+                    <button onClick={() => delPkg(p.id)} className="text-xs px-2.5 py-1 rounded-lg border transition-opacity hover:opacity-70" style={{ borderColor: BRAND.colors.border, color: BRAND.colors.muted }}>Löschen</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </main>
+
+      {editPkg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={OVERLAY_STYLE} onClick={() => !pkgSaving && setEditPkg(null)}>
+          <div className="w-full max-w-md rounded-2xl border p-6 space-y-4" style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }} onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold">{editPkg.id ? 'Paket bearbeiten' : 'Paket anlegen'}</h3>
+            <input type="text" placeholder="Name (z.B. Basic)" value={editPkg.name} onChange={(e) => setEditPkg({ ...editPkg, name: e.target.value })} className="w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2" style={inputStyle} />
+            <input type="text" placeholder="Kurzbeschreibung (optional)" value={editPkg.description} onChange={(e) => setEditPkg({ ...editPkg, description: e.target.value })} className="w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2" style={inputStyle} />
+            <textarea placeholder="Features — eine pro Zeile" value={editPkg.featuresText} onChange={(e) => setEditPkg({ ...editPkg, featuresText: e.target.value })} rows={5} className="w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2" style={inputStyle} />
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setEditPkg(null)} disabled={pkgSaving} className="text-sm px-4 py-2 rounded-full" style={{ color: BRAND.colors.muted }}>Abbrechen</button>
+              <button onClick={savePkg} disabled={pkgSaving || !editPkg.name.trim()} className="text-sm px-4 py-2 rounded-full font-semibold disabled:opacity-40" style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}>{pkgSaving ? 'Speichern…' : 'Speichern'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {pwUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={OVERLAY_STYLE} onClick={() => !pwSaving && setPwUser(null)}>

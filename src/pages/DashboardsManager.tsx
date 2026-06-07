@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BRAND } from '../../branding/tokens';
 import { Wordmark } from '../components/Wordmark';
+import { AdminHeader } from '../components/AdminHeader';
+import { useAuth } from '../components/AuthProvider';
 
 interface Dashboard {
   id: string;
@@ -30,6 +32,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export default function DashboardsManager() {
+  const { isSuperAdmin } = useAuth();
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [allFunnels, setAllFunnels] = useState<FunnelLite[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -92,12 +95,16 @@ export default function DashboardsManager() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: BRAND.colors.background, color: BRAND.colors.text }}>
-      <header className="flex items-center justify-between px-4 py-4 border-b" style={{ borderColor: BRAND.colors.border }}>
-        <Wordmark size="md" />
-        <Link to="/" className="text-sm" style={{ color: BRAND.colors.muted }}>
-          Zur&uuml;ck
-        </Link>
-      </header>
+      {isSuperAdmin ? (
+        <AdminHeader />
+      ) : (
+        <header className="flex items-center justify-between px-4 py-4 border-b" style={{ borderColor: BRAND.colors.border }}>
+          <Wordmark size="md" />
+          <Link to="/agency" className="text-sm" style={{ color: BRAND.colors.muted }}>
+            &larr; Zur&uuml;ck zur Agentur-Konsole
+          </Link>
+        </header>
+      )}
 
       <main className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
         <div className="space-y-1">

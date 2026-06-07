@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { eq, desc } from 'drizzle-orm';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from './auth.js';
-import { db, schema, getUserById, deleteOwnAccount } from './db.js';
+import { db, schema, getUserById, deleteOwnAccount, getPackagesByOrg } from './db.js';
 import { requireAuth, type AuthenticatedRequest } from './middleware.js';
 
 const router = Router();
@@ -47,6 +47,16 @@ router.get('/leads', requireAuth, async (req: AuthenticatedRequest, res) => {
     res.json(rows);
   } catch (err) {
     console.error('Me leads error:', err);
+    res.status(500).json({ error: 'Request failed' });
+  }
+});
+
+// The packages offered by the customer's own agency (org-bound).
+router.get('/packages', requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    res.json(await getPackagesByOrg(req.user!.orgId ?? '__none__'));
+  } catch (err) {
+    console.error('Me packages error:', err);
     res.status(500).json({ error: 'Request failed' });
   }
 });

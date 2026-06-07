@@ -9,11 +9,9 @@ interface Org {
   name: string;
   slug: string;
   parent_org_id: string | null;
-  plan_id: string | null;
   brand_name: string | null;
   logo_url: string | null;
 }
-interface Plan { id: string; name: string }
 interface UserRow { id: string; name: string; email: string; role: string; org_id: string | null }
 
 interface Branding {
@@ -49,8 +47,8 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
   );
 }
 
-function OrgCard({ org, plans, users, isPlatform, onChanged }: {
-  org: Org; plans: Plan[]; users: UserRow[]; isPlatform: boolean; onChanged: () => void;
+function OrgCard({ org, users, isPlatform, onChanged }: {
+  org: Org; users: UserRow[]; isPlatform: boolean; onChanged: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [b, setB] = useState<Branding>({
@@ -74,15 +72,6 @@ function OrgCard({ org, plans, users, isPlatform, onChanged }: {
       if (!res.ok) throw new Error('Speichern fehlgeschlagen.');
       setMsg('Branding gespeichert.'); onChanged();
     } catch (e) { setMsg(e instanceof Error ? e.message : 'Fehler.'); } finally { setSaving(false); }
-  };
-
-  const setPlan = async (planId: string) => {
-    setMsg('');
-    const res = await fetch(`/api/organizations/${org.id}/plan`, {
-      method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ planId }),
-    });
-    setMsg(res.ok ? 'Plan aktualisiert.' : 'Plan-Update fehlgeschlagen.'); onChanged();
   };
 
   const assignAgencyAdmin = async () => {
@@ -112,12 +101,8 @@ function OrgCard({ org, plans, users, isPlatform, onChanged }: {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Plan + management apply to customer orgs only; the platform org (Layer One) is operator-only. */}
-          {!isPlatform && (
-            <select aria-label="Plan" value={org.plan_id ?? ''} onChange={(e) => setPlan(e.target.value)} className="text-sm px-2 py-1.5 rounded-lg border" style={inputStyle}>
-              {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          )}
+          {/* Management applies to customer orgs only; the platform org (Layer One) is operator-only.
+              Kalku has no org pricing — packages are per-agency (managed in the Agency Console). */}
           {!isPlatform && (
             <button
               onClick={() => setOpen((o) => !o)}
@@ -177,7 +162,6 @@ export default function AdminOrganizations() {
   const navigate = useNavigate();
   const { user, isSuperAdmin, loading } = useAuth();
   const [orgs, setOrgs] = useState<Org[]>([]);
-  const [plans, setPlans] = useState<Plan[]>([]);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [newName, setNewName] = useState('');
@@ -194,12 +178,10 @@ export default function AdminOrganizations() {
     if (!silent) setLoadingData(true);
     Promise.all([
       fetch('/api/organizations', { credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/plans', { credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
       fetch('/api/admin/users', { credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
     ])
-      .then(([o, p, u]) => {
+      .then(([o, u]) => {
         if (Array.isArray(o)) setOrgs(o);
-        if (Array.isArray(p)) setPlans(p);
         if (Array.isArray(u)) setUsers(u);
       })
       .catch(() => setError('Laden fehlgeschlagen.'))
@@ -258,11 +240,11 @@ export default function AdminOrganizations() {
           <p className="text-sm" style={{ color: BRAND.colors.muted }}>Laden...</p>
         ) : (
           <div className="space-y-4">
-            {platform.map((o) => <OrgCard key={o.id} org={o} plans={plans} users={users} isPlatform onChanged={() => load(true)} />)}
+            {platform.map((o) => <OrgCard key={o.id} org={o} users={users} isPlatform onChanged={() => load(true)} />)}
             {customers.length === 0 && (
               <p className="text-sm" style={{ color: BRAND.colors.muted }}>Noch keine White-Label-Kunden. Legen Sie oben den ersten an.</p>
             )}
-            {customers.map((o) => <OrgCard key={o.id} org={o} plans={plans} users={users} isPlatform={false} onChanged={() => load(true)} />)}
+            {customers.map((o) => <OrgCard key={o.id} org={o} users={users} isPlatform={false} onChanged={() => load(true)} />)}
           </div>
         )}
       </main>

@@ -652,7 +652,83 @@ export async function getInvitesByOrg(orgId: string) {
 }
 
 // ============================================
-// Plans (structure + limits; no payment integration)
+// Org packages (each agency configures the packages its own customers see).
+// NOTE: these are the AGENCY's product packages (e.g. BeautyFlow's), NOT a Kalku
+// platform tier — Kalku itself has no pricing. No prices are displayed.
+// ============================================
+
+export async function initPackageSchema() {
+  await client`
+    CREATE TABLE IF NOT EXISTS org_package (
+      id TEXT PRIMARY KEY,
+      org_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      features JSONB NOT NULL DEFAULT '[]'::jsonb,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `;
+  await client`CREATE INDEX IF NOT EXISTS org_package_org_idx ON org_package(org_id)`;
+  // Seed BeautyFlow's three package NAMES (Basic/Business/Enterprise) exactly ONCE,
+  // with empty features — the agency admin fills in the real details. A one-time
+  // flag (not a count check) so deleting all packages does NOT resurrect them on
+  // the next restart. We do NOT invent feature content here.
+  const [flag] = await client`SELECT value FROM app_setting WHERE key = 'pkg_seed_beautyflow'`;
+  if (!flag) {
+    const names = ['Basic', 'Business', 'Enterprise'];
+    for (let i = 0; i < names.length; i++) {
+      await client`
+        INSERT INTO org_package (id, org_id, name, description, features, sort_order)
+        VALUES (${nanoid()}, 'beautyflow', ${names[i]}, '', '[]'::jsonb, ${i})
+      `;
+    }
+    await client`INSERT INTO app_setting (key, value) VALUES ('pkg_seed_beautyflow', '1') ON CONFLICT (key) DO NOTHING`;
+  }
+  console.log('Package schema initialized (PostgreSQL)');
+}
+
+export async function getPackagesByOrg(orgId: string) {
+  if (!isValidId(orgId)) return [];
+  return await client`
+    SELECT id, org_id, name, description, features, sort_order
+    FROM org_package WHERE org_id = ${orgId} ORDER BY sort_order ASC, created_at ASC LIMIT 100
+  `;
+}
+
+export async function getPackageById(id: string) {
+  if (!isValidId(id)) return null;
+  const [row] = await client`SELECT id, org_id, name, description, features, sort_order FROM org_package WHERE id = ${id}`;
+  return row ?? null;
+}
+
+export async function createPackage(p: { id: string; orgId: string; name: string; description: string; features: string[]; sortOrder: number }) {
+  if (!isValidId(p.orgId)) throw new Error('Invalid org ID');
+  await client`
+    INSERT INTO org_package (id, org_id, name, description, features, sort_order)
+    VALUES (${p.id}, ${p.orgId}, ${p.name}, ${p.description}, ${JSON.stringify(p.features)}::jsonb, ${p.sortOrder})
+  `;
+  return getPackageById(p.id);
+}
+
+export async function updatePackage(id: string, p: { name: string; description: string; features: string[]; sortOrder: number }) {
+  if (!isValidId(id)) throw new Error('Invalid package ID');
+  await client`
+    UPDATE org_package SET name = ${p.name}, description = ${p.description},
+      features = ${JSON.stringify(p.features)}::jsonb, sort_order = ${p.sortOrder}
+    WHERE id = ${id}
+  `;
+  return getPackageById(id);
+}
+
+export async function deletePackage(id: string): Promise<void> {
+  if (!isValidId(id)) throw new Error('Invalid package ID');
+  await client`DELETE FROM org_package WHERE id = ${id}`;
+}
+
+// ============================================
+// Plans (legacy global tier table — retained for compatibility, no longer
+// surfaced as a Kalku org tier; superseded by org_package above)
 // ============================================
 
 export async function initPlanSchema() {

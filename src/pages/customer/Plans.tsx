@@ -1,110 +1,84 @@
 import { useEffect, useState } from 'react';
 import { BRAND } from '../../../branding/tokens';
 
-interface Plan {
+interface Package {
   id: string;
   name: string;
   description: string;
-  max_funnels: number;
   features: string[];
 }
-interface MyPlan {
-  plan: Plan | null;
-  usage: { funnels: number };
-}
 
-const CONTACT = 'mailto:kocak@aksme.de?subject=BeautyFlow%20Upgrade';
+const CONTACT = 'mailto:kocak@aksme.de?subject=BeautyFlow%20Paket';
 
 export default function Plans() {
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [mine, setMine] = useState<MyPlan | null>(null);
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/plans', { credentials: 'include' })
+    fetch('/api/me/packages', { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : []))
-      .then((d) => Array.isArray(d) && setPlans(d))
-      .catch(() => undefined);
-    fetch('/api/plans/me', { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setMine)
-      .catch(() => undefined);
+      .then((d) => Array.isArray(d) && setPackages(d))
+      .catch(() => undefined)
+      .finally(() => setLoading(false));
   }, []);
-
-  const currentId = mine?.plan?.id;
-  const limit = mine?.plan?.max_funnels ?? 0;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="space-y-1">
         <h1 className="text-3xl font-semibold" style={{ color: BRAND.colors.text }}>
-          Ihr Plan
+          Pakete
         </h1>
         <p className="text-base" style={{ color: BRAND.colors.muted }}>
-          {mine?.plan
-            ? `Aktuell: ${mine.plan.name}. ${mine.usage.funnels} Funnel${
-                mine.usage.funnels === 1 ? '' : 's'
-              } in Nutzung${limit > 0 ? ` von ${limit}` : ''}.`
-            : 'Wählen Sie den passenden Plan für Ihr Wachstum.'}
+          Wählen Sie das passende Paket für Ihr Wachstum. Bei Fragen oder zum Upgrade melden wir uns persönlich.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {plans.map((p) => {
-          const isCurrent = p.id === currentId;
-          return (
+      {loading ? (
+        <p className="text-sm" style={{ color: BRAND.colors.muted }}>Laden...</p>
+      ) : packages.length === 0 ? (
+        <div className="rounded-2xl border p-6" style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}>
+          <p className="text-sm" style={{ color: BRAND.colors.muted }}>
+            Aktuell sind keine Pakete hinterlegt. Sprechen Sie uns für ein passendes Angebot an.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {packages.map((p) => (
             <div
               key={p.id}
               className="rounded-2xl border p-6 flex flex-col gap-3"
-              style={{
-                backgroundColor: BRAND.colors.card,
-                borderColor: isCurrent ? BRAND.colors.accent : BRAND.colors.border,
-                borderWidth: isCurrent ? 2 : 1,
-              }}
+              style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
             >
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold" style={{ color: BRAND.colors.text }}>
-                  {p.name}
-                </h2>
-                {isCurrent && (
-                  <span
-                    className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                    style={{ backgroundColor: `${BRAND.colors.accent}33`, color: BRAND.colors.primary }}
-                  >
-                    Aktuell
-                  </span>
-                )}
-              </div>
-              <p className="text-sm" style={{ color: BRAND.colors.muted }}>
-                {p.description}
-              </p>
+              <h2 className="text-lg font-semibold" style={{ color: BRAND.colors.text }}>
+                {p.name}
+              </h2>
+              {p.description && (
+                <p className="text-sm" style={{ color: BRAND.colors.muted }}>
+                  {p.description}
+                </p>
+              )}
               <ul className="space-y-1 flex-1">
-                {(p.features ?? []).map((f) => (
-                  <li key={f} className="text-sm flex items-start gap-2" style={{ color: BRAND.colors.text }}>
+                {(p.features ?? []).map((f, i) => (
+                  <li key={`${p.id}-${i}`} className="text-sm flex items-start gap-2" style={{ color: BRAND.colors.text }}>
                     <span style={{ color: BRAND.colors.accent }}>&#x2713;</span>
                     {f}
                   </li>
                 ))}
               </ul>
-              {isCurrent ? (
-                <span className="text-sm text-center py-2" style={{ color: BRAND.colors.muted }}>
-                  Ihr aktueller Plan
-                </span>
-              ) : (
-                <a
-                  href={CONTACT}
-                  className="text-center px-5 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
-                >
-                  Upgrade anfragen
-                </a>
-              )}
+              <a
+                href={CONTACT}
+                className="text-center px-5 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+                style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
+              >
+                Upgrade anfragen
+              </a>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
 
       <p className="text-xs text-center" style={{ color: BRAND.colors.muted }}>
-        Fragen zu den Plänen? Schreiben Sie uns an kocak@aksme.de.
+        Fragen zu den Paketen? Schreiben Sie uns an kocak@aksme.de.
       </p>
     </div>
   );
