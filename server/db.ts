@@ -323,6 +323,23 @@ export async function getAllUsers(limit = 1000) {
   `;
 }
 
+// Admin-create a user directly (no self-signup). Inserts the user row; the
+// caller then sets a password via setCredentialPassword. Email is normalized to
+// lower-case to match Better Auth's login lookup. Throws on duplicate email.
+export async function adminCreateUser(p: { id: string; name: string; email: string; role: string; orgId: string }) {
+  if (!['super_admin', 'agency_admin', 'customer'].includes(p.role)) throw new Error('Invalid role');
+  if (!isValidId(p.orgId)) throw new Error('Invalid org ID');
+  const email = p.email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Ungültige E-Mail');
+  const existing = await client`SELECT id FROM "user" WHERE lower(email) = ${email}`;
+  if (existing.length > 0) throw new Error('E-Mail bereits vergeben');
+  await client`
+    INSERT INTO "user" (id, name, email, email_verified, role, approved, org_id)
+    VALUES (${p.id}, ${p.name.trim().slice(0, 200)}, ${email}, true, ${p.role}, true, ${p.orgId})
+  `;
+  return { id: p.id, name: p.name, email, role: p.role, org_id: p.orgId };
+}
+
 // Users within one organization (for the agency console — org-scoped).
 export async function getUsersByOrg(orgId: string, limit = 1000) {
   if (!isValidId(orgId)) return [];

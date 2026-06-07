@@ -32,6 +32,12 @@ export function AdminUsers() {
   const [pwValue, setPwValue] = useState('');
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState('');
+  // Create-user modal
+  const [showCreate, setShowCreate] = useState(false);
+  const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
+  const [cForm, setCForm] = useState({ name: '', email: '', password: '', role: 'customer', orgId: '' });
+  const [cSaving, setCSaving] = useState(false);
+  const [cMsg, setCMsg] = useState('');
 
   // Redirect if not super admin
   useEffect(() => {
@@ -69,9 +75,44 @@ export function AdminUsers() {
   useEffect(() => {
     if (isSuperAdmin) {
       loadUsers();
+      fetch(`${API_BASE}/api/organizations`, { credentials: 'include' })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((d) => {
+          if (Array.isArray(d)) {
+            setOrgs(d);
+            setCForm((f) => ({ ...f, orgId: f.orgId || d[0]?.id || 'default' }));
+          }
+        })
+        .catch(() => undefined);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuperAdmin]);
+
+  const handleCreateUser = async () => {
+    if (!cForm.name.trim() || !cForm.email.trim() || cForm.password.length < 8) {
+      setCMsg('Name, E-Mail und Passwort (min. 8 Zeichen) erforderlich.');
+      return;
+    }
+    setCSaving(true);
+    setCMsg('');
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users`, {
+        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cForm),
+      });
+      if (!res.ok) {
+        const d = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(d.error || 'Anlegen fehlgeschlagen.');
+      }
+      setShowCreate(false);
+      setCForm({ name: '', email: '', password: '', role: 'customer', orgId: orgs[0]?.id || 'default' });
+      await loadUsers();
+    } catch (e) {
+      setCMsg(e instanceof Error ? e.message : 'Fehler.');
+    } finally {
+      setCSaving(false);
+    }
+  };
 
   // Change a user's role (super_admin only). 3-tier: super_admin/agency_admin/customer.
   const handleRoleChange = async (userId: string, role: string) => {
@@ -209,9 +250,16 @@ export function AdminUsers() {
           Benutzerverwaltung
         </h1>
         <button
+          onClick={() => { setShowCreate(true); setCMsg(''); }}
+          className="ml-auto px-4 py-1.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+          style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
+        >
+          + Nutzer anlegen
+        </button>
+        <button
           onClick={loadUsers}
           disabled={loadingUsers}
-          className="ml-auto flex items-center gap-2 px-4 py-1.5 rounded-lg border text-sm font-medium transition-opacity disabled:opacity-50 hover:opacity-70"
+          className="flex items-center gap-2 px-4 py-1.5 rounded-lg border text-sm font-medium transition-opacity disabled:opacity-50 hover:opacity-70"
           style={{
             borderColor: BRAND.colors.border,
             color: BRAND.colors.text,
@@ -475,6 +523,34 @@ export function AdminUsers() {
               >
                 {pwSaving ? 'Speichern...' : 'Passwort setzen'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={OVERLAY_STYLE} onClick={() => !cSaving && setShowCreate(false)}>
+          <div className="w-full max-w-md rounded-2xl border p-6 space-y-4" style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }} onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold" style={{ color: BRAND.colors.text }}>Nutzer anlegen</h3>
+            <div className="space-y-3">
+              <input type="text" placeholder="Name" value={cForm.name} onChange={(e) => setCForm({ ...cForm, name: e.target.value })} className="w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2" style={{ borderColor: BRAND.colors.border, backgroundColor: BRAND.colors.background, color: BRAND.colors.text }} />
+              <input type="email" placeholder="E-Mail" value={cForm.email} onChange={(e) => setCForm({ ...cForm, email: e.target.value })} className="w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2" style={{ borderColor: BRAND.colors.border, backgroundColor: BRAND.colors.background, color: BRAND.colors.text }} />
+              <input type="text" placeholder="Passwort (min. 8 Zeichen)" value={cForm.password} onChange={(e) => setCForm({ ...cForm, password: e.target.value })} className="w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2" style={{ borderColor: BRAND.colors.border, backgroundColor: BRAND.colors.background, color: BRAND.colors.text }} />
+              <div className="flex gap-2">
+                <select data-testid="create-role" value={cForm.role} onChange={(e) => setCForm({ ...cForm, role: e.target.value })} className="flex-1 px-2 py-2 rounded-lg border text-sm" style={{ borderColor: BRAND.colors.border, backgroundColor: BRAND.colors.background, color: BRAND.colors.text }}>
+                  <option value="customer">Kunde</option>
+                  <option value="agency_admin">Agency Admin</option>
+                  <option value="super_admin">Super Admin</option>
+                </select>
+                <select data-testid="create-org" value={cForm.orgId} onChange={(e) => setCForm({ ...cForm, orgId: e.target.value })} className="flex-1 px-2 py-2 rounded-lg border text-sm" style={{ borderColor: BRAND.colors.border, backgroundColor: BRAND.colors.background, color: BRAND.colors.text }}>
+                  {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+              </div>
+            </div>
+            {cMsg && <p className="text-sm text-red-500">{cMsg}</p>}
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setShowCreate(false)} disabled={cSaving} className="text-sm px-4 py-2 rounded-full transition-opacity hover:opacity-70" style={{ color: BRAND.colors.muted }}>Abbrechen</button>
+              <button onClick={handleCreateUser} disabled={cSaving} className="text-sm px-4 py-2 rounded-full font-semibold transition-opacity hover:opacity-90 disabled:opacity-40" style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}>{cSaving ? 'Anlegen...' : 'Nutzer anlegen'}</button>
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import express from 'express';
-import { getAllUsers, approveUser, deleteUser, getUserById, getRawClient, setUserRoleAndOrg, assignDashboardToUser, getDashboardById, setCredentialPassword, getOrgById } from './db.js';
+import { getAllUsers, approveUser, deleteUser, getUserById, getRawClient, setUserRoleAndOrg, assignDashboardToUser, getDashboardById, setCredentialPassword, getOrgById, adminCreateUser } from './db.js';
+import { nanoid } from 'nanoid';
 import { requireRole, type AuthenticatedRequest } from './middleware.js';
 import { auth } from './auth.js';
 
@@ -36,6 +37,36 @@ router.get('/users', requireRole('super_admin'), async (req: AuthenticatedReques
 });
 
 // Approve a user (admin only)
+// Create a user directly (platform admin): email + password + role + org.
+router.post('/users', requireRole('super_admin'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    const role = ['super_admin', 'agency_admin', 'customer'].includes(req.body?.role) ? req.body.role : 'customer';
+    const orgId = typeof req.body?.orgId === 'string' && req.body.orgId ? req.body.orgId : 'default';
+    if (!name) return res.status(400).json({ error: 'Name erforderlich' });
+    if (password.length < 8) return res.status(400).json({ error: 'Passwort muss mindestens 8 Zeichen haben.' });
+    if (!(await getOrgById(orgId))) return res.status(400).json({ error: 'Unbekannte Organisation' });
+    const id = nanoid();
+    let created;
+    try {
+      created = await adminCreateUser({ id, name, email, role, orgId });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Anlegen fehlgeschlagen';
+      return res.status(/vergeben|Ungültige/.test(msg) ? 409 : 400).json({ error: msg });
+    }
+    const ctx = await auth.$context;
+    const hash = await ctx.password.hash(password);
+    await setCredentialPassword(id, hash);
+    logAdminAction(req.user!.id, 'CREATE_USER', id, `role=${role} org=${orgId}`);
+    res.status(201).json(created);
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(500).json({ error: 'Operation failed' });
+  }
+});
+
 router.post('/users/:userId/approve', requireRole('super_admin'), async (req: AuthenticatedRequest, res) => {
   try {
     const { userId } = req.params;
