@@ -5,6 +5,7 @@ import { AdminHeader } from '../components/AdminHeader';
 import { Avatar } from '../components/Avatar';
 import { BRAND } from '../../branding/tokens';
 import { formatDateTime } from '../lib/dateFormat';
+import { OVERLAY_STYLE } from '../lib/uiStyles';
 
 interface UserData {
   id: string;
@@ -15,7 +16,9 @@ interface UserData {
   created_at: string;
 }
 
-const API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : '';
+// Relative paths: same-origin in prod, proxied to the API in dev (server runs
+// on a different port than Vite, so a hardcoded :3001 base broke local dev).
+const API_BASE = '';
 
 export function AdminUsers() {
   const navigate = useNavigate();
@@ -24,6 +27,11 @@ export function AdminUsers() {
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  // Admin password reset modal
+  const [pwUser, setPwUser] = useState<UserData | null>(null);
+  const [pwValue, setPwValue] = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwMsg, setPwMsg] = useState('');
 
   // Redirect if not super admin
   useEffect(() => {
@@ -129,6 +137,38 @@ export function AdminUsers() {
       setError(err instanceof Error ? err.message : 'Fehler beim Löschen');
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  // Set / reset a user's password (admin). Works for any user incl. self.
+  const handleSetPassword = async () => {
+    if (!pwUser || pwValue.length < 8) {
+      setPwMsg('Mindestens 8 Zeichen.');
+      return;
+    }
+    setPwSaving(true);
+    setPwMsg('');
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users/${pwUser.id}/password`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword: pwValue }),
+      });
+      if (!res.ok) {
+        const d = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(d.error || 'Passwort setzen fehlgeschlagen.');
+      }
+      setPwMsg('Passwort gesetzt.');
+      setPwValue('');
+      setTimeout(() => {
+        setPwUser(null);
+        setPwMsg('');
+      }, 1200);
+    } catch (e) {
+      setPwMsg(e instanceof Error ? e.message : 'Fehler.');
+    } finally {
+      setPwSaving(false);
     }
   };
 
@@ -337,6 +377,15 @@ export function AdminUsers() {
                       <span className="text-xs" style={{ color: BRAND.colors.muted }}>
                         {formatDateTime(u.created_at)}
                       </span>
+                      <button
+                        onClick={() => { setPwUser(u); setPwValue(''); setPwMsg(''); }}
+                        data-testid={`set-pw-${u.id}`}
+                        className="text-xs px-2.5 py-1 rounded-lg border transition-opacity hover:opacity-70"
+                        style={{ borderColor: BRAND.colors.border, color: BRAND.colors.text }}
+                        title="Passwort setzen / zurücksetzen"
+                      >
+                        Passwort
+                      </button>
                       {u.id !== user?.id && (
                         <select
                           value={u.role}
@@ -380,6 +429,57 @@ export function AdminUsers() {
           )}
         </section>
       </main>
+
+      {pwUser && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={OVERLAY_STYLE}
+          onClick={() => !pwSaving && setPwUser(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border p-6 space-y-4"
+            style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold" style={{ color: BRAND.colors.text }}>
+              Passwort setzen
+            </h3>
+            <p className="text-sm" style={{ color: BRAND.colors.muted }}>
+              Neues Passwort für <strong>{pwUser.name}</strong> ({pwUser.email}). Teilen Sie es der
+              Person sicher mit; sie kann es danach selbst im Konto ändern.
+            </p>
+            <input
+              type="text"
+              value={pwValue}
+              onChange={(e) => setPwValue(e.target.value)}
+              placeholder="Neues Passwort (min. 8 Zeichen)"
+              autoFocus
+              className="w-full px-3 py-2 rounded-lg border text-sm outline-none focus:ring-2"
+              style={{ borderColor: BRAND.colors.border, backgroundColor: BRAND.colors.background, color: BRAND.colors.text }}
+              onKeyDown={(e) => e.key === 'Enter' && handleSetPassword()}
+            />
+            {pwMsg && <p className="text-sm" style={{ color: BRAND.colors.accent }}>{pwMsg}</p>}
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setPwUser(null)}
+                disabled={pwSaving}
+                className="text-sm px-4 py-2 rounded-full transition-opacity hover:opacity-70"
+                style={{ color: BRAND.colors.muted }}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handleSetPassword}
+                disabled={pwSaving || pwValue.length < 8}
+                className="text-sm px-4 py-2 rounded-full font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
+                style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
+              >
+                {pwSaving ? 'Speichern...' : 'Passwort setzen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

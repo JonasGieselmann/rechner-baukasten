@@ -1,6 +1,7 @@
 import express from 'express';
-import { getAllUsers, approveUser, deleteUser, getUserById, getRawClient, setUserRoleAndOrg, assignDashboardToUser, getDashboardById } from './db.js';
+import { getAllUsers, approveUser, deleteUser, getUserById, getRawClient, setUserRoleAndOrg, assignDashboardToUser, getDashboardById, setCredentialPassword } from './db.js';
 import { requireRole, type AuthenticatedRequest } from './middleware.js';
+import { auth } from './auth.js';
 
 // ============================================
 // Security Helpers
@@ -86,6 +87,27 @@ router.patch('/users/:userId/role', requireRole('super_admin'), async (req: Auth
     res.json({ success: true });
   } catch (error) {
     console.error('Change role error:', error);
+    res.status(500).json({ error: 'Operation failed' });
+  }
+});
+
+// Set / reset a user's password (platform admin only). Hashes with Better Auth's
+// own scrypt hasher so the credential stays compatible with normal login.
+router.post('/users/:userId/password', requireRole('super_admin'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const { userId } = req.params;
+    if (!isValidUserId(userId)) return res.status(400).json({ error: 'Invalid request' });
+    const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
+    if (newPassword.length < 8) return res.status(400).json({ error: 'Passwort muss mindestens 8 Zeichen haben.' });
+    const target = await getUserById(userId);
+    if (!target) return res.status(404).json({ error: 'User nicht gefunden' });
+    const ctx = await auth.$context;
+    const hash = await ctx.password.hash(newPassword);
+    await setCredentialPassword(userId, hash);
+    logAdminAction(req.user!.id, 'SET_PASSWORD', userId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Set password error:', error);
     res.status(500).json({ error: 'Operation failed' });
   }
 });

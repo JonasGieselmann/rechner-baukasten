@@ -290,6 +290,24 @@ export async function deleteOwnAccount(userId: string): Promise<void> {
   await client`DELETE FROM "user" WHERE id = ${validatedId}`;
 }
 
+// Admin password reset: set the credential password hash for a user, creating
+// the credential account row if the user has none yet (e.g. seeded admins).
+// The hash must be produced by Better Auth's hasher (auth.$context.password.hash).
+export async function setCredentialPassword(userId: string, passwordHash: string): Promise<void> {
+  const validatedId = validateUserId(userId);
+  const updated = await client`
+    UPDATE account SET password = ${passwordHash}, updated_at = NOW()
+    WHERE user_id = ${validatedId} AND provider_id = 'credential'
+    RETURNING id
+  `;
+  if (updated.length === 0) {
+    await client`
+      INSERT INTO account (id, account_id, provider_id, user_id, password)
+      VALUES (${nanoid()}, ${validatedId}, 'credential', ${validatedId}, ${passwordHash})
+    `;
+  }
+}
+
 // Get all users (for admin panel) - with limit for safety
 export async function getAllUsers(limit = 1000) {
   // Limit to prevent potential DoS from large datasets
