@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAllUsers, approveUser, deleteUser, getUserById, getRawClient, setUserRoleAndOrg, assignDashboardToUser, getDashboardById, setCredentialPassword } from './db.js';
+import { getAllUsers, approveUser, deleteUser, getUserById, getRawClient, setUserRoleAndOrg, assignDashboardToUser, getDashboardById, setCredentialPassword, getOrgById } from './db.js';
 import { requireRole, type AuthenticatedRequest } from './middleware.js';
 import { auth } from './auth.js';
 
@@ -75,13 +75,14 @@ router.patch('/users/:userId/role', requireRole('super_admin'), async (req: Auth
     const { userId } = req.params;
     if (!isValidUserId(userId)) return res.status(400).json({ error: 'Invalid request' });
     const role = typeof req.body?.role === 'string' ? req.body.role : '';
-    if (!['super_admin', 'agency_admin', 'customer', 'user'].includes(role)) {
+    if (!['super_admin', 'agency_admin', 'customer'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }
     const target = await getUserById(userId);
     if (!target) return res.status(400).json({ error: 'Invalid request' });
     const orgId =
       typeof req.body?.orgId === 'string' && req.body.orgId ? req.body.orgId : target.org_id ?? 'default';
+    if (!(await getOrgById(orgId))) return res.status(400).json({ error: 'Unbekannte Organisation' });
     await setUserRoleAndOrg(userId, role, orgId);
     logAdminAction(req.user!.id, 'CHANGE_ROLE', userId, `role=${role} org=${orgId}`);
     res.json({ success: true });

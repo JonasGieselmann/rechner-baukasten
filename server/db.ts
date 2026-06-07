@@ -306,6 +306,9 @@ export async function setCredentialPassword(userId: string, passwordHash: string
       VALUES (${nanoid()}, ${validatedId}, 'credential', ${validatedId}, ${passwordHash})
     `;
   }
+  // Revoke the user's existing sessions so any compromised/old session cannot
+  // outlive the reset; the user must log in again with the new password.
+  await client`DELETE FROM session WHERE user_id = ${validatedId}`;
 }
 
 // Get all users (for admin panel) - with limit for safety
@@ -441,8 +444,13 @@ export async function updateOrgBranding(
 export async function setUserAsAgencyAdmin(userId: string, orgId: string): Promise<void> {
   const v = validateUserId(userId);
   if (!isValidId(orgId)) throw new Error('Invalid org ID');
+  // Clear a stale dashboard assignment when the org changes, so a moved user can
+  // never resolve a dashboard belonging to their previous org.
   await client`
-    UPDATE "user" SET role = 'agency_admin', approved = true, org_id = ${orgId}, updated_at = NOW()
+    UPDATE "user"
+    SET role = 'agency_admin', approved = true, org_id = ${orgId},
+        dashboard_id = CASE WHEN org_id IS DISTINCT FROM ${orgId} THEN NULL ELSE dashboard_id END,
+        updated_at = NOW()
     WHERE id = ${v}
   `;
 }
@@ -450,10 +458,13 @@ export async function setUserAsAgencyAdmin(userId: string, orgId: string): Promi
 // Set a user's role + org (platform_admin only operation).
 export async function setUserRoleAndOrg(userId: string, role: string, orgId: string): Promise<void> {
   const v = validateUserId(userId);
-  if (!['super_admin', 'agency_admin', 'customer', 'user'].includes(role)) throw new Error('Invalid role');
+  if (!['super_admin', 'agency_admin', 'customer'].includes(role)) throw new Error('Invalid role');
   if (!isValidId(orgId)) throw new Error('Invalid org ID');
   await client`
-    UPDATE "user" SET role = ${role}, org_id = ${orgId}, approved = true, updated_at = NOW()
+    UPDATE "user"
+    SET role = ${role}, org_id = ${orgId}, approved = true,
+        dashboard_id = CASE WHEN org_id IS DISTINCT FROM ${orgId} THEN NULL ELSE dashboard_id END,
+        updated_at = NOW()
     WHERE id = ${v}
   `;
 }
@@ -559,6 +570,9 @@ export async function getUserDashboard(userId: string) {
   if (!u?.dashboard_id) return null;
   const d = await getDashboardById(u.dashboard_id);
   if (!d) return null;
+  // Defense-in-depth: never surface a dashboard from a different org than the
+  // user currently belongs to (guards against any stale dashboard_id).
+  if ((d.org_id as string) !== (u.org_id as string)) return null;
   const funnels = await getDashboardFunnels(u.dashboard_id);
   return { dashboard: { id: d.id, name: d.name, description: d.description }, funnels };
 }

@@ -10,6 +10,7 @@ import {
   setUserRoleAndOrg,
   setOrgPlan,
   getPlans,
+  getUserById,
 } from './db.js';
 
 const router = Router();
@@ -104,6 +105,7 @@ router.post('/:id/members', requireRole('super_admin'), async (req: Authenticate
     // agency-admins into it via this onboarding endpoint.
     if (req.params.id === 'default') return res.status(403).json({ error: 'In der Plattform-Organisation können hier keine Mitglieder zugewiesen werden.' });
     if (!(await getOrgById(req.params.id))) return res.status(404).json({ error: 'Org nicht gefunden' });
+    if (!(await getUserById(userId))) return res.status(404).json({ error: 'Nutzer nicht gefunden' });
     await setUserRoleAndOrg(userId, role, req.params.id);
     res.json({ success: true });
   } catch (err) {

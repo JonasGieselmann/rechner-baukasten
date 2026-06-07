@@ -95,6 +95,13 @@ test('REPRO real dashboard: result inside /dashboard/potenzialanalyse embed', as
     };
   });
   console.log('[REPRO dashboard] metrics=', JSON.stringify(frameMetrics, null, 2));
+  // Fix verification: the iframe auto-sizes to its content (no inner scroll), so
+  // the page scrolls naturally and the bottom is reachable on mobile.
+  await expect.poll(async () => page.evaluate(() => {
+    const ifr = document.querySelector('iframe') as HTMLIFrameElement;
+    const se = ifr.contentDocument?.scrollingElement as HTMLElement | undefined;
+    return (se?.scrollHeight ?? 0) > (ifr.clientHeight ?? 0) + 4;
+  }), { timeout: 8000 }).toBe(false);
   // Clean up the throwaway customer.
   await page.evaluate(async () => { /* lead persists in e2e db; harmless */ });
   await page.screenshot({ path: 'test-results/repro/dashboard-result.png', fullPage: true });

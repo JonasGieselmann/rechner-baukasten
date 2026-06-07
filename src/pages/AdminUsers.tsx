@@ -398,7 +398,6 @@ export function AdminUsers() {
                           <option value="super_admin">Super Admin</option>
                           <option value="agency_admin">Agency Admin</option>
                           <option value="customer">Kunde</option>
-                          <option value="user">User</option>
                         </select>
                       )}
                       {u.role !== 'super_admin' && u.id !== user?.id && (

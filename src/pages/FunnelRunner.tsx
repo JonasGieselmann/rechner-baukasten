@@ -700,6 +700,25 @@ export default function FunnelRunner() {
       .finally(() => setLoading(false));
   }, [slug]);
 
+  // When embedded in a dashboard iframe, report our content height to the parent
+  // so it can size the iframe to fit (no inner scroll -> the page scrolls
+  // naturally, which fixes the mobile "can't reach the end" trap).
+  useEffect(() => {
+    if (typeof window === 'undefined' || window.parent === window) return;
+    const post = () => {
+      const h = document.documentElement.scrollHeight;
+      window.parent.postMessage({ type: 'bf-funnel-height', height: h }, window.location.origin);
+    };
+    post();
+    const ro = new ResizeObserver(post);
+    ro.observe(document.documentElement);
+    window.addEventListener('resize', post);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', post);
+    };
+  }, []);
+
   const steps = funnel?.config.steps ?? [];
   const theme: FunnelTheme = funnel?.config.theme ?? DEFAULT_FUNNEL_THEME;
 
