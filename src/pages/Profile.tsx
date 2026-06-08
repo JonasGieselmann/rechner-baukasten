@@ -25,7 +25,7 @@ export default function Profile() {
         style={{ borderColor: BRAND.colors.border, backgroundColor: BRAND.colors.background }}
       >
         <Link to={backTo} className="flex items-center gap-2 hover:opacity-80">
-          <Wordmark size="md" />
+          <Wordmark size="md" brand={isSuperAdmin ? 'kalku' : 'beautyflow'} />
         </Link>
         <Link
           to={backTo}

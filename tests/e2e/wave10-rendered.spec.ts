@@ -47,6 +47,8 @@ test('platform overview + role-aware admin profile render on mobile and desktop'
     await expect(page.getByRole('heading', { name: 'Profil & Einstellungen' })).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole('heading', { name: 'Passwort' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Praxis-Angaben' })).toHaveCount(0);
+    // super_admin profile is Kalku-branded, not BeautyFlow.
+    await expect(page.locator('header').getByText('BeautyFlow')).toHaveCount(0);
     await page.screenshot({ path: `${SHOTS}/${tag}-profil.png`, fullPage: true });
   }
 });
