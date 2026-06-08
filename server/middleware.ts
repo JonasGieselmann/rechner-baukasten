@@ -21,6 +21,23 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
   }
 }
 
+// Resolve which org the caller operates on for ORG-CONTENT tools (funnels,
+// dashboards, calculators). agency_admin is always pinned to their own org
+// (query/body orgId is ignored — they can never reach another tenant). super_admin
+// must pass ?orgId (or body.orgId on writes) to target a specific org; this MAY be
+// the platform org ('default'/Layer One), which legitimately holds content —
+// unlike customer/invite scoping (agency.ts callerOrg) where 'default' is refused.
+// Returns null when a super_admin gave no orgId → caller should return empty/400.
+export function resolveContentOrg(req: AuthenticatedRequest): string | null {
+  if (req.user!.role === 'super_admin') {
+    const q = typeof req.query.orgId === 'string' ? req.query.orgId.trim() : '';
+    const body = req.body as { orgId?: unknown } | undefined;
+    const b = typeof body?.orgId === 'string' ? body.orgId.trim() : '';
+    return q || b || null;
+  }
+  return req.user!.orgId ?? null;
+}
+
 export function requireRole(...allowed: string[]) {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {

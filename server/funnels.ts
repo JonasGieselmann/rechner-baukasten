@@ -5,7 +5,7 @@ import { fromNodeHeaders } from 'better-auth/node';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { auth } from './auth.js';
 import { db, schema, getRawClient, recordConsent, getOrCreateSubscription } from './db.js';
-import { requireAuth, requireRole, type AuthenticatedRequest } from './middleware.js';
+import { requireAuth, requireRole, resolveContentOrg, type AuthenticatedRequest } from './middleware.js';
 import { isValidSlug, sanitizeString } from './utils.js';
 import { renderLeadReportPdf } from './pdf/leadReport.js';
 import { sendLeadReportEmail, sendDoiConfirmationEmail } from './mailer.js';
@@ -269,15 +269,16 @@ router.post('/by-slug/:slug/submit', submitLimiter, async (req: Request<{ slug: 
 // Authenticated CRUD
 // ============================================
 
-// Org scoping: platform admins (super_admin) see funnels across all orgs;
-// everyone else is restricted to their own organization. Cross-tenant boundary.
+// Org scoping (cross-tenant boundary): both agency_admin and super_admin operate
+// on exactly ONE org. agency_admin = own org; super_admin = the ?orgId they are
+// drilling into (the agency UI always supplies it). No more global super_admin
+// view — funnels now live in the agency/org UI. '__none__' guarantees an empty
+// match if a super_admin forgot ?orgId (so they never see cross-org funnels).
 function funnelByIdScope(req: AuthenticatedRequest, id: string) {
-  return req.user!.role === 'super_admin'
-    ? eq(schema.funnel.id, id)
-    : and(eq(schema.funnel.id, id), eq(schema.funnel.orgId, req.user!.orgId ?? '__none__'));
+  return and(eq(schema.funnel.id, id), eq(schema.funnel.orgId, resolveContentOrg(req) ?? '__none__'));
 }
 function funnelListScope(req: AuthenticatedRequest) {
-  return req.user!.role === 'super_admin' ? undefined : eq(schema.funnel.orgId, req.user!.orgId ?? '__none__');
+  return eq(schema.funnel.orgId, resolveContentOrg(req) ?? '__none__');
 }
 
 // GET /api/funnels - list (org-scoped), with on-demand leads count
@@ -315,8 +316,11 @@ router.post('/', requireRole('super_admin', 'agency_admin'), async (req: Authent
     const incomingConfig = req.body?.config;
 
     if (!name) return res.status(400).json({ error: 'Name is required' });
-    if (req.user!.role === 'agency_admin' && !req.user!.orgId) {
-      return res.status(400).json({ error: 'Kein Org-Kontext. Bitte neu anmelden.' });
+    const targetOrg = resolveContentOrg(req);
+    if (!targetOrg) {
+      return res.status(400).json({
+        error: req.user!.role === 'super_admin' ? 'Bitte eine Organisation wählen (orgId fehlt).' : 'Kein Org-Kontext. Bitte neu anmelden.',
+      });
     }
 
     const baseSlug = requestedSlug && isValidSlug(requestedSlug) ? requestedSlug : slugify(name);
@@ -330,7 +334,7 @@ router.post('/', requireRole('super_admin', 'agency_admin'), async (req: Authent
       .values({
         id,
         ownerId: req.user!.id,
-        orgId: req.user!.orgId ?? 'default',
+        orgId: targetOrg,
         name,
         slug,
         description,

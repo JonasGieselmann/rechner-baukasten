@@ -1,13 +1,12 @@
 import { Router } from 'express';
 import { nanoid } from 'nanoid';
 import { eq } from 'drizzle-orm';
-import { requireAuth, requireRole, type AuthenticatedRequest } from './middleware.js';
+import { requireAuth, requireRole, resolveContentOrg, type AuthenticatedRequest } from './middleware.js';
 import { db, schema } from './db.js';
 import {
   getDashboardById,
   createDashboard,
   getDashboardsByOrg,
-  getAllDashboards,
   updateDashboard,
   deleteDashboard,
   addFunnelToDashboard,
@@ -18,8 +17,12 @@ import {
 
 const router = Router();
 
+// The caller may manage a dashboard only if it belongs to the org they are
+// operating on: agency_admin -> own org; super_admin -> the ?orgId they drilled
+// into. A super_admin operating org A therefore cannot touch org B's dashboard.
 function canManageOrg(req: AuthenticatedRequest, orgId: string): boolean {
-  return req.user!.role === 'super_admin' || req.user!.orgId === orgId;
+  const scope = resolveContentOrg(req);
+  return scope !== null && scope === orgId;
 }
 
 // Load a dashboard and authorize the caller. Returns 'forbidden' | null | row.
@@ -40,14 +43,10 @@ router.get('/me', requireAuth, async (req: AuthenticatedRequest, res) => {
   }
 });
 
-// GET /api/dashboards - agency sees own org, platform admin sees all
+// GET /api/dashboards - the org the caller operates on (agency: own; super_admin: ?orgId)
 router.get('/', requireRole('super_admin', 'agency_admin'), async (req: AuthenticatedRequest, res) => {
   try {
-    const rows =
-      req.user!.role === 'super_admin'
-        ? await getAllDashboards()
-        : await getDashboardsByOrg(req.user!.orgId ?? '__none__');
-    res.json(rows);
+    res.json(await getDashboardsByOrg(resolveContentOrg(req) ?? '__none__'));
   } catch (err) {
     console.error('List dashboards error:', err);
     res.status(500).json({ error: 'Request failed' });
@@ -57,18 +56,15 @@ router.get('/', requireRole('super_admin', 'agency_admin'), async (req: Authenti
 // POST /api/dashboards
 router.post('/', requireRole('super_admin', 'agency_admin'), async (req: AuthenticatedRequest, res) => {
   try {
-    if (req.user!.role === 'agency_admin' && !req.user!.orgId) {
-      return res.status(400).json({ error: 'Kein Org-Kontext. Bitte neu anmelden.' });
+    const orgId = resolveContentOrg(req);
+    if (!orgId) {
+      return res.status(400).json({
+        error: req.user!.role === 'super_admin' ? 'Bitte eine Organisation wählen (orgId fehlt).' : 'Kein Org-Kontext. Bitte neu anmelden.',
+      });
     }
     const name = typeof req.body?.name === 'string' ? req.body.name.slice(0, 120).trim() : '';
     if (!name) return res.status(400).json({ error: 'Name erforderlich' });
     const description = typeof req.body?.description === 'string' ? req.body.description.slice(0, 500) : '';
-    const orgId =
-      req.user!.role === 'super_admin'
-        ? typeof req.body?.orgId === 'string' && req.body.orgId
-          ? req.body.orgId
-          : 'default'
-        : req.user!.orgId ?? 'default';
     const d = await createDashboard({ id: nanoid(), orgId, name, description });
     res.status(201).json(d);
   } catch (err) {
@@ -134,7 +130,9 @@ router.post('/:id/funnels', requireRole('super_admin', 'agency_admin'), async (r
       .where(eq(schema.funnel.id, funnelId))
       .limit(1);
     if (!f) return res.status(404).json({ error: 'Funnel nicht gefunden' });
-    if (req.user!.role !== 'super_admin' && f.orgId !== (d.org_id as string)) {
+    // A dashboard may only bundle funnels from its OWN org — enforced for every
+    // role now (super_admin operates one org, so cross-org linking is invalid too).
+    if (f.orgId !== (d.org_id as string)) {
       return res.status(403).json({ error: 'Funnel gehoert zu anderer Organisation' });
     }
     const existing = await getDashboardFunnels(req.params.id);
