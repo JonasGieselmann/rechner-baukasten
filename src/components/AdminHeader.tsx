@@ -48,12 +48,12 @@ export function AdminHeader() {
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
         <Link to="/admin" className="flex items-center gap-2 hover:opacity-80 shrink-0">
-          <Wordmark size="md" />
+          <Wordmark size="md" brand="kalku" />
           <span
             className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full"
             style={{ backgroundColor: BRAND.colors.accent, color: BRAND.colors.background }}
           >
-            Admin
+            Plattform
           </span>
         </Link>
 
@@ -79,14 +79,6 @@ export function AdminHeader() {
 
         {/* Desktop right actions */}
         <div className="hidden md:flex items-center gap-2">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="text-sm px-3 py-1.5 rounded-full border transition-opacity hover:opacity-70"
-            style={{ borderColor: BRAND.colors.border, color: BRAND.colors.text }}
-            title="Customer-Dashboard ansehen"
-          >
-            Customer-Ansicht ↗
-          </button>
           <Link
             to="/profil"
             aria-label="Profil und Einstellungen"
@@ -163,13 +155,6 @@ export function AdminHeader() {
             );
           })}
           <div className="border-t mt-1 pt-2 flex flex-col gap-1" style={{ borderColor: BRAND.colors.border }}>
-            <button
-              onClick={() => go('/dashboard')}
-              className="text-left px-3 py-2.5 rounded-lg text-sm transition-opacity hover:opacity-70"
-              style={{ color: BRAND.colors.text }}
-            >
-              Customer-Ansicht ↗
-            </button>
             <button
               onClick={() => { setMenuOpen(false); logout(); }}
               className="text-left px-3 py-2.5 rounded-lg text-sm transition-opacity hover:opacity-70"

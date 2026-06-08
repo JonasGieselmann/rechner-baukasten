@@ -14,6 +14,7 @@ import {
   updatePackage,
   deletePackage,
   createPasswordReset,
+  getOrgById,
 } from './db.js';
 
 // Normalize a package payload: name required, features = up to 20 short strings.
@@ -45,6 +46,22 @@ function callerOrg(req: AuthenticatedRequest): string | null {
 
 const INVITE_TTL_DAYS = 30;
 const TEAM_INVITE_TTL_DAYS = 7;
+
+// GET /api/agency/org - the org the caller is operating on (its own name/brand),
+// so the console can identify itself as the ORG (e.g. BeautyFlow), distinct from
+// the Kalku platform above it.
+router.get('/org', requireRole('agency_admin', 'super_admin'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const orgId = callerOrg(req);
+    if (!orgId) return res.json(null);
+    const org = await getOrgById(orgId);
+    if (!org) return res.json(null);
+    res.json({ id: org.id, name: org.name, brandName: org.brand_name ?? null });
+  } catch (err) {
+    console.error('Agency org error:', err);
+    res.status(500).json({ error: 'Request failed' });
+  }
+});
 
 // POST /api/agency/invites { role? } - create an org-bound invite link.
 // role: 'customer' (default, end client) or 'agency_admin' (the agency's own

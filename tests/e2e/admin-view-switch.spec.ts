@@ -23,7 +23,7 @@ test.afterAll(async () => {
   await sql.end();
 });
 
-test('super_admin can toggle between /admin and /dashboard via header buttons', async ({ page }: { page: Page }) => {
+test('brand separation: Kalku on the platform header, BeautyFlow on the customer dashboard', async ({ page }: { page: Page }) => {
   // Register via UI to create a real better-auth account
   await page.goto('/register');
   await page.getByPlaceholder('Ihr Name').fill(TEST_NAME);
@@ -34,30 +34,25 @@ test('super_admin can toggle between /admin and /dashboard via header buttons', 
   await page.getByRole('button', { name: 'Konto erstellen' }).click();
   await page.waitForURL(/\/(admin|dashboard)\/?$/, { timeout: 10000 });
 
-  // Force super_admin role regardless of which branch the hook took
-  await sql`
-    UPDATE "user" SET role = 'super_admin', approved = true WHERE email = ${TEST_EMAIL}
-  `;
+  await sql`UPDATE "user" SET role = 'super_admin', approved = true WHERE email = ${TEST_EMAIL}`;
   await page.goto('/');
   await page.waitForURL(/\/admin\/?$/, { timeout: 10000 });
 
-  // Step 1: admin landing shows BeautyFlow brand
-  await expect(page.locator('header').getByText('Beauty').first()).toBeVisible();
-  await page.screenshot({ path: `${SCREENSHOTS}/1-admin.png`, fullPage: true });
+  // The platform header is KALKU, not BeautyFlow.
+  const header = page.locator('header');
+  await expect(header.getByText('Kal', { exact: false }).first()).toBeVisible();
+  await expect(header.getByText('Plattform').first()).toBeVisible();
+  await expect(header.getByText('BeautyFlow')).toHaveCount(0);
+  await page.screenshot({ path: `${SCREENSHOTS}/1-platform-kalku.png`, fullPage: true });
 
-  // Step 2: click Customer-Ansicht in header
-  const customerViewBtn = page.getByRole('button', { name: /Customer-Ansicht/i });
-  await expect(customerViewBtn).toBeVisible();
-  await customerViewBtn.click();
-  await page.waitForURL(/\/dashboard\/?$/, { timeout: 5000 });
+  // The customer dashboard is BeautyFlow-branded.
+  await page.goto('/dashboard');
   await expect(page.locator('header').getByText('BeautyFlow').first()).toBeVisible();
-  await page.screenshot({ path: `${SCREENSHOTS}/2-customer.png`, fullPage: true });
+  await page.screenshot({ path: `${SCREENSHOTS}/2-customer-beautyflow.png`, fullPage: true });
 
-  // Step 3: click ← Admin in customer header
+  // super_admin can return to the platform from the customer view.
   const adminBackLink = page.getByRole('link', { name: /Admin/ });
   await expect(adminBackLink).toBeVisible();
   await adminBackLink.click();
   await page.waitForURL(/\/admin\/?$/, { timeout: 5000 });
-  await expect(page.locator('header').getByText('Beauty').first()).toBeVisible();
-  await page.screenshot({ path: `${SCREENSHOTS}/3-back-to-admin.png`, fullPage: true });
 });

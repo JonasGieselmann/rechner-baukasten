@@ -3,6 +3,9 @@ import { BRAND } from '../../branding/tokens';
 interface WordmarkProps {
   size?: 'sm' | 'md' | 'lg';
   color?: string;
+  // 'beautyflow' = the customer/org surface brand; 'kalku' = the platform brand
+  // (the Kalku SaaS that sits ABOVE the white-label orgs).
+  brand?: 'beautyflow' | 'kalku';
 }
 
 const SIZE_CLASSES: Record<NonNullable<WordmarkProps['size']>, string> = {
@@ -11,14 +14,18 @@ const SIZE_CLASSES: Record<NonNullable<WordmarkProps['size']>, string> = {
   lg: 'text-2xl',
 };
 
-export function Wordmark({ size = 'md', color }: WordmarkProps) {
+export function Wordmark({ size = 'md', color, brand = 'beautyflow' }: WordmarkProps) {
   const cls = SIZE_CLASSES[size];
   return (
     <span
       className={`${cls} font-semibold tracking-tight inline-flex items-baseline`}
       style={{ color: color ?? BRAND.colors.text }}
     >
-      Beauty<span className="brand-accent ml-[1px]">Flow</span>
+      {brand === 'kalku' ? (
+        <>Kal<span className="brand-accent ml-[1px]">ku</span></>
+      ) : (
+        <>Beauty<span className="brand-accent ml-[1px]">Flow</span></>
+      )}
     </span>
   );
 }
