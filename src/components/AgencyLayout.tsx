@@ -15,6 +15,7 @@ const NAV: NavItem[] = [
   { label: 'Übersicht', path: '/agency', end: true },
   { label: 'Funnels', path: '/agency/funnels' },
   { label: 'Dashboards', path: '/agency/dashboards' },
+  { label: 'Rechner', path: '/agency/rechner' },
 ];
 
 // Org-branded header + nav for the agency / BeautyFlow-org workspace, distinct

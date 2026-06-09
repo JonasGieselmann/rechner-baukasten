@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent, CollisionDetection } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { AdminHeader } from './AdminHeader';
+import { AgencyHeader } from './AgencyLayout';
 import { Toolbar } from './Toolbar';
 import { Sidebar } from './Sidebar';
 import { EditorCanvas } from './EditorCanvas';
@@ -207,8 +207,8 @@ export function EditorLayout() {
         className="h-screen flex flex-col"
         style={{ backgroundColor: BRAND.colors.background }}
       >
-        {/* Global admin navigation */}
-        <AdminHeader />
+        {/* Agency / org navigation */}
+        <AgencyHeader />
 
         {/* Sub-toolbar: calculator name, save state, embed button */}
         <Toolbar />

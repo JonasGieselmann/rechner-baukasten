@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCalculatorStore } from '../store/calculatorStore';
 import { useAuth } from '../components/AuthProvider';
-import { AdminHeader } from '../components/AdminHeader';
+import { AgencyHeader } from '../components/AgencyLayout';
+import { useOrgQuery } from '../lib/useOrgQuery';
 import { BRAND } from '../../branding/tokens';
 import { formatDateTime } from '../lib/dateFormat';
 import { OVERLAY_STYLE } from '../lib/uiStyles';
@@ -23,11 +24,14 @@ type TabType = 'builder' | 'custom';
 const TABS: TabType[] = ['builder', 'custom'];
 
 // API base URL - different in dev vs production
-const API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : '';
+// Relative: same-origin in prod, proxied to the API in dev (the server is not on
+// :3001). Org content calls forward ?orgId via withQ below.
+const API_BASE = '';
 
 export function Home() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { withQ } = useOrgQuery();
   const { isSuperAdmin } = useAuth();
   const { savedCalculators, loadSavedCalculators, createNewCalculator, deleteCalculator } =
     useCalculatorStore();
@@ -68,7 +72,7 @@ export function Home() {
   // Load custom calculators from API
   const loadCustomCalculators = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/custom-calculators`);
+      const response = await fetch(withQ(`${API_BASE}/api/custom-calculators`), { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         setCustomCalculators(data || []);
@@ -120,8 +124,9 @@ export function Home() {
       formData.append('width', uploadWidth);
       formData.append('height', uploadHeight);
 
-      const response = await fetch(`${API_BASE}/api/custom-calculators/upload`, {
+      const response = await fetch(withQ(`${API_BASE}/api/custom-calculators/upload`), {
         method: 'POST',
+        credentials: 'include',
         body: formData,
       });
 
@@ -154,8 +159,9 @@ export function Home() {
   // Delete custom calculator
   const handleDeleteCustom = async (slug: string) => {
     try {
-      const response = await fetch(`${API_BASE}/api/custom-calculators/${slug}`, {
+      const response = await fetch(withQ(`${API_BASE}/api/custom-calculators/${slug}`), {
         method: 'DELETE',
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -199,7 +205,7 @@ export function Home() {
       className="min-h-screen"
       style={{ backgroundColor: BRAND.colors.background, color: BRAND.colors.text }}
     >
-      <AdminHeader />
+      <AgencyHeader />
 
       {/* Tab strip */}
       <div

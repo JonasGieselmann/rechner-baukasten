@@ -4,7 +4,7 @@ import AdmZip from 'adm-zip';
 import path from 'path';
 import { nanoid } from 'nanoid';
 import { getRawClient } from './db.js';
-import { requireRole, type AuthenticatedRequest as SharedAuthRequest } from './middleware.js';
+import { requireRole, resolveContentOrg, type AuthenticatedRequest as SharedAuthRequest } from './middleware.js';
 import { uploadToS3, getFromS3, deletePrefix, isS3Configured } from './s3.js';
 import { Readable } from 'stream';
 import { isValidSlug, sanitizeString } from './utils.js';
@@ -93,17 +93,18 @@ function generateSlug(name: string): string {
 
 const db = () => getRawClient();
 
-async function getAllCalculators() {
+async function getCalculatorsByOrg(orgId: string) {
   return await db()`
-    SELECT id, name, description, slug, s3_prefix, width, height, active, file_count, created_at, updated_at
+    SELECT id, name, description, slug, org_id, s3_prefix, width, height, active, file_count, created_at, updated_at
     FROM custom_calculator
+    WHERE org_id = ${orgId}
     ORDER BY created_at DESC
   `;
 }
 
 async function getCalculatorBySlug(slug: string) {
   const rows = await db()`
-    SELECT id, name, description, slug, s3_prefix, width, height, active, file_count, created_at, updated_at
+    SELECT id, name, description, slug, org_id, s3_prefix, width, height, active, file_count, created_at, updated_at
     FROM custom_calculator
     WHERE slug = ${slug}
   `;
@@ -112,6 +113,7 @@ async function getCalculatorBySlug(slug: string) {
 
 async function insertCalculator(calc: {
   id: string;
+  orgId: string;
   name: string;
   description: string;
   slug: string;
@@ -121,8 +123,8 @@ async function insertCalculator(calc: {
   fileCount: number;
 }) {
   await db()`
-    INSERT INTO custom_calculator (id, name, description, slug, s3_prefix, width, height, file_count)
-    VALUES (${calc.id}, ${calc.name}, ${calc.description}, ${calc.slug}, ${calc.s3Prefix}, ${calc.width}, ${calc.height}, ${calc.fileCount})
+    INSERT INTO custom_calculator (id, org_id, name, description, slug, s3_prefix, width, height, file_count)
+    VALUES (${calc.id}, ${calc.orgId}, ${calc.name}, ${calc.description}, ${calc.slug}, ${calc.s3Prefix}, ${calc.width}, ${calc.height}, ${calc.fileCount})
   `;
 }
 
@@ -153,10 +155,14 @@ async function updateCalculatorFields(slug: string, fields: Record<string, unkno
 // Routes
 // ============================================
 
-// GET /api/custom-calculators - List all calculators
-router.get('/', async (req, res) => {
+// GET /api/custom-calculators - list the caller's org calculators (management).
+// Gated + org-scoped (previously unauthenticated + global = cross-tenant leak).
+// The PUBLIC file serving (/serve/:slug/*) stays open below for embeds.
+router.get('/', requireRole('super_admin', 'agency_admin'), async (req: SharedAuthRequest, res) => {
   try {
-    const rows = await getAllCalculators();
+    const orgId = resolveContentOrg(req);
+    if (!orgId) return res.json([]);
+    const rows = await getCalculatorsByOrg(orgId);
     const calculators = rows.map((r: Record<string, unknown>) => ({
       id: r.id,
       name: r.name,
@@ -175,8 +181,10 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/custom-calculators/upload - Upload new calculator (Admin only)
-router.post('/upload', requireRole('super_admin'), upload.single('file'), async (req: SharedAuthRequest, res) => {
+router.post('/upload', requireRole('super_admin', 'agency_admin'), upload.single('file'), async (req: SharedAuthRequest, res) => {
   try {
+    const orgId = resolveContentOrg(req);
+    if (!orgId) return res.status(400).json({ error: 'Bitte eine Organisation wählen (orgId fehlt).' });
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
@@ -265,7 +273,7 @@ router.post('/upload', requireRole('super_admin'), upload.single('file'), async 
 
     // Save metadata to DB
     const id = nanoid(10);
-    await insertCalculator({ id, name, description, slug, s3Prefix, width, height, fileCount });
+    await insertCalculator({ id, orgId, name, description, slug, s3Prefix, width, height, fileCount });
 
     console.log(`[AUDIT] Calculator uploaded: ${slug} (${fileCount} files) by admin ${req.user?.id}`);
 
@@ -280,7 +288,7 @@ router.post('/upload', requireRole('super_admin'), upload.single('file'), async 
 });
 
 // DELETE /api/custom-calculators/:slug - Delete calculator (Admin only)
-router.delete('/:slug', requireRole('super_admin'), async (req: SharedAuthRequest<{ slug: string }>, res) => {
+router.delete('/:slug', requireRole('super_admin', 'agency_admin'), async (req: SharedAuthRequest<{ slug: string }>, res) => {
   try {
     const { slug } = req.params;
     if (!isValidSlug(slug)) {
@@ -290,6 +298,10 @@ router.delete('/:slug', requireRole('super_admin'), async (req: SharedAuthReques
     const calc = await getCalculatorBySlug(slug);
     if (!calc) {
       return res.status(404).json({ error: 'Calculator not found' });
+    }
+    // Org ownership: caller may only delete a calc in the org they operate on.
+    if ((calc.org_id as string) !== resolveContentOrg(req)) {
+      return res.status(403).json({ error: 'Forbidden' });
     }
 
     // Delete files from S3
@@ -307,7 +319,7 @@ router.delete('/:slug', requireRole('super_admin'), async (req: SharedAuthReques
 });
 
 // PATCH /api/custom-calculators/:slug - Update metadata (Admin only)
-router.patch('/:slug', requireRole('super_admin'), async (req: SharedAuthRequest<{ slug: string }>, res) => {
+router.patch('/:slug', requireRole('super_admin', 'agency_admin'), async (req: SharedAuthRequest<{ slug: string }>, res) => {
   try {
     const { slug } = req.params;
     if (!isValidSlug(slug)) {
@@ -317,6 +329,9 @@ router.patch('/:slug', requireRole('super_admin'), async (req: SharedAuthRequest
     const calc = await getCalculatorBySlug(slug);
     if (!calc) {
       return res.status(404).json({ error: 'Calculator not found' });
+    }
+    if ((calc.org_id as string) !== resolveContentOrg(req)) {
+      return res.status(403).json({ error: 'Forbidden' });
     }
 
     const updates: Record<string, unknown> = {};
@@ -466,6 +481,7 @@ export async function seedCustomCalculators(): Promise<void> {
   } else {
     await insertCalculator({
       id: 'beautyflow',
+      orgId: 'beautyflow',
       name: 'BeautyFlow ROI-Rechner',
       description: 'Berechne deinen Return on Investment mit BeautyFlow - inkl. Wachstumsprognose',
       slug: 'beautyflow',

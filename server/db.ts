@@ -140,6 +140,12 @@ export async function initAuthSchema() {
     )
   `;
   await client`CREATE INDEX IF NOT EXISTS custom_calculator_slug_idx ON custom_calculator(slug)`;
+  // Multi-tenancy: custom calculators belong to an org. Additive + idempotent.
+  // The only pre-existing seeded calc is BeautyFlow's ROI rechner → backfill it to
+  // the beautyflow org; anything else defaults to the platform org.
+  await client`ALTER TABLE custom_calculator ADD COLUMN IF NOT EXISTS org_id TEXT NOT NULL DEFAULT 'default'`;
+  await client`UPDATE custom_calculator SET org_id = 'beautyflow' WHERE slug = 'beautyflow' AND org_id = 'default'`;
+  await client`CREATE INDEX IF NOT EXISTS custom_calculator_org_idx ON custom_calculator(org_id)`;
 
   console.log('Auth schema initialized (PostgreSQL)');
 }

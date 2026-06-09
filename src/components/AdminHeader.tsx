@@ -13,7 +13,6 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Plattform', path: '/admin' },
   { label: 'Organisationen', path: '/admin/organizations' },
-  { label: 'Rechner', path: '/admin/rechner' },
   { label: 'Kunden', path: '/admin/customers' },
   { label: 'Benutzer', path: '/admin/users' },
   { label: 'Einstellungen', path: '/admin/settings' },

@@ -106,12 +106,13 @@ function App() {
               </AdminRoute>
             }
           />
+          {/* Rechner (calculators) — org content, lives in the agency UI */}
           <Route
-            path="/admin/rechner"
+            path="/agency/rechner"
             element={
-              <AdminRoute>
+              <AgencyRoute>
                 <Home />
-              </AdminRoute>
+              </AgencyRoute>
             }
           />
           <Route
@@ -138,12 +139,13 @@ function App() {
               </AdminRoute>
             }
           />
+          {/* Calculator (builder) editor — org content, agency UI */}
           <Route
             path="/editor/:id"
             element={
-              <AdminRoute>
+              <AgencyRoute>
                 <Editor />
-              </AdminRoute>
+              </AgencyRoute>
             }
           />
           {/* Funnel editor + leads — org content, lives in the agency UI */}

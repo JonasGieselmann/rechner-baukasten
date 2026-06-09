@@ -55,9 +55,9 @@ test('admin nav is reachable at mobile (via menu) and desktop', async ({ page }:
       }
       const slug = route.replace(/\//g, '_') || '_root';
       await page.screenshot({ path: `${SHOTS}/${tag}${slug}.png`, fullPage: true });
-      // Kalku platform nav (Funnels/Dashboards moved to the agency UI in Wave 12).
+      // Kalku platform nav (Funnels/Dashboards/Rechner moved to the agency UI in Wave 12).
       report[`${tag} ${route} Organisationen`] = await navLinkVisible(page, 'Organisationen');
-      report[`${tag} ${route} Rechner`] = await navLinkVisible(page, 'Rechner');
+      report[`${tag} ${route} Benutzer`] = await navLinkVisible(page, 'Benutzer');
     }
   }
   console.log('NAV REACHABILITY REPORT:\n' + JSON.stringify(report, null, 2));
