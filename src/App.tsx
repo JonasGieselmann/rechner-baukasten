@@ -146,20 +146,21 @@ function App() {
               </AdminRoute>
             }
           />
+          {/* Funnel editor + leads — org content, lives in the agency UI */}
           <Route
-            path="/funnels/:id"
+            path="/agency/funnels/:id"
             element={
-              <AdminRoute>
+              <AgencyRoute>
                 <FunnelEditor />
-              </AdminRoute>
+              </AgencyRoute>
             }
           />
           <Route
-            path="/funnels/:id/leads"
+            path="/agency/funnels/:id/leads"
             element={
-              <AdminRoute>
+              <AgencyRoute>
                 <FunnelLeads />
-              </AdminRoute>
+              </AgencyRoute>
             }
           />
           <Route
@@ -171,13 +172,13 @@ function App() {
             }
           />
 
-          {/* Funnels manager */}
+          {/* Funnels manager — org content, lives in the agency UI */}
           <Route
-            path="/admin/funnels"
+            path="/agency/funnels"
             element={
-              <AdminRoute>
+              <AgencyRoute>
                 <FunnelsManager />
-              </AdminRoute>
+              </AgencyRoute>
             }
           />
 
@@ -191,15 +192,7 @@ function App() {
             }
           />
 
-          {/* Dashboards manager (platform admin) + agency landing (white-label) */}
-          <Route
-            path="/admin/dashboards"
-            element={
-              <AdminRoute>
-                <DashboardsManager />
-              </AdminRoute>
-            }
-          />
+          {/* Agency / org workspace (white-label): console + dashboards + funnels */}
           <Route
             path="/agency"
             element={

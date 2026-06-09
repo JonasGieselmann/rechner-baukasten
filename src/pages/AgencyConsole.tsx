@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../components/AuthProvider';
 import { Avatar } from '../components/Avatar';
+import { AgencyHeader } from '../components/AgencyLayout';
 import { BRAND } from '../../branding/tokens';
 import { OVERLAY_STYLE } from '../lib/uiStyles';
 import { formatDate } from '../lib/dateFormat';
@@ -23,7 +24,7 @@ export default function AgencyConsole() {
   const q = orgId ? `?orgId=${encodeURIComponent(orgId)}` : '';
   const withQ = (p: string) => `${p}${q}`;
 
-  const { user, isAgencyAdmin, isSuperAdmin, loading, logout } = useAuth();
+  const { user, isAgencyAdmin, isSuperAdmin, loading } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -42,7 +43,6 @@ export default function AgencyConsole() {
   const [packages, setPackages] = useState<Pkg[]>([]);
   const [editPkg, setEditPkg] = useState<{ id: string | null; name: string; description: string; featuresText: string } | null>(null);
   const [pkgSaving, setPkgSaving] = useState(false);
-  const [orgName, setOrgName] = useState('');
 
   useEffect(() => {
     if (!loading && (!user || (!isAgencyAdmin && !isSuperAdmin))) navigate('/');
@@ -66,16 +66,6 @@ export default function AgencyConsole() {
   }, [user?.id, q]);
 
   useEffect(() => { if (isAgencyAdmin || isSuperAdmin) load(); }, [isAgencyAdmin, isSuperAdmin, load]);
-
-  // Identify the console as the ORG (e.g. BeautyFlow), not the Kalku platform.
-  useEffect(() => {
-    if (!isAgencyAdmin && !isSuperAdmin) return;
-    fetch(withQ('/api/agency/org'), { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((o) => o && setOrgName(o.brandName || o.name || ''))
-      .catch(() => undefined);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAgencyAdmin, isSuperAdmin, q]);
 
   const team = members.filter((m) => m.role === 'agency_admin' || m.role === 'super_admin');
   const clients = members.filter((m) => m.role === 'customer');
@@ -204,19 +194,7 @@ export default function AgencyConsole() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: BRAND.colors.background, color: BRAND.colors.text }}>
-      <header className="flex items-center justify-between px-4 sm:px-6 py-3 border-b sticky top-0 z-20" style={{ borderColor: BRAND.colors.border, backgroundColor: BRAND.colors.background }}>
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-semibold tracking-tight" style={{ color: BRAND.colors.text }}>{orgName || 'Agentur'}</span>
-          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ backgroundColor: `${BRAND.colors.accent}26`, color: BRAND.colors.primary }}>Agentur</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {isSuperAdmin && <Link to="/admin" className="text-sm px-3 py-1.5 rounded-full border" style={{ borderColor: BRAND.colors.border, color: BRAND.colors.text }}>&#x2190; Plattform</Link>}
-          <Link to="/profil" aria-label="Profil und Einstellungen" title="Profil und Einstellungen" className="rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2">
-            <Avatar name={user?.name} email={user?.email} size="sm" />
-          </Link>
-          <button onClick={logout} className="text-sm px-3 py-1.5 rounded-full border" style={{ borderColor: BRAND.colors.border, color: BRAND.colors.text }}>Abmelden</button>
-        </div>
-      </header>
+      <AgencyHeader />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <div className="space-y-1">

@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { BRAND } from '../../branding/tokens';
-import { Wordmark } from '../components/Wordmark';
-import { AdminHeader } from '../components/AdminHeader';
-import { useAuth } from '../components/AuthProvider';
+import { AgencyHeader } from '../components/AgencyLayout';
 
 interface Dashboard {
   id: string;
@@ -21,8 +18,17 @@ interface FunnelLite {
 
 const API = '';
 
+// Forward the agency drill-in org (?orgId) so a super_admin operating a specific
+// org stays scoped to it (agency_admin has no ?orgId → backend uses their org).
+function withOrg(path: string): string {
+  if (typeof window === 'undefined') return path;
+  const orgId = new URLSearchParams(window.location.search).get('orgId');
+  if (!orgId) return path;
+  return path.includes('?') ? `${path}&orgId=${encodeURIComponent(orgId)}` : `${path}?orgId=${encodeURIComponent(orgId)}`;
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(`${API}${path}`, {
+  const r = await fetch(`${API}${withOrg(path)}`, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     ...init,
@@ -32,7 +38,6 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export default function DashboardsManager() {
-  const { isSuperAdmin } = useAuth();
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [allFunnels, setAllFunnels] = useState<FunnelLite[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -95,16 +100,7 @@ export default function DashboardsManager() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: BRAND.colors.background, color: BRAND.colors.text }}>
-      {isSuperAdmin ? (
-        <AdminHeader />
-      ) : (
-        <header className="flex items-center justify-between px-4 py-4 border-b" style={{ borderColor: BRAND.colors.border }}>
-          <Wordmark size="md" />
-          <Link to="/agency" className="text-sm" style={{ color: BRAND.colors.muted }}>
-            &larr; Zur&uuml;ck zur Agentur-Konsole
-          </Link>
-        </header>
-      )}
+      <AgencyHeader />
 
       <main className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
         <div className="space-y-1">

@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useFunnelStore } from '../store/funnelStore';
 import type { FunnelStep, FunnelStepType, LeadCaptureStep, QuestionStep, IntroStep, CalcInputStep, ResultSpiderStep, CtaBookingStep, SpiderDimension } from '../types';
 import { SPIDER_DIMENSIONS, DEFAULT_LEAD_FIELDS } from '../types';
-import { AdminHeader } from '../components/AdminHeader';
+import { AgencyHeader } from '../components/AgencyLayout';
+import { useOrgQuery } from '../lib/useOrgQuery';
 import { BRAND } from '../../branding/tokens';
 
 const STEP_TYPES: { type: FunnelStepType; label: string }[] = [
@@ -18,6 +19,7 @@ const STEP_TYPES: { type: FunnelStepType; label: string }[] = [
 export function FunnelEditor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { withQ } = useOrgQuery();
   const {
     current,
     isDirty,
@@ -72,7 +74,7 @@ export function FunnelEditor() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: BRAND.colors.background }}>
-      <AdminHeader />
+      <AgencyHeader />
 
       {/* Sub-toolbar */}
       <div
@@ -80,7 +82,7 @@ export function FunnelEditor() {
         style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
       >
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate(withQ('/agency/funnels'))}
           className="text-sm transition-opacity hover:opacity-70"
           style={{ color: BRAND.colors.muted }}
         >

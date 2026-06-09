@@ -2,6 +2,18 @@ import type { Funnel, Lead } from '../types';
 
 const API_BASE = '';
 
+// Forward the agency drill-in org (?orgId in the URL) to authenticated management
+// calls. agency_admin has no ?orgId (backend uses their own org); super_admin
+// operating a specific org carries it so funnels stay scoped to that org. Public
+// by-slug/submit calls deliberately do NOT use this.
+function withOrg(path: string): string {
+  if (typeof window === 'undefined') return path;
+  const orgId = new URLSearchParams(window.location.search).get('orgId');
+  if (!orgId) return path;
+  const sep = path.includes('?') ? '&' : '?';
+  return `${path}${sep}orgId=${encodeURIComponent(orgId)}`;
+}
+
 export interface LeadSubmission {
   name?: string;
   email?: string;
@@ -33,7 +45,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function listFunnels(): Promise<Funnel[]> {
-  return request<Funnel[]>('/api/funnels');
+  return request<Funnel[]>(withOrg('/api/funnels'));
 }
 
 export function createFunnel(body: {
@@ -42,32 +54,32 @@ export function createFunnel(body: {
   slug?: string;
   config?: Funnel['config'];
 }): Promise<Funnel> {
-  return request<Funnel>('/api/funnels', {
+  return request<Funnel>(withOrg('/api/funnels'), {
     method: 'POST',
     body: JSON.stringify(body),
   });
 }
 
 export function getFunnel(id: string): Promise<Funnel> {
-  return request<Funnel>(`/api/funnels/${id}`);
+  return request<Funnel>(withOrg(`/api/funnels/${id}`));
 }
 
 export function updateFunnel(
   id: string,
   body: Partial<Pick<Funnel, 'name' | 'description' | 'slug' | 'status' | 'config'>>,
 ): Promise<Funnel> {
-  return request<Funnel>(`/api/funnels/${id}`, {
+  return request<Funnel>(withOrg(`/api/funnels/${id}`), {
     method: 'PATCH',
     body: JSON.stringify(body),
   });
 }
 
 export function deleteFunnel(id: string): Promise<{ success: true }> {
-  return request<{ success: true }>(`/api/funnels/${id}`, { method: 'DELETE' });
+  return request<{ success: true }>(withOrg(`/api/funnels/${id}`), { method: 'DELETE' });
 }
 
 export function getFunnelLeads(id: string): Promise<Lead[]> {
-  return request<Lead[]>(`/api/funnels/${id}/leads`);
+  return request<Lead[]>(withOrg(`/api/funnels/${id}/leads`));
 }
 
 export function getFunnelBySlug(slug: string): Promise<Funnel> {

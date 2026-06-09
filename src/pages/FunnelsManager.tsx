@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFunnelStore } from '../store/funnelStore';
-import { AdminHeader } from '../components/AdminHeader';
+import { AgencyLayout } from '../components/AgencyLayout';
+import { useOrgQuery } from '../lib/useOrgQuery';
 import { BRAND } from '../../branding/tokens';
 import { formatDateTime } from '../lib/dateFormat';
 import { OVERLAY_STYLE } from '../lib/uiStyles';
 
 export default function FunnelsManager() {
   const navigate = useNavigate();
+  const { withQ } = useOrgQuery();
   const { funnels, loadFunnels, createFunnel, deleteFunnel } = useFunnelStore();
   const [showNewFunnelModal, setShowNewFunnelModal] = useState(false);
   const [newFunnelName, setNewFunnelName] = useState('');
@@ -23,7 +25,7 @@ export default function FunnelsManager() {
       const id = await createFunnel(newFunnelName.trim());
       setShowNewFunnelModal(false);
       setNewFunnelName('');
-      navigate(`/funnels/${id}`);
+      navigate(withQ(`/agency/funnels/${id}`));
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Funnel konnte nicht erstellt werden');
     }
@@ -38,12 +40,7 @@ export default function FunnelsManager() {
   };
 
   return (
-    <div
-      className="min-h-screen"
-      style={{ backgroundColor: BRAND.colors.background, color: BRAND.colors.text }}
-    >
-      <AdminHeader />
-
+    <AgencyLayout>
       <main className="max-w-6xl mx-auto px-6 py-8">
 
         {/* Sub-toolbar */}
@@ -110,7 +107,7 @@ export default function FunnelsManager() {
               >
                 <div
                   className="p-5 cursor-pointer"
-                  onClick={() => navigate(`/funnels/${funnel.id}`)}
+                  onClick={() => navigate(withQ(`/agency/funnels/${funnel.id}`))}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div
@@ -259,6 +256,6 @@ export default function FunnelsManager() {
           </div>
         </div>
       )}
-    </div>
+    </AgencyLayout>
   );
 }

@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getFunnel, getFunnelLeads } from '../lib/funnelApi';
 import type { Funnel, Lead } from '../types';
-import { AdminHeader } from '../components/AdminHeader';
+import { AgencyHeader } from '../components/AgencyLayout';
+import { useOrgQuery } from '../lib/useOrgQuery';
 import { BRAND } from '../../branding/tokens';
 import { recommendationLabel } from '../engine/score';
 
 export function FunnelLeads() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { withQ } = useOrgQuery();
   const [funnel, setFunnel] = useState<Funnel | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +42,7 @@ export function FunnelLeads() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: BRAND.colors.background }}>
-      <AdminHeader />
+      <AgencyHeader />
 
       {/* Sub-toolbar */}
       <div
@@ -48,7 +50,7 @@ export function FunnelLeads() {
         style={{ backgroundColor: BRAND.colors.card, borderColor: BRAND.colors.border }}
       >
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate(withQ('/agency/funnels'))}
           className="text-sm transition-opacity hover:opacity-70"
           style={{ color: BRAND.colors.muted }}
         >
@@ -61,7 +63,7 @@ export function FunnelLeads() {
           {leads.length} {leads.length === 1 ? 'Lead' : 'Leads'}
         </span>
         <button
-          onClick={() => navigate(`/funnels/${funnel.id}`)}
+          onClick={() => navigate(withQ(`/agency/funnels/${funnel.id}`))}
           className="ml-auto text-xs hover:underline"
           style={{ color: BRAND.colors.accent }}
         >
