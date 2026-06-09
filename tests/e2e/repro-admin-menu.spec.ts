@@ -43,7 +43,7 @@ test('admin nav is reachable at mobile (via menu) and desktop', async ({ page }:
   const report: Record<string, boolean> = {};
   for (const [w, h, tag] of [[390, 844, 'mobile'], [1280, 800, 'desktop']] as const) {
     await page.setViewportSize({ width: w, height: h });
-    for (const route of ['/admin', '/admin/dashboards', '/admin/users']) {
+    for (const route of ['/admin', '/admin/organizations', '/admin/users']) {
       await page.goto(route);
       await page.waitForTimeout(300);
       // On mobile the nav lives behind a hamburger — open it first.
@@ -55,8 +55,9 @@ test('admin nav is reachable at mobile (via menu) and desktop', async ({ page }:
       }
       const slug = route.replace(/\//g, '_') || '_root';
       await page.screenshot({ path: `${SHOTS}/${tag}${slug}.png`, fullPage: true });
-      report[`${tag} ${route} Dashboards`] = await navLinkVisible(page, 'Dashboards');
+      // Kalku platform nav (Funnels/Dashboards moved to the agency UI in Wave 12).
       report[`${tag} ${route} Organisationen`] = await navLinkVisible(page, 'Organisationen');
+      report[`${tag} ${route} Rechner`] = await navLinkVisible(page, 'Rechner');
     }
   }
   console.log('NAV REACHABILITY REPORT:\n' + JSON.stringify(report, null, 2));
