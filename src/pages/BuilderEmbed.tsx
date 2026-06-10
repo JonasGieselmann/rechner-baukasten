@@ -20,6 +20,8 @@ export function BuilderEmbed() {
       if (cancelled) return;
       if (calc) {
         loadCalculator(calc);
+        // Visitors get the clean runtime render, not the editor chrome.
+        useCalculatorStore.setState({ isPreviewMode: true });
         setStatus('ready');
       } else {
         setStatus('error');
