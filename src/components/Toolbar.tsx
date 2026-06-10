@@ -28,9 +28,12 @@ export function Toolbar() {
   const [copied, setCopied] = useState(false);
   const jsonInputRef = useRef<HTMLInputElement>(null);
 
-  const handleBack = () => {
-    void closeCalculator();
-    navigate(withQ('/agency/rechner'));
+  const handleBack = async () => {
+    // Only leave when the close-save succeeded; on failure the user stays in
+    // the editor with their edits and the error indicator.
+    if (await closeCalculator()) {
+      navigate(withQ('/agency/rechner'));
+    }
   };
 
   const handleSave = () => {

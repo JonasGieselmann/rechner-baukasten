@@ -33,10 +33,11 @@ export function Home() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { withQ } = useOrgQuery();
   const { isSuperAdmin } = useAuth();
-  const { savedCalculators, loadSavedCalculators, createNewCalculator, deleteCalculator } =
+  const { savedCalculators, isInitialized, loadSavedCalculators, createNewCalculator, deleteCalculator } =
     useCalculatorStore();
   const [showNewModal, setShowNewModal] = useState(false);
   const [newName, setNewName] = useState('');
+  const [creating, setCreating] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteCustomConfirm, setDeleteCustomConfirm] = useState<string | null>(null);
   const urlTab = searchParams.get('tab') as TabType | null;
@@ -97,7 +98,8 @@ export function Home() {
   }, []);
 
   const handleCreate = async () => {
-    if (!newName.trim()) return;
+    if (!newName.trim() || creating) return;
+    setCreating(true);
     try {
       const id = await createNewCalculator(newName.trim());
       setShowNewModal(false);
@@ -105,6 +107,8 @@ export function Home() {
       navigate(withQ(`/editor/${id}`));
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Erstellen fehlgeschlagen');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -301,7 +305,9 @@ export function Home() {
         {/* Builder-Rechner tab */}
         {activeTab === 'builder' && (
           <>
-            {savedCalculators.length === 0 ? (
+            {!isInitialized ? (
+              <div className="py-20 text-center" style={{ color: BRAND.colors.muted }}>Laden…</div>
+            ) : savedCalculators.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20">
                 <div
                   className="w-24 h-24 rounded-2xl border flex items-center justify-center mb-6"
@@ -602,11 +608,11 @@ export function Home() {
               </button>
               <button
                 onClick={handleCreate}
-                disabled={!newName.trim()}
+                disabled={!newName.trim() || creating}
                 className="px-5 py-2 rounded-full font-medium transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ backgroundColor: BRAND.colors.primary, color: BRAND.colors.background }}
               >
-                Erstellen
+                {creating ? 'Erstellt…' : 'Erstellen'}
               </button>
             </div>
           </div>

@@ -49,7 +49,8 @@ router.patch('/:id', requireRole('super_admin', 'agency_admin'), async (req: Aut
     if (!row) return res.status(404).json({ error: 'Not found' });
     if ((row.org_id as string) !== resolveContentOrg(req)) return res.status(403).json({ error: 'Forbidden' });
     const name = cleanName(req.body?.name) || (row.name as string);
-    const config = req.body?.config && typeof req.body.config === 'object' ? req.body.config : {};
+    // A PATCH without config (e.g. rename-only) must keep the stored config.
+    const config = req.body?.config && typeof req.body.config === 'object' ? req.body.config : (row.config as object);
     res.json(await updateBuilderCalculator(req.params.id, name, config));
   } catch (err) {
     console.error('Update builder calc error:', err);

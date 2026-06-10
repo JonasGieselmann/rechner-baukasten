@@ -49,9 +49,9 @@ interface CalculatorState {
   createNewCalculator: (name: string) => Promise<string>;
   loadCalculator: (config: CalculatorConfig) => void;
   loadCalculatorById: (id: string) => Promise<boolean>;
-  saveCalculator: () => Promise<void>;
+  saveCalculator: () => Promise<boolean>;
   deleteCalculator: (id: string) => Promise<void>;
-  closeCalculator: () => Promise<void>;
+  closeCalculator: () => Promise<boolean>;
 
   // Block operations
   addBlock: (type: Block['type'], atIndex?: number) => void;
@@ -78,6 +78,10 @@ interface CalculatorState {
   getEmbedCode: () => string;
   exportConfig: () => string;
 }
+
+// Saves run strictly one after another so overlapping autosaves cannot land
+// out of order on the server (last PATCH must carry the newest snapshot).
+let saveQueue: Promise<unknown> = Promise.resolve();
 
 // Create default blocks for new calculators
 function createDefaultBlocks(): Block[] {
@@ -149,23 +153,33 @@ export const useCalculatorStore = create<CalculatorState>((set, get) => ({
     return true;
   },
 
-  saveCalculator: async () => {
-    const { calculator } = get();
-    if (!calculator) return;
+  saveCalculator: () => {
+    const performSave = async (): Promise<boolean> => {
+      // Snapshot when the queued save RUNS, so it carries the newest edits.
+      const { calculator } = get();
+      if (!calculator) return true;
 
-    const snapshot = { ...calculator, updatedAt: new Date() };
-    set({ isSaving: true, saveError: null });
-    try {
-      await updateBuilderCalc(snapshot);
-      set(s => ({
-        savedCalculators: s.savedCalculators.map(c => (c.id === snapshot.id ? snapshot : c)),
-        // Edits that arrived while the PATCH ran must stay dirty for the next save.
-        ...(s.calculator === calculator ? { calculator: snapshot, isDirty: false } : {}),
-        isSaving: false,
-      }));
-    } catch (err) {
-      set({ isSaving: false, saveError: err instanceof Error ? err.message : 'Speichern fehlgeschlagen' });
-    }
+      const snapshot = { ...calculator, updatedAt: new Date() };
+      set({ isSaving: true, saveError: null });
+      try {
+        await updateBuilderCalc(snapshot);
+        set(s => ({
+          savedCalculators: s.savedCalculators.map(c => (c.id === snapshot.id ? snapshot : c)),
+          // Edits that arrived while the PATCH ran must stay dirty for the next save.
+          ...(s.calculator === calculator ? { calculator: snapshot, isDirty: false } : {}),
+          isSaving: false,
+        }));
+        return true;
+      } catch (err) {
+        // A failed save means server != client, so the state IS dirty — even on
+        // paths (JSON import) that marked it clean before saving.
+        set({ isSaving: false, isDirty: true, saveError: err instanceof Error ? err.message : 'Speichern fehlgeschlagen' });
+        return false;
+      }
+    };
+    const run = saveQueue.then(performSave);
+    saveQueue = run;
+    return run;
   },
 
   deleteCalculator: async (id: string) => {
@@ -177,12 +191,14 @@ export const useCalculatorStore = create<CalculatorState>((set, get) => ({
   },
 
   closeCalculator: async () => {
-    // Save before closing
-    const { isDirty } = get();
-    if (isDirty) {
-      await get().saveCalculator();
+    // Save before closing; a failed save must NOT discard the edits — the
+    // caller stays in the editor with the error indicator visible.
+    if (get().isDirty) {
+      const ok = await get().saveCalculator();
+      if (!ok) return false;
     }
     set({ calculator: null, variables: {}, selectedBlockId: null, isPreviewMode: false, saveError: null });
+    return true;
   },
 
   addBlock: (type: Block['type'], atIndex?: number) => {

@@ -63,8 +63,9 @@ export async function createBuilderCalc(calc: CalculatorConfig): Promise<Calcula
   return rowToConfig(row);
 }
 
-export async function updateBuilderCalc(calc: CalculatorConfig): Promise<void> {
-  await req(withOrg(`/api/builder-calculators/${calc.id}`), { method: 'PATCH', body: JSON.stringify(toPayload(calc)) });
+export async function updateBuilderCalc(calc: CalculatorConfig, opts?: { keepalive?: boolean }): Promise<void> {
+  // keepalive lets the final save survive a tab close (beforeunload path).
+  await req(withOrg(`/api/builder-calculators/${calc.id}`), { method: 'PATCH', body: JSON.stringify(toPayload(calc)), keepalive: opts?.keepalive });
 }
 
 export async function deleteBuilderCalc(id: string): Promise<void> {
