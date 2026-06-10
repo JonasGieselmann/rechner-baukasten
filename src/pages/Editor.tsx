@@ -8,35 +8,32 @@ export function Editor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const {
-    loadSavedCalculators,
     loadCalculatorById,
     saveCalculator,
     calculator,
     isDirty,
   } = useCalculatorStore();
 
-  // Load calculator on mount
+  // Load calculator from the server on mount
   useEffect(() => {
-    loadSavedCalculators();
-  }, [loadSavedCalculators]);
-
-  useEffect(() => {
-    if (id) {
-      const found = loadCalculatorById(id);
-      if (!found) {
-        // Calculator not found, redirect to home
-        navigate('/');
-      }
-    }
+    if (!id) return;
+    let cancelled = false;
+    loadCalculatorById(id).then(found => {
+      // Calculator not found, redirect to home
+      if (!cancelled && !found) navigate('/');
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [id, loadCalculatorById, navigate]);
 
-  // Autosave every 30 seconds if dirty
+  // Debounced autosave: fires once typing pauses (same cadence as FunnelEditor)
   useEffect(() => {
     if (!isDirty) return;
 
     const timer = setTimeout(() => {
-      saveCalculator();
-    }, 30000);
+      void saveCalculator();
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, [isDirty, saveCalculator, calculator]);
@@ -45,7 +42,7 @@ export function Editor() {
   const handleBeforeUnload = useCallback(
     (e: BeforeUnloadEvent) => {
       if (isDirty) {
-        saveCalculator();
+        void saveCalculator();
         e.preventDefault();
         e.returnValue = '';
       }

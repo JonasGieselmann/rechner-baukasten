@@ -1,38 +1,37 @@
 import { useParams } from 'react-router-dom';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { BlockRenderer } from '../components/BlockRenderer';
 import { useCalculatorStore } from '../store/calculatorStore';
+import { getBuilderCalc } from '../lib/builderApi';
 
 export function BuilderEmbed() {
   const { id } = useParams<{ id: string }>();
-  const { calculator, loadCalculator, savedCalculators, loadSavedCalculators, isInitialized } = useCalculatorStore();
+  const { calculator, loadCalculator } = useCalculatorStore();
+  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
 
+  // Public by-id read from the server — embeds run without auth or org context.
   useEffect(() => {
-    // Load saved calculators from localStorage
-    loadSavedCalculators();
-  }, [loadSavedCalculators]);
-
-  // Derive loading and error states from store data
-  const { isLoading, error, targetCalc } = useMemo(() => {
-    // Still loading if store hasn't been initialized yet
-    if (!isInitialized) {
-      return { isLoading: true, error: null, targetCalc: null };
+    if (!id) {
+      setStatus('error');
+      return;
     }
+    let cancelled = false;
+    getBuilderCalc(id).then((calc) => {
+      if (cancelled) return;
+      if (calc) {
+        loadCalculator(calc);
+        setStatus('ready');
+      } else {
+        setStatus('error');
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, loadCalculator]);
 
-    const calc = savedCalculators.find((c) => c.id === id);
-    if (!calc) {
-      return { isLoading: false, error: `Rechner "${id}" nicht gefunden`, targetCalc: null };
-    }
-
-    return { isLoading: false, error: null, targetCalc: calc };
-  }, [savedCalculators, id, isInitialized]);
-
-  // Load the calculator when found
-  useEffect(() => {
-    if (targetCalc) {
-      loadCalculator(targetCalc);
-    }
-  }, [targetCalc, loadCalculator]);
+  const isLoading = status === 'loading';
+  const error = status === 'error' ? `Rechner "${id}" nicht gefunden` : null;
 
   if (isLoading) {
     return (

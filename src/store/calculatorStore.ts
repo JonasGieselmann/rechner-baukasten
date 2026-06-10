@@ -40,6 +40,10 @@ interface CalculatorState {
   // Dirty state (unsaved changes)
   isDirty: boolean;
 
+  // Save in flight / last save failure (shown in the toolbar)
+  isSaving: boolean;
+  saveError: string | null;
+
   // Actions
   loadSavedCalculators: () => Promise<void>;
   createNewCalculator: (name: string) => Promise<string>;
@@ -97,15 +101,18 @@ export const useCalculatorStore = create<CalculatorState>((set, get) => ({
   selectedBlockId: null,
   isPreviewMode: false,
   isDirty: false,
+  isSaving: false,
+  saveError: null,
 
-  loadSavedCalculators: () => {
-    const calculators = getSavedCalculators();
+  loadSavedCalculators: async () => {
+    const calculators = await listBuilderCalcs();
     set({ savedCalculators: calculators, isInitialized: true });
   },
 
-  createNewCalculator: (name: string) => {
-    const config: CalculatorConfig = {
-      id: nanoid(),
+  createNewCalculator: async (name: string) => {
+    // The server assigns the id; everything else starts from the defaults.
+    const draft: CalculatorConfig = {
+      id: '',
       name,
       description: '',
       blocks: createDefaultBlocks(),
@@ -114,13 +121,9 @@ export const useCalculatorStore = create<CalculatorState>((set, get) => ({
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    set({ calculator: config, variables: {}, selectedBlockId: null, isDirty: true });
-    // Immediately save to storage
-    const { savedCalculators } = get();
-    const updated = [...savedCalculators, config];
-    saveCalculatorsToStorage(updated);
-    set({ savedCalculators: updated, isDirty: false });
-    return config.id;
+    const created = await createBuilderCalc(draft);
+    set(s => ({ savedCalculators: [created, ...s.savedCalculators] }));
+    return created.id;
   },
 
   loadCalculator: (config: CalculatorConfig) => {
@@ -139,52 +142,47 @@ export const useCalculatorStore = create<CalculatorState>((set, get) => ({
     set({ calculator: config, variables, selectedBlockId: null, isDirty: false });
   },
 
-  loadCalculatorById: (id: string) => {
-    const { savedCalculators } = get();
-    const calc = savedCalculators.find(c => c.id === id);
-    if (calc) {
-      get().loadCalculator(calc);
-      return true;
-    }
-    return false;
+  loadCalculatorById: async (id: string) => {
+    const calc = await getBuilderCalc(id);
+    if (!calc) return false;
+    get().loadCalculator(calc);
+    return true;
   },
 
-  saveCalculator: () => {
-    const { calculator, savedCalculators } = get();
+  saveCalculator: async () => {
+    const { calculator } = get();
     if (!calculator) return;
 
-    const updatedCalc = { ...calculator, updatedAt: new Date() };
-    const existing = savedCalculators.findIndex(c => c.id === calculator.id);
-
-    let updated: CalculatorConfig[];
-    if (existing >= 0) {
-      updated = [...savedCalculators];
-      updated[existing] = updatedCalc;
-    } else {
-      updated = [...savedCalculators, updatedCalc];
+    const snapshot = { ...calculator, updatedAt: new Date() };
+    set({ isSaving: true, saveError: null });
+    try {
+      await updateBuilderCalc(snapshot);
+      set(s => ({
+        savedCalculators: s.savedCalculators.map(c => (c.id === snapshot.id ? snapshot : c)),
+        // Edits that arrived while the PATCH ran must stay dirty for the next save.
+        ...(s.calculator === calculator ? { calculator: snapshot, isDirty: false } : {}),
+        isSaving: false,
+      }));
+    } catch (err) {
+      set({ isSaving: false, saveError: err instanceof Error ? err.message : 'Speichern fehlgeschlagen' });
     }
-
-    saveCalculatorsToStorage(updated);
-    set({ savedCalculators: updated, calculator: updatedCalc, isDirty: false });
   },
 
-  deleteCalculator: (id: string) => {
-    const { savedCalculators, calculator } = get();
-    const updated = savedCalculators.filter(c => c.id !== id);
-    saveCalculatorsToStorage(updated);
-    set({
-      savedCalculators: updated,
-      calculator: calculator?.id === id ? null : calculator,
-    });
+  deleteCalculator: async (id: string) => {
+    await deleteBuilderCalc(id);
+    set(s => ({
+      savedCalculators: s.savedCalculators.filter(c => c.id !== id),
+      calculator: s.calculator?.id === id ? null : s.calculator,
+    }));
   },
 
-  closeCalculator: () => {
+  closeCalculator: async () => {
     // Save before closing
     const { isDirty } = get();
     if (isDirty) {
-      get().saveCalculator();
+      await get().saveCalculator();
     }
-    set({ calculator: null, variables: {}, selectedBlockId: null, isPreviewMode: false });
+    set({ calculator: null, variables: {}, selectedBlockId: null, isPreviewMode: false, saveError: null });
   },
 
   addBlock: (type: Block['type'], atIndex?: number) => {

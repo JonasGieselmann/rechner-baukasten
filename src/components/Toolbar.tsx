@@ -2,10 +2,12 @@ import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCalculatorStore } from '../store/calculatorStore';
 import { ImportModal } from './ImportModal';
+import { useOrgQuery } from '../lib/useOrgQuery';
 import { BRAND } from '../../branding/tokens';
 
 export function Toolbar() {
   const navigate = useNavigate();
+  const { withQ } = useOrgQuery();
   const {
     calculator,
     togglePreviewMode,
@@ -16,6 +18,8 @@ export function Toolbar() {
     closeCalculator,
     loadCalculator,
     isDirty,
+    isSaving,
+    saveError,
   } = useCalculatorStore();
 
   const [showEmbedModal, setShowEmbedModal] = useState(false);
@@ -25,12 +29,12 @@ export function Toolbar() {
   const jsonInputRef = useRef<HTMLInputElement>(null);
 
   const handleBack = () => {
-    closeCalculator();
-    navigate('/agency/rechner');
+    void closeCalculator();
+    navigate(withQ('/agency/rechner'));
   };
 
   const handleSave = () => {
-    saveCalculator();
+    void saveCalculator();
   };
 
   const copyEmbedCode = () => {
@@ -57,9 +61,11 @@ export function Toolbar() {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
+        if (!calculator) return;
         const config = JSON.parse(event.target?.result as string);
-        loadCalculator(config);
-        saveCalculator();
+        // Keep the server identity; the import only replaces the content.
+        loadCalculator({ ...config, id: calculator.id });
+        void saveCalculator();
       } catch (err) {
         console.error('Invalid config file:', err);
         alert('Ungültige Konfigurationsdatei');
@@ -100,7 +106,11 @@ export function Toolbar() {
               <span className="text-sm font-medium" style={{ color: BRAND.colors.text }}>
                 {calculator.name}
               </span>
-              {isDirty ? (
+              {isSaving ? (
+                <span className="text-xs" style={{ color: BRAND.colors.muted }}>Speichert…</span>
+              ) : saveError ? (
+                <span className="text-xs text-red-500" title={saveError}>Speichern fehlgeschlagen</span>
+              ) : isDirty ? (
                 <span
                   className="w-2 h-2 rounded-full animate-pulse"
                   style={{ backgroundColor: BRAND.colors.accent }}

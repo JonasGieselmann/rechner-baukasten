@@ -66,7 +66,7 @@ export function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    loadSavedCalculators();
+    loadSavedCalculators().catch(() => { /* list stays empty; tab shows the empty state */ });
   }, [loadSavedCalculators]);
 
   // Load custom calculators from API
@@ -96,17 +96,25 @@ export function Home() {
     loadCustomCalculators();
   }, []);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!newName.trim()) return;
-    const id = createNewCalculator(newName.trim());
-    setShowNewModal(false);
-    setNewName('');
-    navigate(`/editor/${id}`);
+    try {
+      const id = await createNewCalculator(newName.trim());
+      setShowNewModal(false);
+      setNewName('');
+      navigate(withQ(`/editor/${id}`));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erstellen fehlgeschlagen');
+    }
   };
 
-  const handleDelete = (id: string) => {
-    deleteCalculator(id);
-    setDeleteConfirm(null);
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteCalculator(id);
+      setDeleteConfirm(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Löschen fehlgeschlagen');
+    }
   };
 
   // Upload custom calculator
@@ -341,7 +349,7 @@ export function Home() {
                     >
                       <div
                         className="p-5 cursor-pointer"
-                        onClick={() => navigate(`/editor/${calc.id}`)}
+                        onClick={() => navigate(withQ(`/editor/${calc.id}`))}
                       >
                         <div className="flex items-start justify-between mb-3">
                           <div
