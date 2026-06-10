@@ -773,6 +773,64 @@ export async function getUserByEmailForReset(email: string) {
 // platform tier — Kalku itself has no pricing. No prices are displayed.
 // ============================================
 
+// ============================================
+// Builder calculators (the no-code block builder). Previously localStorage-only
+// (browser-bound, unshareable); now server-persisted + org-scoped so embeds work
+// across browsers and calcs belong to an org. The full CalculatorConfig (blocks,
+// theme, variables, description) lives in the `config` jsonb; name is a column.
+// ============================================
+export async function initBuilderCalculatorSchema() {
+  await client`
+    CREATE TABLE IF NOT EXISTS builder_calculator (
+      id TEXT PRIMARY KEY,
+      org_id TEXT NOT NULL,
+      owner_id TEXT,
+      name TEXT NOT NULL,
+      config JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `;
+  await client`CREATE INDEX IF NOT EXISTS builder_calculator_org_idx ON builder_calculator(org_id)`;
+  console.log('Builder-calculator schema initialized (PostgreSQL)');
+}
+
+export async function getBuilderCalculatorsByOrg(orgId: string) {
+  if (!isValidId(orgId)) return [];
+  return await client`
+    SELECT id, name, config, created_at, updated_at FROM builder_calculator
+    WHERE org_id = ${orgId} ORDER BY updated_at DESC LIMIT 500
+  `;
+}
+
+export async function getBuilderCalculatorById(id: string) {
+  if (!isValidId(id)) return null;
+  const [row] = await client`SELECT id, name, config, org_id, created_at, updated_at FROM builder_calculator WHERE id = ${id}`;
+  return row ?? null;
+}
+
+export async function createBuilderCalculator(p: { id: string; orgId: string; ownerId: string; name: string; config: unknown }) {
+  if (!isValidId(p.orgId)) throw new Error('Invalid org ID');
+  await client`
+    INSERT INTO builder_calculator (id, org_id, owner_id, name, config)
+    VALUES (${p.id}, ${p.orgId}, ${p.ownerId}, ${p.name}, ${JSON.stringify(p.config ?? {})}::jsonb)
+  `;
+  return getBuilderCalculatorById(p.id);
+}
+
+export async function updateBuilderCalculator(id: string, name: string, config: unknown) {
+  await client`
+    UPDATE builder_calculator SET name = ${name}, config = ${JSON.stringify(config ?? {})}::jsonb, updated_at = NOW()
+    WHERE id = ${id}
+  `;
+  return getBuilderCalculatorById(id);
+}
+
+export async function deleteBuilderCalculator(id: string) {
+  if (!isValidId(id)) return;
+  await client`DELETE FROM builder_calculator WHERE id = ${id}`;
+}
+
 export async function initPackageSchema() {
   await client`
     CREATE TABLE IF NOT EXISTS org_package (

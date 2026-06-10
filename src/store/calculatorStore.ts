@@ -13,34 +13,7 @@ import type {
 } from '../types';
 import { DEFAULT_THEME } from '../types';
 import { FormulaEngine } from '../engine/formula';
-
-const STORAGE_KEY = 'rechner-baukasten-calculators';
-
-// Helper to get all saved calculators from localStorage
-function getSavedCalculators(): CalculatorConfig[] {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) return [];
-    const parsed = JSON.parse(data);
-    // Convert date strings back to Date objects
-    return parsed.map((calc: CalculatorConfig) => ({
-      ...calc,
-      createdAt: new Date(calc.createdAt),
-      updatedAt: new Date(calc.updatedAt),
-    }));
-  } catch {
-    return [];
-  }
-}
-
-// Helper to save calculators to localStorage
-function saveCalculatorsToStorage(calculators: CalculatorConfig[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(calculators));
-  } catch (e) {
-    console.error('Failed to save to localStorage:', e);
-  }
-}
+import { listBuilderCalcs, createBuilderCalc, updateBuilderCalc, deleteBuilderCalc, getBuilderCalc } from '../lib/builderApi';
 
 interface CalculatorState {
   // All saved calculators
@@ -68,13 +41,13 @@ interface CalculatorState {
   isDirty: boolean;
 
   // Actions
-  loadSavedCalculators: () => void;
-  createNewCalculator: (name: string) => string;
+  loadSavedCalculators: () => Promise<void>;
+  createNewCalculator: (name: string) => Promise<string>;
   loadCalculator: (config: CalculatorConfig) => void;
-  loadCalculatorById: (id: string) => boolean;
-  saveCalculator: () => void;
-  deleteCalculator: (id: string) => void;
-  closeCalculator: () => void;
+  loadCalculatorById: (id: string) => Promise<boolean>;
+  saveCalculator: () => Promise<void>;
+  deleteCalculator: (id: string) => Promise<void>;
+  closeCalculator: () => Promise<void>;
 
   // Block operations
   addBlock: (type: Block['type'], atIndex?: number) => void;

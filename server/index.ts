@@ -5,8 +5,9 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { toNodeHandler } from 'better-auth/node';
 import { auth } from './auth.js';
-import { checkDb, initAuthSchema, initFunnelSchema, initAppSettings, initComplianceSchema, initOrganizationSchema, initDashboardSchema, initPlanSchema, initInviteSchema, initPackageSchema, initPasswordResetSchema, initBeautyflowTenant, syncPotenzialanalyseFunnel } from './db.js';
+import { checkDb, initAuthSchema, initFunnelSchema, initAppSettings, initComplianceSchema, initOrganizationSchema, initDashboardSchema, initPlanSchema, initInviteSchema, initPackageSchema, initPasswordResetSchema, initBuilderCalculatorSchema, initBeautyflowTenant, syncPotenzialanalyseFunnel } from './db.js';
 import customCalculatorsRouter, { seedCustomCalculators } from './custom-calculators.js';
+import builderCalculatorsRouter from './builder-calculators.js';
 import adminRouter from './admin.js';
 import settingsRouter from './settings.js';
 import funnelsRouter from './funnels.js';
@@ -175,6 +176,7 @@ app.use('/api/plans', plansRouter);
 
 // Custom Calculators API
 app.use('/api/custom-calculators', customCalculatorsRouter);
+app.use('/api/builder-calculators', builderCalculatorsRouter);
 
 // Funnels API
 app.use('/api/funnels', funnelsRouter);
@@ -310,6 +312,7 @@ async function start() {
     await initInviteSchema();
     await initAppSettings();
     await initPackageSchema();
+    await initBuilderCalculatorSchema();
     await initPasswordResetSchema();
     await initComplianceSchema();
     // Keep the canonical funnel config in sync (version-guarded) BEFORE carving
